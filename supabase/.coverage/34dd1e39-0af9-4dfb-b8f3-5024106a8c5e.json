@@ -1,0 +1,17 @@
+{
+  "scriptId": "820",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/realtime-js/2.11.10/dist/main/lib/version.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 167,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

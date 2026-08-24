@@ -1,0 +1,38 @@
+# macOS filesystem noise
+.DS_Store
+
+# Generated build and profiling artifacts
+/ios/build/
+/output/
+/tmp/
+*.xcresult
+*.trace
+DerivedData/
+
+# Logs
+/release_gate*.log
+*.log
+
+# Tool and coverage caches (regenerable)
+/.serena/
+/.supergoal/
+/scripts/__pycache__/
+__pycache__/
+/.codex-tmp/
+/.coverage/
+/.deno-coverage-functions*/
+
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Audit phase logs and traces are heavy regenerable evidence; keep audit reports/screenshots tracked
+audits/*/phase-*-logs/
+audits/*/phase-*-traces/
+
+# Python
+.venv/
+
+# SwiftPM
+.build/

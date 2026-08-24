@@ -1,0 +1,17 @@
+{
+  "scriptId": "349",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/whatwg-url/5.0.0/lib/public-api.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 625,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

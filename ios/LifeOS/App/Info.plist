@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>APP_STORE_ID</key>
+	<string>$(APP_STORE_ID)</string>
+	<key>APP_STORE_URL</key>
+	<string>$(APP_STORE_URL)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Life OS</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.lifeos.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lifeos</string>
+			</array>
+		</dict>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.lifeos.sync.outbox-replay</string>
+		<string>com.lifeos.sync.daily-pull</string>
+	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Life OS reads your health data to build personalized recovery, sleep, and training insights.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Life OS uses the camera to capture meals, scan barcodes, and import lab documents.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Life OS uses your location while the app is open to support context-aware activity insights.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Life OS uses the microphone to transcribe meal notes and voice-based nutrition logs.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Life OS uses Face ID to lock sensitive health data when the app launches and returns from the background.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Life OS lets you choose photos of meals and lab reports from your photo library.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Life OS uses speech recognition to turn voice meal notes into text.</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

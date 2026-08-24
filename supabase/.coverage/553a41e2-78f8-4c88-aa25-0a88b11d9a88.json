@@ -1,0 +1,160 @@
+{
+  "scriptId": "839",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/auth-js/2.70.0/dist/main/lib/fetch.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 8352,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__rest",
+      "ranges": [
+        {
+          "startOffset": 52,
+          "endOffset": 503,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getErrorMessage",
+      "ranges": [
+        {
+          "startOffset": 938,
+          "endOffset": 1030,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "handleError",
+      "ranges": [
+        {
+          "startOffset": 1077,
+          "endOffset": 3395,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getRequestParams",
+      "ranges": [
+        {
+          "startOffset": 3457,
+          "endOffset": 3933,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_request",
+      "ranges": [
+        {
+          "startOffset": 3935,
+          "endOffset": 5230,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_handleRequest",
+      "ranges": [
+        {
+          "startOffset": 5260,
+          "endOffset": 5991,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_sessionResponse",
+      "ranges": [
+        {
+          "startOffset": 5992,
+          "endOffset": 6384,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_sessionResponsePassword",
+      "ranges": [
+        {
+          "startOffset": 6430,
+          "endOffset": 6993,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_userResponse",
+      "ranges": [
+        {
+          "startOffset": 7055,
+          "endOffset": 7216,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_ssoResponse",
+      "ranges": [
+        {
+          "startOffset": 7256,
+          "endOffset": 7321,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_generateLinkResponse",
+      "ranges": [
+        {
+          "startOffset": 7359,
+          "endOffset": 7887,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_noResolveJsonResponse",
+      "ranges": [
+        {
+          "startOffset": 7943,
+          "endOffset": 8001,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "hasSession",
+      "ranges": [
+        {
+          "startOffset": 8218,
+          "endOffset": 8318,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "scriptId": "840",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/auth-js/2.70.0/dist/main/GoTrueAdminApi.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 10794,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__rest",
+      "ranges": [
+        {
+          "startOffset": 52,
+          "endOffset": 503,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "GoTrueAdminApi",
+      "ranges": [
+        {
+          "startOffset": 761,
+          "endOffset": 1073,
+          "count": 27
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "signOut",
+      "ranges": [
+        {
+          "startOffset": 1209,
+          "endOffset": 1914,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "inviteUserByEmail",
+      "ranges": [
+        {
+          "startOffset": 2106,
+          "endOffset": 2656,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "generateLink",
+      "ranges": [
+        {
+          "startOffset": 3021,
+          "endOffset": 4145,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "createUser",
+      "ranges": [
+        {
+          "startOffset": 4324,
+          "endOffset": 4796,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "listUsers",
+      "ranges": [
+        {
+          "startOffset": 5072,
+          "endOffset": 6966,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getUserById",
+      "ranges": [
+        {
+          "startOffset": 7180,
+          "endOffset": 7660,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "updateUserById",
+      "ranges": [
+        {
+          "startOffset": 7888,
+          "endOffset": 8417,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "deleteUser",
+      "ranges": [
+        {
+          "startOffset": 8901,
+          "endOffset": 9507,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_listFactors",
+      "ranges": [
+        {
+          "startOffset": 9512,
+          "endOffset": 10141,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_deleteFactor",
+      "ranges": [
+        {
+          "startOffset": 10146,
+          "endOffset": 10715,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

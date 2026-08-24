@@ -1,0 +1,94 @@
+{
+  "scriptId": "381",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/ws/8.21.0/lib/buffer-util.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3056,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "concat",
+      "ranges": [
+        {
+          "startOffset": 349,
+          "endOffset": 792,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_mask",
+      "ranges": [
+        {
+          "startOffset": 1122,
+          "endOffset": 1269,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_unmask",
+      "ranges": [
+        {
+          "startOffset": 1422,
+          "endOffset": 1534,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "toArrayBuffer",
+      "ranges": [
+        {
+          "startOffset": 1687,
+          "endOffset": 1864,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "toBuffer",
+      "ranges": [
+        {
+          "startOffset": 2015,
+          "endOffset": 2399,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "module.exports.mask",
+      "ranges": [
+        {
+          "startOffset": 2643,
+          "endOffset": 2832,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "module.exports.unmask",
+      "ranges": [
+        {
+          "startOffset": 2863,
+          "endOffset": 2991,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

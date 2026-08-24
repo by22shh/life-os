@@ -1,0 +1,153 @@
+{
+  "scriptId": "415",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/auth-js/2.70.0/dist/main/lib/base64url.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 9357,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1017,
+          "endOffset": 1398,
+          "count": 1
+        },
+        {
+          "startOffset": 1109,
+          "endOffset": 1141,
+          "count": 128
+        },
+        {
+          "startOffset": 1199,
+          "endOffset": 1263,
+          "count": 5
+        },
+        {
+          "startOffset": 1317,
+          "endOffset": 1376,
+          "count": 64
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "byteToBase64URL",
+      "ranges": [
+        {
+          "startOffset": 1720,
+          "endOffset": 2396,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "byteFromBase64URL",
+      "ranges": [
+        {
+          "startOffset": 2772,
+          "endOffset": 3367,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stringToBase64URL",
+      "ranges": [
+        {
+          "startOffset": 3649,
+          "endOffset": 3980,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stringFromBase64URL",
+      "ranges": [
+        {
+          "startOffset": 4221,
+          "endOffset": 4734,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "codepointToUTF8",
+      "ranges": [
+        {
+          "startOffset": 5005,
+          "endOffset": 5770,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stringToUTF8",
+      "ranges": [
+        {
+          "startOffset": 6014,
+          "endOffset": 6714,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stringFromUTF8",
+      "ranges": [
+        {
+          "startOffset": 7086,
+          "endOffset": 8212,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "base64UrlToUint8Array",
+      "ranges": [
+        {
+          "startOffset": 8334,
+          "endOffset": 8656,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stringToUint8Array",
+      "ranges": [
+        {
+          "startOffset": 8712,
+          "endOffset": 8858,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "bytesToBase64URL",
+      "ranges": [
+        {
+          "startOffset": 8908,
+          "endOffset": 9274,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

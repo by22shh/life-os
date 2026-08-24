@@ -1,0 +1,105 @@
+## Toolchain command logs
+
+### audits/production-readiness-2026-06-22/phase-1-logs/xcodebuild-list.txt
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -list -project ios/LifeOS.xcodeproj
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  swift-collections: https://github.com/apple/swift-collections @ 1.3.0
+  swift-dependencies: https://github.com/pointfreeco/swift-dependencies @ 1.11.0
+  combine-schedulers: https://github.com/pointfreeco/combine-schedulers @ 1.1.0
+  Supabase: https://github.com/supabase/supabase-swift.git @ 2.41.1
+  swift-navigation: https://github.com/pointfreeco/swift-navigation @ 2.6.0
+  swift-composable-architecture: https://github.com/pointfreeco/swift-composable-architecture.git @ 1.23.2
+  swift-crypto: https://github.com/apple/swift-crypto.git @ 4.2.0
+  GRDB: https://github.com/groue/GRDB.swift.git @ 7.10.0
+  swift-http-types: https://github.com/apple/swift-http-types.git @ 1.5.1
+  swift-concurrency-extras: https://github.com/pointfreeco/swift-concurrency-extras @ 1.3.2
+  xctest-dynamic-overlay: https://github.com/pointfreeco/xctest-dynamic-overlay @ 1.9.0
+  swift-identified-collections: https://github.com/pointfreeco/swift-identified-collections @ 1.1.1
+  swift-custom-dump: https://github.com/pointfreeco/swift-custom-dump @ 1.4.1
+  swift-clocks: https://github.com/pointfreeco/swift-clocks @ 1.0.6
+  swift-case-paths: https://github.com/pointfreeco/swift-case-paths @ 1.7.2
+  swift-asn1: https://github.com/apple/swift-asn1.git @ 1.5.1
+  swift-perception: https://github.com/pointfreeco/swift-perception @ 2.0.9
+  swift-syntax: https://github.com/swiftlang/swift-syntax @ 602.0.0
+  swift-sharing: https://github.com/pointfreeco/swift-sharing @ 2.7.4
+
+Information about project "LifeOS":
+    Targets:
+        GuardianMonitorExtension
+        LifeOS
+        LifeOSComplications
+        LifeOSTests
+        LifeOSUITests
+        LifeOSWatch
+        LifeOSWatchTests
+        LifeOSWidgets
+        LifeOSWidgetsTests
+
+    Build Configurations:
+        Debug
+        Release
+
+    If no build configuration is specified and -scheme is not passed then "Debug" is used.
+
+    Schemes:
+        LifeOS
+        LifeOSWatch
+
+
+### audits/production-readiness-2026-06-22/phase-1-logs/simctl-devices.txt
+== Devices ==
+-- iOS 26.2 --
+    iPhone 17 Pro (DFE6E6FC-FF77-43A7-9087-473C7F8951D2) (Shutdown) 
+    iPhone 17 Pro Max (58A4ECF3-023D-43E6-BEB9-4C6E09064ADB) (Shutdown) 
+    iPhone Air (6CFDCC9C-AA5A-4A94-A4ED-76B343C38B34) (Shutdown) 
+    iPhone 17 (EBEFB0CD-0ABB-4818-B773-1E118D60622B) (Shutdown) 
+    iPhone 16e (0BEBD9B1-9898-4F3A-BF23-70628489ED8A) (Shutdown) 
+    iPad Pro 13-inch (M5) (42EDCBF9-CE2B-41B0-8C62-384EAAA4E4CC) (Shutdown) 
+    iPad Pro 11-inch (M5) (732019CE-44B6-4EC1-A218-AF903806BA44) (Shutdown) 
+    iPad mini (A17 Pro) (168FE0E4-01D6-4B8E-AA87-29C8C1CC1E75) (Shutdown) 
+    iPad (A16) (004BBF76-00CC-4E4D-B797-A9D94061FA73) (Shutdown) 
+    iPad Air 13-inch (M3) (2E04B0B5-747A-4440-BB64-18F94EAE3D90) (Shutdown) 
+    iPad Air 11-inch (M3) (0D6D9F32-32B0-4DAF-A609-E06D06E9B714) (Shutdown) 
+-- watchOS 26.2 --
+    Apple Watch Series 11 (46mm) (D44D3DA3-C68A-4DE5-84F4-5D5600609468) (Shutdown) 
+    Apple Watch Series 11 (42mm) (ABBEB8F8-40B9-463D-A34C-62FA53D941BF) (Shutdown) 
+    Apple Watch Ultra 3 (49mm) (8FE01BB8-61E7-48B9-B4C5-0B9DD330FD54) (Shutdown) 
+    Apple Watch SE 3 (44mm) (173044F9-2F0F-42F5-AB60-6BCD07727CCD) (Shutdown) 
+    Apple Watch SE 3 (40mm) (72CFB38E-25AB-4E14-A62D-88F55A4C52BD) (Shutdown) 
+
+### audits/production-readiness-2026-06-22/phase-1-logs/deno-version.txt
+deno 2.6.10 (stable, release, aarch64-apple-darwin)
+v8 14.5.201.2-rusty
+typescript 5.9.2
+
+### audits/production-readiness-2026-06-22/phase-1-logs/supabase-version.txt
+2.75.0
+
+### audits/production-readiness-2026-06-22/phase-1-logs/docker-ps.txt
+CONTAINER ID   IMAGE                                                                  COMMAND                  CREATED         STATUS        PORTS                                                                              NAMES
+60512132e54d   hub.brain4net.com/knaas-www:3.0.0.master.9524919.321.gbl.amd64         "/docker-entrypoint.…"   3 months ago    Up 10 hours   0.0.0.0:80-84->80-84/tcp, 0.0.0.0:443->443/tcp, 0.0.0.0:8082-8084->8082-8084/tcp   www
+46619d9f8411   naas/mocknet:22.03.1.arm64                                             "/bin/bash entrypoin…"   6 months ago    Up 10 hours                                                                                      net
+8cae5b8697e5   hub.brain4net.com/knaas-ctl:2.25.09.release.42.cis.amd64_en-US_ru-RU   "/bin/sh -c '${JAVA_…"   8 months ago    Up 10 hours   7800-7810/tcp, 0.0.0.0:830->830/tcp, 54190-54210/tcp, 0.0.0.0:6654->6653/tcp       ctl
+cfba646448fe   redis:6.2.6-alpine                                                     "docker-entrypoint.s…"   18 months ago   Up 10 hours   0.0.0.0:6379->6379/tcp                                                             redis
+
+## Critical release checksums
+d24740151b3249ec71beb5ec62f49136b6e9a9d3e6d97fb6af1f0cf451981c52  scripts/check_ios_release_config.sh
+a9b9d570f78ac825f7ccc83d75d09fd97be78c3b29415f8a5de43249372c9ec0  scripts/profile_ios_settings_sync.sh
+ada52ecddf374325a8cb8da25a8c98b7b3957269a7d8e3537cda904d0827e4e9  scripts/run_ios_performance_hard_gates.sh
+6bf3fedf6e43fa6970dd2abd160c86af1fbb008594f9e87f79642838b64fbc98  scripts/run_ios_preprod_real_device_smoke.sh
+395077848305a4e6e35d418cdc0a8307b99bcf5b44d94c94d84c1cda41e1dd76  scripts/run_ios_sync_contract_gate.sh
+73d81ccc05f827562304aae44e2d2ef7f9c20d0ce95d205589ed3795f371e15f  scripts/run_nutrition_provider_live_smoke.sh
+ba8d9f966743fd1a1e0bd8f028539d99ab71d8078f54dc2f5cd6ac05df043821  scripts/run_preprod_security_pass.sh
+5ff7e20cc8906337cef510ef6adc1392c27acd79e8dab59f2c01837d6445b9fc  scripts/run_release_gate_local.sh
+b23fbd0123b685c95c1837ee384113bb2ac72fe1b1668d24fc23bda75b45f8be  scripts/run_supabase_edge_e2e.sh
+7a5bc1558796facd95b23b7a8fd5761c63161e2b8d2163ca9e605ea0daa1f76d  scripts/run_supabase_edge_load.sh
+635874afaaedee59b8812fd816f98557bafae8896b8df171fdd2bccb2d69aab0  scripts/run_supabase_edge_soak.sh
+1f880c862c6ee9ef156c5324e64adaced54633eadfcd60a4708a191464531eb2  scripts/refresh_sync_contract_fixtures.py
+097c9549fc7a0d0f1ec05d6de6ce2c3580db13e8fc2e5560a11f4f2b3b067c54  ios/project.yml
+ee031c2169a46d5ab8e49c3e3cdc7c0d7c0741c8210a7b86e6ee029069516320  ios/LifeOS.xcodeproj/xcshareddata/xcschemes/LifeOS.xcscheme
+bca94e53a863da2f9c1661714eee5eb2515950847ee8a728882fbef586fe2379  ios/LifeOS.xcodeproj/xcshareddata/xcschemes/LifeOSWatch.xcscheme

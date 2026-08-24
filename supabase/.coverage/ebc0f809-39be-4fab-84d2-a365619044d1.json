@@ -1,0 +1,488 @@
+{
+  "scriptId": "396",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/realtime-js/2.11.10/dist/main/RealtimeChannel.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 23405,
+          "count": 1
+        },
+        {
+          "startOffset": 407,
+          "endOffset": 488,
+          "count": 0
+        },
+        {
+          "startOffset": 664,
+          "endOffset": 706,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 88,
+          "endOffset": 405,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 410,
+          "endOffset": 487,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 571,
+          "endOffset": 662,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__setModuleDefault",
+      "ranges": [
+        {
+          "startOffset": 666,
+          "endOffset": 706,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 760,
+          "endOffset": 1368,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "ownKeys",
+      "ranges": [
+        {
+          "startOffset": 792,
+          "endOffset": 1056,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "__importStar",
+      "ranges": [
+        {
+          "startOffset": 1069,
+          "endOffset": 1365,
+          "count": 1
+        },
+        {
+          "startOffset": 1132,
+          "endOffset": 1364,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 1429,
+          "endOffset": 1510,
+          "count": 3
+        },
+        {
+          "startOffset": 1487,
+          "endOffset": 1507,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2134,
+          "endOffset": 2439,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2608,
+          "endOffset": 2866,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2988,
+          "endOffset": 3264,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "RealtimeChannel",
+      "ranges": [
+        {
+          "startOffset": 3701,
+          "endOffset": 6128,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "subscribe",
+      "ranges": [
+        {
+          "startOffset": 6192,
+          "endOffset": 10331,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "presenceState",
+      "ranges": [
+        {
+          "startOffset": 10336,
+          "endOffset": 10395,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "track",
+      "ranges": [
+        {
+          "startOffset": 10400,
+          "endOffset": 10593,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "untrack",
+      "ranges": [
+        {
+          "startOffset": 10598,
+          "endOffset": 10741,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "on",
+      "ranges": [
+        {
+          "startOffset": 10746,
+          "endOffset": 10829,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "send",
+      "ranges": [
+        {
+          "startOffset": 11162,
+          "endOffset": 13408,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "updateJoinPayload",
+      "ranges": [
+        {
+          "startOffset": 13413,
+          "endOffset": 13493,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "unsubscribe",
+      "ranges": [
+        {
+          "startOffset": 13838,
+          "endOffset": 14796,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "teardown",
+      "ranges": [
+        {
+          "startOffset": 14895,
+          "endOffset": 15071,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_fetchWithTimeout",
+      "ranges": [
+        {
+          "startOffset": 15097,
+          "endOffset": 15447,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_push",
+      "ranges": [
+        {
+          "startOffset": 15473,
+          "endOffset": 15975,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onMessage",
+      "ranges": [
+        {
+          "startOffset": 16220,
+          "endOffset": 16285,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isMember",
+      "ranges": [
+        {
+          "startOffset": 16311,
+          "endOffset": 16372,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_joinRef",
+      "ranges": [
+        {
+          "startOffset": 16398,
+          "endOffset": 16450,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_trigger",
+      "ranges": [
+        {
+          "startOffset": 16476,
+          "endOffset": 19998,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isClosed",
+      "ranges": [
+        {
+          "startOffset": 20024,
+          "endOffset": 20108,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isJoined",
+      "ranges": [
+        {
+          "startOffset": 20134,
+          "endOffset": 20218,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isJoining",
+      "ranges": [
+        {
+          "startOffset": 20244,
+          "endOffset": 20330,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isLeaving",
+      "ranges": [
+        {
+          "startOffset": 20356,
+          "endOffset": 20442,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_replyEventName",
+      "ranges": [
+        {
+          "startOffset": 20468,
+          "endOffset": 20532,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_on",
+      "ranges": [
+        {
+          "startOffset": 20558,
+          "endOffset": 20969,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_off",
+      "ranges": [
+        {
+          "startOffset": 20995,
+          "endOffset": 21385,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isEqual",
+      "ranges": [
+        {
+          "startOffset": 21418,
+          "endOffset": 21696,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_rejoinUntilConnected",
+      "ranges": [
+        {
+          "startOffset": 21722,
+          "endOffset": 21876,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onClose",
+      "ranges": [
+        {
+          "startOffset": 21996,
+          "endOffset": 22088,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onError",
+      "ranges": [
+        {
+          "startOffset": 22222,
+          "endOffset": 22334,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_canPush",
+      "ranges": [
+        {
+          "startOffset": 22461,
+          "endOffset": 22541,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_rejoin",
+      "ranges": [
+        {
+          "startOffset": 22567,
+          "endOffset": 22814,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getPayloadRecords",
+      "ranges": [
+        {
+          "startOffset": 22840,
+          "endOffset": 23324,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

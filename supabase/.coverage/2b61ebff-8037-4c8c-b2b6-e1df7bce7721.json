@@ -1,0 +1,86 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/feature_flags.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1008,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "mergeResolvedFeatureFlags",
+      "ranges": [
+        {
+          "startOffset": 314,
+          "endOffset": 825,
+          "count": 2
+        },
+        {
+          "startOffset": 458,
+          "endOffset": 557,
+          "count": 14
+        },
+        {
+          "startOffset": 583,
+          "endOffset": 588,
+          "count": 1
+        },
+        {
+          "startOffset": 707,
+          "endOffset": 714,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 769,
+          "endOffset": 821,
+          "count": 29
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isFeatureFlagEnabled",
+      "ranges": [
+        {
+          "startOffset": 833,
+          "endOffset": 1007,
+          "count": 2
+        },
+        {
+          "startOffset": 961,
+          "endOffset": 970,
+          "count": 1
+        },
+        {
+          "startOffset": 971,
+          "endOffset": 1004,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 910,
+          "endOffset": 941,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

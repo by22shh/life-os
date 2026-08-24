@@ -1,0 +1,12 @@
+{
+  "id": "00000000-0000-0000-0000-000000000029",
+  "name": "Vitamin D3",
+  "category": "vitamin",
+  "take_with_food": true,
+  "primary_benefits": [
+    "immune"
+  ],
+  "avoid_with": [],
+  "created_at": "2026-02-20T06:54:00Z",
+  "updated_at": "2026-02-20T06:55:00Z"
+}

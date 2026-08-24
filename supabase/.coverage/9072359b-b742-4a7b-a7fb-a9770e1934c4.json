@@ -1,0 +1,160 @@
+{
+  "scriptId": "293",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/rate_limit.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 6044,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "defaultServiceRoleClientFactory",
+      "ranges": [
+        {
+          "startOffset": 217,
+          "endOffset": 240,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "evictStaleBuckets",
+      "ranges": [
+        {
+          "startOffset": 472,
+          "endOffset": 725,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "trimBucketsIfNeeded",
+      "ranges": [
+        {
+          "startOffset": 726,
+          "endOffset": 1061,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "nowEpochMs",
+      "ranges": [
+        {
+          "startOffset": 2232,
+          "endOffset": 2278,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "readHeader",
+      "ranges": [
+        {
+          "startOffset": 2279,
+          "endOffset": 2464,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "applyWindow",
+      "ranges": [
+        {
+          "startOffset": 2465,
+          "endOffset": 3358,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "applyWindowDistributed",
+      "ranges": [
+        {
+          "startOffset": 3359,
+          "endOffset": 4191,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "enforceRateLimit",
+      "ranges": [
+        {
+          "startOffset": 4199,
+          "endOffset": 5549,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resetBuckets",
+      "ranges": [
+        {
+          "startOffset": 5590,
+          "endOffset": 5734,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "bucketCount",
+      "ranges": [
+        {
+          "startOffset": 5738,
+          "endOffset": 5783,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "maxLocalBuckets",
+      "ranges": [
+        {
+          "startOffset": 5787,
+          "endOffset": 5841,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setLastEvictionEpochMs",
+      "ranges": [
+        {
+          "startOffset": 5845,
+          "endOffset": 5918,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setServiceRoleClientFactory",
+      "ranges": [
+        {
+          "startOffset": 5922,
+          "endOffset": 6040,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

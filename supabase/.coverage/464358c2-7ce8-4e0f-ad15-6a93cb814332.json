@@ -1,0 +1,197 @@
+{
+  "scriptId": "311",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/cors.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3609,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "readConfiguredValue",
+      "ranges": [
+        {
+          "startOffset": 763,
+          "endOffset": 935,
+          "count": 64
+        },
+        {
+          "startOffset": 831,
+          "endOffset": 918,
+          "count": 128
+        },
+        {
+          "startOffset": 866,
+          "endOffset": 872,
+          "count": 0
+        },
+        {
+          "startOffset": 889,
+          "endOffset": 914,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isValidAbsoluteUrl",
+      "ranges": [
+        {
+          "startOffset": 936,
+          "endOffset": 1124,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isAppleAppStoreHost",
+      "ranges": [
+        {
+          "startOffset": 1125,
+          "endOffset": 1248,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isAppStoreSearchUrl",
+      "ranges": [
+        {
+          "startOffset": 1249,
+          "endOffset": 1571,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeAppStoreId",
+      "ranges": [
+        {
+          "startOffset": 1572,
+          "endOffset": 1750,
+          "count": 16
+        },
+        {
+          "startOffset": 1646,
+          "endOffset": 1739,
+          "count": 0
+        },
+        {
+          "startOffset": 1740,
+          "endOffset": 1747,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "directAppStoreUrl",
+      "ranges": [
+        {
+          "startOffset": 1751,
+          "endOffset": 1848,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resolveConfiguredAppStoreUrl",
+      "ranges": [
+        {
+          "startOffset": 1849,
+          "endOffset": 2336,
+          "count": 16
+        },
+        {
+          "startOffset": 2141,
+          "endOffset": 2177,
+          "count": 0
+        },
+        {
+          "startOffset": 2178,
+          "endOffset": 2216,
+          "count": 0
+        },
+        {
+          "startOffset": 2218,
+          "endOffset": 2249,
+          "count": 0
+        },
+        {
+          "startOffset": 2270,
+          "endOffset": 2319,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "resolveServerManagedHeaders",
+      "ranges": [
+        {
+          "startOffset": 2337,
+          "endOffset": 2939,
+          "count": 16
+        },
+        {
+          "startOffset": 2530,
+          "endOffset": 2588,
+          "count": 0
+        },
+        {
+          "startOffset": 2725,
+          "endOffset": 2791,
+          "count": 0
+        },
+        {
+          "startOffset": 2865,
+          "endOffset": 2919,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "handleCors",
+      "ranges": [
+        {
+          "startOffset": 3166,
+          "endOffset": 3342,
+          "count": 18
+        },
+        {
+          "startOffset": 3233,
+          "endOffset": 3325,
+          "count": 1
+        },
+        {
+          "startOffset": 3325,
+          "endOffset": 3341,
+          "count": 17
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "withCorsHeaders",
+      "ranges": [
+        {
+          "startOffset": 3476,
+          "endOffset": 3608,
+          "count": 16
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

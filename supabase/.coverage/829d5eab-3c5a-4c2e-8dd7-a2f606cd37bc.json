@@ -1,0 +1,61 @@
+{
+  "scriptId": "847",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/auth-js/2.70.0/dist/main/lib/local-storage.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1310,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getItem",
+      "ranges": [
+        {
+          "startOffset": 309,
+          "endOffset": 467,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setItem",
+      "ranges": [
+        {
+          "startOffset": 482,
+          "endOffset": 642,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeItem",
+      "ranges": [
+        {
+          "startOffset": 660,
+          "endOffset": 809,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "memoryLocalStorageAdapter",
+      "ranges": [
+        {
+          "startOffset": 906,
+          "endOffset": 1205,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

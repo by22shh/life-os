@@ -1,0 +1,247 @@
+project_id = "life-os"
+
+[functions.send-notification]
+verify_jwt = true
+
+[functions.api-user-export]
+verify_jwt = true
+entrypoint = "./functions/api/user/export/index.ts"
+
+[functions.api-user-export-status]
+verify_jwt = true
+entrypoint = "./functions/api/user/export_status/index.ts"
+
+[functions.api-user-export-download]
+verify_jwt = true
+entrypoint = "./functions/api/user/export_download/index.ts"
+
+[functions.api-account-delete]
+verify_jwt = true
+entrypoint = "./functions/api/account/delete/index.ts"
+
+[functions.api-account-delete-worker]
+verify_jwt = true
+entrypoint = "./functions/api/account/delete_worker/index.ts"
+
+[functions.api-account-delete-status]
+verify_jwt = true
+entrypoint = "./functions/api/account/delete_status/index.ts"
+
+[functions.api-account-delete-cancel]
+verify_jwt = true
+entrypoint = "./functions/api/account/delete_cancel/index.ts"
+
+[functions.api-watch-snapshot]
+verify_jwt = true
+entrypoint = "./functions/api/watch/snapshot/index.ts"
+
+[functions.api-settings-notifications]
+verify_jwt = true
+entrypoint = "./functions/api/settings/notifications/index.ts"
+
+[functions.api-config-feature-flags]
+verify_jwt = true
+entrypoint = "./functions/api/config/feature-flags/index.ts"
+
+[functions.api-notifications-register-device]
+verify_jwt = true
+entrypoint = "./functions/api/notifications/register_device/index.ts"
+
+[functions.api-notifications-unregister-device]
+verify_jwt = true
+entrypoint = "./functions/api/notifications/unregister_device/index.ts"
+
+[functions.api-settings-privacy]
+verify_jwt = true
+entrypoint = "./functions/api/settings/privacy/index.ts"
+
+[functions.api-settings-consent]
+verify_jwt = true
+entrypoint = "./functions/api/settings/consent/index.ts"
+
+[functions.api-analytics-batch]
+verify_jwt = true
+entrypoint = "./functions/api/analytics/batch/index.ts"
+
+[functions.api-food-log]
+verify_jwt = true
+entrypoint = "./functions/api/food/log/index.ts"
+
+[functions.api-nutrition-daily]
+verify_jwt = true
+entrypoint = "./functions/api/nutrition/daily/index.ts"
+
+[functions.api-nutrition-calendar]
+verify_jwt = true
+entrypoint = "./functions/api/nutrition/calendar/index.ts"
+
+[functions.api-nutrition-templates]
+verify_jwt = true
+entrypoint = "./functions/api/nutrition/templates/index.ts"
+
+[functions.api-nutrition-batches]
+verify_jwt = true
+entrypoint = "./functions/api/nutrition/batches/index.ts"
+
+[functions.api-workouts-log]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/log/index.ts"
+
+[functions.api-workouts-calendar]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/calendar/index.ts"
+
+[functions.api-workouts-daily]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/daily/index.ts"
+
+[functions.api-workouts-summary]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/summary/index.ts"
+
+[functions.api-workouts-weekly]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/weekly/index.ts"
+
+[functions.api-workouts]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/index.ts"
+
+[functions.api-diary-daily]
+verify_jwt = true
+entrypoint = "./functions/api/diary/daily/index.ts"
+
+[functions.api-diary-calendar]
+verify_jwt = true
+entrypoint = "./functions/api/diary/calendar/index.ts"
+
+[functions.api-sleep-daily]
+verify_jwt = true
+entrypoint = "./functions/api/sleep/daily/index.ts"
+
+[functions.api-sleep-calendar]
+verify_jwt = true
+entrypoint = "./functions/api/sleep/calendar/index.ts"
+
+[functions.api-insights-predict]
+verify_jwt = true
+entrypoint = "./functions/api/insights/predict/index.ts"
+
+[functions.api-insights-daily]
+verify_jwt = true
+entrypoint = "./functions/api/insights/daily/index.ts"
+
+[functions.api-supplements-log]
+verify_jwt = true
+entrypoint = "./functions/api/supplements/log/index.ts"
+
+# Legacy alias kept for backward-compatible replays and older clients.
+[functions.api-supplement-log]
+verify_jwt = true
+entrypoint = "./functions/api/supplements/log/index.ts"
+
+[functions.api-supplements-daily]
+verify_jwt = true
+entrypoint = "./functions/api/supplements/daily/index.ts"
+
+[functions.api-supplements-calendar]
+verify_jwt = true
+entrypoint = "./functions/api/supplements/calendar/index.ts"
+
+[functions.api-insight-acknowledge]
+verify_jwt = true
+entrypoint = "./functions/api/insight/acknowledge/index.ts"
+
+[functions.api-menstrual-sync]
+verify_jwt = true
+entrypoint = "./functions/api/menstrual/sync/index.ts"
+
+[functions.parse-food-text]
+verify_jwt = true
+entrypoint = "./functions/parse-food-text/index.ts"
+
+[functions.analyze-food-image]
+verify_jwt = true
+entrypoint = "./functions/analyze-food-image/index.ts"
+
+[functions.analyze-food-label]
+verify_jwt = true
+entrypoint = "./functions/analyze-food-label/index.ts"
+
+[functions.analyze-batch-recipe-image]
+verify_jwt = true
+entrypoint = "./functions/analyze-batch-recipe-image/index.ts"
+
+[functions.ai-openrouter-gateway]
+verify_jwt = true
+entrypoint = "./functions/ai/openrouter-gateway/index.ts"
+
+# Active API endpoints not listed in the original template.
+[functions.api-foods]
+verify_jwt = true
+entrypoint = "./functions/api/foods/index.ts"
+
+[functions.api-recovery]
+verify_jwt = true
+entrypoint = "./functions/api/recovery/index.ts"
+
+[functions.api-labs]
+verify_jwt = true
+entrypoint = "./functions/api/labs/index.ts"
+
+[functions.api-labs-retention-worker]
+verify_jwt = true
+entrypoint = "./functions/api/labs/retention_worker/index.ts"
+
+[functions.api-experiments]
+verify_jwt = true
+entrypoint = "./functions/api/experiments/index.ts"
+
+[functions.api-training-plan]
+verify_jwt = true
+entrypoint = "./functions/api/training/plan/index.ts"
+
+[functions.api-hydration]
+verify_jwt = true
+entrypoint = "./functions/api/hydration/index.ts"
+
+[functions.api-body-composition]
+verify_jwt = true
+entrypoint = "./functions/api/body-composition/index.ts"
+
+[functions.api-wellness]
+verify_jwt = true
+entrypoint = "./functions/api/wellness/index.ts"
+
+[functions.api-recommendations]
+verify_jwt = true
+entrypoint = "./functions/api/recommendations/index.ts"
+
+[functions.api-user-supplements]
+verify_jwt = true
+entrypoint = "./functions/api/user-supplements/index.ts"
+
+[functions.api-weekly-strategy]
+verify_jwt = true
+entrypoint = "./functions/api/weekly-strategy/index.ts"
+
+[functions.api-search]
+verify_jwt = true
+entrypoint = "./functions/api/search/index.ts"
+
+# Backward-compatible aliases (legacy iOS naming).
+[functions.api-workout-log]
+verify_jwt = true
+entrypoint = "./functions/api/workouts/log/index.ts"
+
+[functions.api-hydration-log]
+verify_jwt = true
+entrypoint = "./functions/api/hydration/log/index.ts"
+
+[functions.api-wellness-check]
+verify_jwt = true
+entrypoint = "./functions/api/wellness/check/index.ts"
+
+[functions.api-sleep-log]
+verify_jwt = true
+entrypoint = "./functions/api/sleep/daily/index.ts"

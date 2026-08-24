@@ -1,0 +1,50 @@
+{
+  "scriptId": "309",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/account_deletion_state_machine.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1316,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "canTransitionDeletionState",
+      "ranges": [
+        {
+          "startOffset": 884,
+          "endOffset": 1001,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "assertDeletionStateTransition",
+      "ranges": [
+        {
+          "startOffset": 1009,
+          "endOffset": 1185,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "deletionStateIsTerminal",
+      "ranges": [
+        {
+          "startOffset": 1193,
+          "endOffset": 1315,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

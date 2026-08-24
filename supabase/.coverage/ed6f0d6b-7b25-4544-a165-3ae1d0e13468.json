@@ -1,0 +1,22 @@
+{
+  "scriptId": "327",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/postgrest-js/1.19.4/dist/cjs/index.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1008,
+          "count": 1
+        },
+        {
+          "startOffset": 189,
+          "endOffset": 347,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

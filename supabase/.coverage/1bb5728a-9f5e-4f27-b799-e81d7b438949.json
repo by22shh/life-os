@@ -1,0 +1,171 @@
+{
+  "scriptId": "384",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/ws/8.21.0/lib/receiver.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 17802,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "Receiver",
+      "ranges": [
+        {
+          "startOffset": 1665,
+          "endOffset": 2668,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_write",
+      "ranges": [
+        {
+          "startOffset": 2903,
+          "endOffset": 3424,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "consume",
+      "ranges": [
+        {
+          "startOffset": 3602,
+          "endOffset": 4471,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "startLoop",
+      "ranges": [
+        {
+          "startOffset": 4571,
+          "endOffset": 5201,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getInfo",
+      "ranges": [
+        {
+          "startOffset": 5314,
+          "endOffset": 8986,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getPayloadLength16",
+      "ranges": [
+        {
+          "startOffset": 9098,
+          "endOffset": 9292,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getPayloadLength64",
+      "ranges": [
+        {
+          "startOffset": 9404,
+          "endOffset": 10121,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "haveLength",
+      "ranges": [
+        {
+          "startOffset": 10226,
+          "endOffset": 10757,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getMask",
+      "ranges": [
+        {
+          "startOffset": 10815,
+          "endOffset": 10974,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getData",
+      "ranges": [
+        {
+          "startOffset": 11067,
+          "endOffset": 12294,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "decompress",
+      "ranges": [
+        {
+          "startOffset": 12430,
+          "endOffset": 13543,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "dataMessage",
+      "ranges": [
+        {
+          "startOffset": 13642,
+          "endOffset": 15355,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "controlMessage",
+      "ranges": [
+        {
+          "startOffset": 15524,
+          "endOffset": 16987,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "createError",
+      "ranges": [
+        {
+          "startOffset": 17421,
+          "endOffset": 17771,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

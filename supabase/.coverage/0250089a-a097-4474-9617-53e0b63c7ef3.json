@@ -1,0 +1,258 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/apns.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3643,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "dispatchAPNsNotifications",
+      "ranges": [
+        {
+          "startOffset": 7,
+          "endOffset": 1938,
+          "count": 3
+        },
+        {
+          "startOffset": 110,
+          "endOffset": 250,
+          "count": 1
+        },
+        {
+          "startOffset": 250,
+          "endOffset": 280,
+          "count": 2
+        },
+        {
+          "startOffset": 280,
+          "endOffset": 556,
+          "count": 1
+        },
+        {
+          "startOffset": 617,
+          "endOffset": 655,
+          "count": 1
+        },
+        {
+          "startOffset": 656,
+          "endOffset": 686,
+          "count": 2
+        },
+        {
+          "startOffset": 1001,
+          "endOffset": 1007,
+          "count": 1
+        },
+        {
+          "startOffset": 1008,
+          "endOffset": 1013,
+          "count": 2
+        },
+        {
+          "startOffset": 1250,
+          "endOffset": 1261,
+          "count": 1
+        },
+        {
+          "startOffset": 1309,
+          "endOffset": 1316,
+          "count": 2
+        },
+        {
+          "startOffset": 1355,
+          "endOffset": 1395,
+          "count": 1
+        },
+        {
+          "startOffset": 1395,
+          "endOffset": 1488,
+          "count": 2
+        },
+        {
+          "startOffset": 1488,
+          "endOffset": 1521,
+          "count": 1
+        },
+        {
+          "startOffset": 1536,
+          "endOffset": 1578,
+          "count": 1
+        },
+        {
+          "startOffset": 1585,
+          "endOffset": 1637,
+          "count": 1
+        },
+        {
+          "startOffset": 1637,
+          "endOffset": 1712,
+          "count": 2
+        },
+        {
+          "startOffset": 1713,
+          "endOffset": 1741,
+          "count": 2
+        },
+        {
+          "startOffset": 1742,
+          "endOffset": 1768,
+          "count": 1
+        },
+        {
+          "startOffset": 1770,
+          "endOffset": 1822,
+          "count": 1
+        },
+        {
+          "startOffset": 1826,
+          "endOffset": 1937,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "loadAPNsConfig",
+      "ranges": [
+        {
+          "startOffset": 1939,
+          "endOffset": 2378,
+          "count": 3
+        },
+        {
+          "startOffset": 2012,
+          "endOffset": 2018,
+          "count": 2
+        },
+        {
+          "startOffset": 2021,
+          "endOffset": 2026,
+          "count": 1
+        },
+        {
+          "startOffset": 2071,
+          "endOffset": 2077,
+          "count": 2
+        },
+        {
+          "startOffset": 2080,
+          "endOffset": 2085,
+          "count": 1
+        },
+        {
+          "startOffset": 2146,
+          "endOffset": 2152,
+          "count": 2
+        },
+        {
+          "startOffset": 2155,
+          "endOffset": 2160,
+          "count": 1
+        },
+        {
+          "startOffset": 2211,
+          "endOffset": 2217,
+          "count": 2
+        },
+        {
+          "startOffset": 2220,
+          "endOffset": 2225,
+          "count": 1
+        },
+        {
+          "startOffset": 2241,
+          "endOffset": 2250,
+          "count": 2
+        },
+        {
+          "startOffset": 2251,
+          "endOffset": 2268,
+          "count": 2
+        },
+        {
+          "startOffset": 2269,
+          "endOffset": 2281,
+          "count": 2
+        },
+        {
+          "startOffset": 2283,
+          "endOffset": 2305,
+          "count": 1
+        },
+        {
+          "startOffset": 2305,
+          "endOffset": 2377,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "createBearerToken",
+      "ranges": [
+        {
+          "startOffset": 2379,
+          "endOffset": 2944,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "importPrivateKey",
+      "ranges": [
+        {
+          "startOffset": 2945,
+          "endOffset": 3327,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 3165,
+          "endOffset": 3191,
+          "count": 138
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "base64urlEncode",
+      "ranges": [
+        {
+          "startOffset": 3328,
+          "endOffset": 3642,
+          "count": 3
+        },
+        {
+          "startOffset": 3404,
+          "endOffset": 3437,
+          "count": 2
+        },
+        {
+          "startOffset": 3438,
+          "endOffset": 3461,
+          "count": 1
+        },
+        {
+          "startOffset": 3509,
+          "endOffset": 3555,
+          "count": 128
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

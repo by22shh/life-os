@@ -1,0 +1,34 @@
+{
+  "api-food-log": {
+    "requests": 5,
+    "concurrency": 1,
+    "p50Ms": 42.471833000000515,
+    "p95Ms": 59.140040999999655,
+    "p99Ms": 59.140040999999655,
+    "avgMs": 45.30730779999999,
+    "maxMs": 59.140040999999655,
+    "minMs": 27.968208000000004,
+    "errorRate": 0,
+    "statusCounts": {
+      "202": 5
+    },
+    "totalDurationMs": 5236.283083,
+    "throughputRps": 0.9548758003998845
+  },
+  "api-settings-notifications": {
+    "requests": 5,
+    "concurrency": 1,
+    "p50Ms": 42.21058300000004,
+    "p95Ms": 64.07779200000004,
+    "p99Ms": 64.07779200000004,
+    "avgMs": 43.39574180000036,
+    "maxMs": 64.07779200000004,
+    "minMs": 31.45300000000043,
+    "errorRate": 0,
+    "statusCounts": {
+      "200": 5
+    },
+    "totalDurationMs": 5227.372125,
+    "throughputRps": 0.9565035510074769
+  }
+}

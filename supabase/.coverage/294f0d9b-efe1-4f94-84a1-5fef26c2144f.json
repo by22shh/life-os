@@ -1,0 +1,137 @@
+{
+  "scriptId": "284",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/medical_scan_privacy.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 6593,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "loadMedicalScanPrivacySettings",
+      "ranges": [
+        {
+          "startOffset": 256,
+          "endOffset": 711,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "computeMedicalScanScheduledDeletionAt",
+      "ranges": [
+        {
+          "startOffset": 719,
+          "endOffset": 1007,
+          "count": 1
+        },
+        {
+          "startOffset": 830,
+          "endOffset": 842,
+          "count": 0
+        },
+        {
+          "startOffset": 901,
+          "endOffset": 913,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "pruneExpiredMedicalScanArtifacts",
+      "ranges": [
+        {
+          "startOffset": 1015,
+          "endOffset": 2306,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "enforceMedicalScanPrivacyState",
+      "ranges": [
+        {
+          "startOffset": 2314,
+          "endOffset": 3341,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeMedicalScanStorageObjects",
+      "ranges": [
+        {
+          "startOffset": 3342,
+          "endOffset": 4358,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeMedicalScanStorageObjectPaths",
+      "ranges": [
+        {
+          "startOffset": 4359,
+          "endOffset": 4672,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeMedicalScanStoragePath",
+      "ranges": [
+        {
+          "startOffset": 4673,
+          "endOffset": 5023,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "extractStorageObjectPath",
+      "ranges": [
+        {
+          "startOffset": 5024,
+          "endOffset": 5792,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sanitizeStorageObjectPath",
+      "ranges": [
+        {
+          "startOffset": 5793,
+          "endOffset": 6359,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "chunkArray",
+      "ranges": [
+        {
+          "startOffset": 6360,
+          "endOffset": 6592,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

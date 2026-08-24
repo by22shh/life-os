@@ -1,0 +1,149 @@
+{
+  "scriptId": "396",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/realtime-js/2.11.10/dist/main/lib/push.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3165,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "Push",
+      "ranges": [
+        {
+          "startOffset": 403,
+          "endOffset": 796,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resend",
+      "ranges": [
+        {
+          "startOffset": 801,
+          "endOffset": 1023,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "send",
+      "ranges": [
+        {
+          "startOffset": 1028,
+          "endOffset": 1397,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "updatePayload",
+      "ranges": [
+        {
+          "startOffset": 1402,
+          "endOffset": 1512,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "receive",
+      "ranges": [
+        {
+          "startOffset": 1517,
+          "endOffset": 1785,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "startTimeout",
+      "ranges": [
+        {
+          "startOffset": 1790,
+          "endOffset": 2363,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "trigger",
+      "ranges": [
+        {
+          "startOffset": 2368,
+          "endOffset": 2500,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "destroy",
+      "ranges": [
+        {
+          "startOffset": 2505,
+          "endOffset": 2585,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_cancelRefEvent",
+      "ranges": [
+        {
+          "startOffset": 2590,
+          "endOffset": 2721,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_cancelTimeout",
+      "ranges": [
+        {
+          "startOffset": 2726,
+          "endOffset": 2830,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_matchReceive",
+      "ranges": [
+        {
+          "startOffset": 2835,
+          "endOffset": 3000,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_hasReceived",
+      "ranges": [
+        {
+          "startOffset": 3005,
+          "endOffset": 3106,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

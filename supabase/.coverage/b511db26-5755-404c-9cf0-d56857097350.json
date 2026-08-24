@@ -1,0 +1,50 @@
+{
+  "scriptId": "783",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/whatwg-url/5.0.0/lib/utils.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 562,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "mixin",
+      "ranges": [
+        {
+          "startOffset": 38,
+          "endOffset": 263,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "module.exports.wrapperForImpl",
+      "ranges": [
+        {
+          "startOffset": 393,
+          "endOffset": 457,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "module.exports.implForWrapper",
+      "ranges": [
+        {
+          "startOffset": 492,
+          "endOffset": 559,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

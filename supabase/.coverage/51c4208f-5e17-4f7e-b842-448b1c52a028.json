@@ -1,0 +1,439 @@
+{
+  "scriptId": "372",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/realtime-js/2.11.10/dist/main/RealtimeClient.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 21084,
+          "count": 1
+        },
+        {
+          "startOffset": 407,
+          "endOffset": 488,
+          "count": 0
+        },
+        {
+          "startOffset": 664,
+          "endOffset": 706,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 88,
+          "endOffset": 405,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 410,
+          "endOffset": 487,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 571,
+          "endOffset": 662,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__setModuleDefault",
+      "ranges": [
+        {
+          "startOffset": 666,
+          "endOffset": 706,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 760,
+          "endOffset": 1368,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "ownKeys",
+      "ranges": [
+        {
+          "startOffset": 792,
+          "endOffset": 1056,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "__importStar",
+      "ranges": [
+        {
+          "startOffset": 1069,
+          "endOffset": 1365,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 1429,
+          "endOffset": 1510,
+          "count": 4
+        },
+        {
+          "startOffset": 1487,
+          "endOffset": 1507,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "noop",
+      "ranges": [
+        {
+          "startOffset": 1948,
+          "endOffset": 1957,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "RealtimeClient",
+      "ranges": [
+        {
+          "startOffset": 3804,
+          "endOffset": 8455,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "connect",
+      "ranges": [
+        {
+          "startOffset": 8530,
+          "endOffset": 9398,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "endpointURL",
+      "ranges": [
+        {
+          "startOffset": 9509,
+          "endOffset": 9638,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "disconnect",
+      "ranges": [
+        {
+          "startOffset": 9818,
+          "endOffset": 10384,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getChannels",
+      "ranges": [
+        {
+          "startOffset": 10441,
+          "endOffset": 10492,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeChannel",
+      "ranges": [
+        {
+          "startOffset": 10611,
+          "endOffset": 10891,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeAllChannels",
+      "ranges": [
+        {
+          "startOffset": 10957,
+          "endOffset": 11169,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "log",
+      "ranges": [
+        {
+          "startOffset": 11286,
+          "endOffset": 11352,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "connectionState",
+      "ranges": [
+        {
+          "startOffset": 11421,
+          "endOffset": 11929,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isConnected",
+      "ranges": [
+        {
+          "startOffset": 11999,
+          "endOffset": 12097,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "channel",
+      "ranges": [
+        {
+          "startOffset": 12102,
+          "endOffset": 12521,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "push",
+      "ranges": [
+        {
+          "startOffset": 12743,
+          "endOffset": 13231,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setAuth",
+      "ranges": [
+        {
+          "startOffset": 13630,
+          "endOffset": 14444,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sendHeartbeat",
+      "ranges": [
+        {
+          "startOffset": 14526,
+          "endOffset": 15354,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "onHeartbeat",
+      "ranges": [
+        {
+          "startOffset": 15359,
+          "endOffset": 15431,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "flushSendBuffer",
+      "ranges": [
+        {
+          "startOffset": 15479,
+          "endOffset": 15675,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_makeRef",
+      "ranges": [
+        {
+          "startOffset": 15781,
+          "endOffset": 15997,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_leaveOpenTopic",
+      "ranges": [
+        {
+          "startOffset": 16101,
+          "endOffset": 16386,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_remove",
+      "ranges": [
+        {
+          "startOffset": 16529,
+          "endOffset": 16633,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setupConnection",
+      "ranges": [
+        {
+          "startOffset": 16714,
+          "endOffset": 17092,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onConnMessage",
+      "ranges": [
+        {
+          "startOffset": 17118,
+          "endOffset": 17935,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onConnOpen",
+      "ranges": [
+        {
+          "startOffset": 17961,
+          "endOffset": 19276,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onConnClose",
+      "ranges": [
+        {
+          "startOffset": 19302,
+          "endOffset": 19604,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onConnError",
+      "ranges": [
+        {
+          "startOffset": 19630,
+          "endOffset": 19817,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_triggerChanError",
+      "ranges": [
+        {
+          "startOffset": 19843,
+          "endOffset": 19966,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_appendParams",
+      "ranges": [
+        {
+          "startOffset": 19992,
+          "endOffset": 20253,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_workerObjectUrl",
+      "ranges": [
+        {
+          "startOffset": 20258,
+          "endOffset": 20562,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "WSWebSocketDummy",
+      "ranges": [
+        {
+          "startOffset": 20628,
+          "endOffset": 21039,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

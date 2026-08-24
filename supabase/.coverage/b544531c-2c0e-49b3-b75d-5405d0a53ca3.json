@@ -1,0 +1,195 @@
+{
+  "scriptId": "332",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/webidl-conversions/3.0.1/lib/index.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 5056,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "sign",
+      "ranges": [
+        {
+          "startOffset": 68,
+          "endOffset": 115,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "evenRound",
+      "ranges": [
+        {
+          "startOffset": 117,
+          "endOffset": 406,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "createNumberConversion",
+      "ranges": [
+        {
+          "startOffset": 408,
+          "endOffset": 2019,
+          "count": 8
+        },
+        {
+          "startOffset": 491,
+          "endOffset": 519,
+          "count": 4
+        },
+        {
+          "startOffset": 561,
+          "endOffset": 564,
+          "count": 4
+        },
+        {
+          "startOffset": 565,
+          "endOffset": 590,
+          "count": 4
+        },
+        {
+          "startOffset": 691,
+          "endOffset": 730,
+          "count": 2
+        },
+        {
+          "startOffset": 731,
+          "endOffset": 755,
+          "count": 6
+        },
+        {
+          "startOffset": 806,
+          "endOffset": 849,
+          "count": 2
+        },
+        {
+          "startOffset": 850,
+          "endOffset": 878,
+          "count": 6
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 892,
+          "endOffset": 2017,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.void",
+      "ranges": [
+        {
+          "startOffset": 2043,
+          "endOffset": 2080,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.boolean",
+      "ranges": [
+        {
+          "startOffset": 2108,
+          "endOffset": 2144,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.double",
+      "ranges": [
+        {
+          "startOffset": 2819,
+          "endOffset": 2984,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.unrestricted double",
+      "ranges": [
+        {
+          "startOffset": 3024,
+          "endOffset": 3148,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.DOMString",
+      "ranges": [
+        {
+          "startOffset": 3340,
+          "endOffset": 3490,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.ByteString",
+      "ranges": [
+        {
+          "startOffset": 3521,
+          "endOffset": 3781,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.USVString",
+      "ranges": [
+        {
+          "startOffset": 3811,
+          "endOffset": 4709,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.Date",
+      "ranges": [
+        {
+          "startOffset": 4734,
+          "endOffset": 4923,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "conversions.RegExp",
+      "ranges": [
+        {
+          "startOffset": 4950,
+          "endOffset": 5054,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "scriptId": "335",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/postgrest-js/1.19.4/dist/cjs/PostgrestClient.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 4511,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 70,
+          "endOffset": 151,
+          "count": 2
+        },
+        {
+          "startOffset": 128,
+          "endOffset": 148,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "PostgrestClient",
+      "ranges": [
+        {
+          "startOffset": 1207,
+          "endOffset": 1451,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "from",
+      "ranges": [
+        {
+          "startOffset": 1581,
+          "endOffset": 1851,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "schema",
+      "ranges": [
+        {
+          "startOffset": 2074,
+          "endOffset": 2241,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "rpc",
+      "ranges": [
+        {
+          "startOffset": 3221,
+          "endOffset": 4430,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

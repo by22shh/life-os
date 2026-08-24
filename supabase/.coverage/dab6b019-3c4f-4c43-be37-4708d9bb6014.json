@@ -1,0 +1,1235 @@
+{
+  "scriptId": "849",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/auth-js/2.70.0/dist/main/GoTrueClient.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 104142,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 70,
+          "endOffset": 151,
+          "count": 1
+        },
+        {
+          "startOffset": 128,
+          "endOffset": 148,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "lockNoOp",
+      "ranges": [
+        {
+          "startOffset": 1081,
+          "endOffset": 1157,
+          "count": 89
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "GoTrueClient",
+      "ranges": [
+        {
+          "startOffset": 1250,
+          "endOffset": 6010,
+          "count": 36
+        },
+        {
+          "startOffset": 2369,
+          "endOffset": 2398,
+          "count": 35
+        },
+        {
+          "startOffset": 2400,
+          "endOffset": 2645,
+          "count": 0
+        },
+        {
+          "startOffset": 2831,
+          "endOffset": 2884,
+          "count": 0
+        },
+        {
+          "startOffset": 3618,
+          "endOffset": 3668,
+          "count": 0
+        },
+        {
+          "startOffset": 3713,
+          "endOffset": 3847,
+          "count": 0
+        },
+        {
+          "startOffset": 3849,
+          "endOffset": 3907,
+          "count": 0
+        },
+        {
+          "startOffset": 4528,
+          "endOffset": 5011,
+          "count": 0
+        },
+        {
+          "startOffset": 5208,
+          "endOffset": 5238,
+          "count": 0
+        },
+        {
+          "startOffset": 5239,
+          "endOffset": 5261,
+          "count": 0
+        },
+        {
+          "startOffset": 5262,
+          "endOffset": 5280,
+          "count": 0
+        },
+        {
+          "startOffset": 5282,
+          "endOffset": 5977,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 5677,
+          "endOffset": 5965,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_debug",
+      "ranges": [
+        {
+          "startOffset": 6015,
+          "endOffset": 6226,
+          "count": 1374
+        },
+        {
+          "startOffset": 6068,
+          "endOffset": 6199,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "initialize",
+      "ranges": [
+        {
+          "startOffset": 6531,
+          "endOffset": 6887,
+          "count": 36
+        },
+        {
+          "startOffset": 6588,
+          "endOffset": 6648,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 6683,
+          "endOffset": 6832,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 6744,
+          "endOffset": 6820,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_initialize",
+      "ranges": [
+        {
+          "startOffset": 7121,
+          "endOffset": 10135,
+          "count": 36
+        },
+        {
+          "startOffset": 7358,
+          "endOffset": 7930,
+          "count": 0
+        },
+        {
+          "startOffset": 7931,
+          "endOffset": 7960,
+          "count": 0
+        },
+        {
+          "startOffset": 7962,
+          "endOffset": 9737,
+          "count": 0
+        },
+        {
+          "startOffset": 9803,
+          "endOffset": 9852,
+          "count": 0
+        },
+        {
+          "startOffset": 10001,
+          "endOffset": 10010,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 9168,
+          "endOffset": 9493,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInAnonymously",
+      "ranges": [
+        {
+          "startOffset": 10291,
+          "endOffset": 11701,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signUp",
+      "ranges": [
+        {
+          "startOffset": 12165,
+          "endOffset": 15247,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithPassword",
+      "ranges": [
+        {
+          "startOffset": 15626,
+          "endOffset": 18034,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithOAuth",
+      "ranges": [
+        {
+          "startOffset": 18157,
+          "endOffset": 18735,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "exchangeCodeForSession",
+      "ranges": [
+        {
+          "startOffset": 18843,
+          "endOffset": 19049,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithWeb3",
+      "ranges": [
+        {
+          "startOffset": 19233,
+          "endOffset": 19494,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithSolana",
+      "ranges": [
+        {
+          "startOffset": 19499,
+          "endOffset": 28019,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_exchangeCodeForSession",
+      "ranges": [
+        {
+          "startOffset": 28024,
+          "endOffset": 29685,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithIdToken",
+      "ranges": [
+        {
+          "startOffset": 29828,
+          "endOffset": 31312,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithOtp",
+      "ranges": [
+        {
+          "startOffset": 32240,
+          "endOffset": 35141,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "verifyOtp",
+      "ranges": [
+        {
+          "startOffset": 35256,
+          "endOffset": 36834,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signInWithSSO",
+      "ranges": [
+        {
+          "startOffset": 37565,
+          "endOffset": 39023,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "reauthenticate",
+      "ranges": [
+        {
+          "startOffset": 39159,
+          "endOffset": 39345,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_reauthenticate",
+      "ranges": [
+        {
+          "startOffset": 39350,
+          "endOffset": 40219,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resend",
+      "ranges": [
+        {
+          "startOffset": 40343,
+          "endOffset": 42150,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getSession",
+      "ranges": [
+        {
+          "startOffset": 42785,
+          "endOffset": 43052,
+          "count": 95
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 42895,
+          "endOffset": 43021,
+          "count": 95
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 42945,
+          "endOffset": 43009,
+          "count": 95
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_acquireLock",
+      "ranges": [
+        {
+          "startOffset": 43129,
+          "endOffset": 45245,
+          "count": 176
+        },
+        {
+          "startOffset": 43282,
+          "endOffset": 43908,
+          "count": 87
+        },
+        {
+          "startOffset": 43431,
+          "endOffset": 43450,
+          "count": 0
+        },
+        {
+          "startOffset": 43908,
+          "endOffset": 45171,
+          "count": 89
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 43484,
+          "endOffset": 43586,
+          "count": 87
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 43632,
+          "endOffset": 43858,
+          "count": 87
+        },
+        {
+          "startOffset": 43752,
+          "endOffset": 43840,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 43987,
+          "endOffset": 45150,
+          "count": 89
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 44251,
+          "endOffset": 44505,
+          "count": 89
+        },
+        {
+          "startOffset": 44387,
+          "endOffset": 44483,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_useSession",
+      "ranges": [
+        {
+          "startOffset": 45546,
+          "endOffset": 45899,
+          "count": 140
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__loadSession",
+      "ranges": [
+        {
+          "startOffset": 45994,
+          "endOffset": 49358,
+          "count": 140
+        },
+        {
+          "startOffset": 46100,
+          "endOffset": 46212,
+          "count": 0
+        },
+        {
+          "startOffset": 46484,
+          "endOffset": 46803,
+          "count": 0
+        },
+        {
+          "startOffset": 46917,
+          "endOffset": 47432,
+          "count": 0
+        },
+        {
+          "startOffset": 47449,
+          "endOffset": 47456,
+          "count": 0
+        },
+        {
+          "startOffset": 47527,
+          "endOffset": 47531,
+          "count": 0
+        },
+        {
+          "startOffset": 47532,
+          "endOffset": 47540,
+          "count": 0
+        },
+        {
+          "startOffset": 47623,
+          "endOffset": 49281,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "get",
+      "ranges": [
+        {
+          "startOffset": 47842,
+          "endOffset": 48827,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getUser",
+      "ranges": [
+        {
+          "startOffset": 49743,
+          "endOffset": 50023,
+          "count": 9
+        },
+        {
+          "startOffset": 49781,
+          "endOffset": 49837,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 49927,
+          "endOffset": 49992,
+          "count": 9
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_getUser",
+      "ranges": [
+        {
+          "startOffset": 50028,
+          "endOffset": 51892,
+          "count": 9
+        },
+        {
+          "startOffset": 50085,
+          "endOffset": 50335,
+          "count": 0
+        },
+        {
+          "startOffset": 51296,
+          "endOffset": 51886,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 50378,
+          "endOffset": 51275,
+          "count": 9
+        },
+        {
+          "startOffset": 50505,
+          "endOffset": 50557,
+          "count": 0
+        },
+        {
+          "startOffset": 50704,
+          "endOffset": 50720,
+          "count": 0
+        },
+        {
+          "startOffset": 50730,
+          "endOffset": 50747,
+          "count": 0
+        },
+        {
+          "startOffset": 50788,
+          "endOffset": 50907,
+          "count": 0
+        },
+        {
+          "startOffset": 51103,
+          "endOffset": 51119,
+          "count": 0
+        },
+        {
+          "startOffset": 51129,
+          "endOffset": 51146,
+          "count": 0
+        },
+        {
+          "startOffset": 51174,
+          "endOffset": 51178,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "updateUser",
+      "ranges": [
+        {
+          "startOffset": 51960,
+          "endOffset": 52181,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_updateUser",
+      "ranges": [
+        {
+          "startOffset": 52186,
+          "endOffset": 54057,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setSession",
+      "ranges": [
+        {
+          "startOffset": 54448,
+          "endOffset": 54654,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_setSession",
+      "ranges": [
+        {
+          "startOffset": 54659,
+          "endOffset": 56680,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "refreshSession",
+      "ranges": [
+        {
+          "startOffset": 57072,
+          "endOffset": 57286,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_refreshSession",
+      "ranges": [
+        {
+          "startOffset": 57291,
+          "endOffset": 58605,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getSessionFromURL",
+      "ranges": [
+        {
+          "startOffset": 58673,
+          "endOffset": 63409,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isImplicitGrantCallback",
+      "ranges": [
+        {
+          "startOffset": 63579,
+          "endOffset": 63692,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isPKCECallback",
+      "ranges": [
+        {
+          "startOffset": 63806,
+          "endOffset": 64023,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "signOut",
+      "ranges": [
+        {
+          "startOffset": 64615,
+          "endOffset": 64823,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_signOut",
+      "ranges": [
+        {
+          "startOffset": 64828,
+          "endOffset": 66041,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "onAuthStateChange",
+      "ranges": [
+        {
+          "startOffset": 66211,
+          "endOffset": 66935,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "unsubscribe",
+      "ranges": [
+        {
+          "startOffset": 66377,
+          "endOffset": 66543,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 66701,
+          "endOffset": 66882,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 66797,
+          "endOffset": 66870,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_emitInitialSession",
+      "ranges": [
+        {
+          "startOffset": 66940,
+          "endOffset": 67750,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 67010,
+          "endOffset": 67742,
+          "count": 36
+        },
+        {
+          "startOffset": 67181,
+          "endOffset": 67193,
+          "count": 0
+        },
+        {
+          "startOffset": 67283,
+          "endOffset": 67291,
+          "count": 0
+        },
+        {
+          "startOffset": 67449,
+          "endOffset": 67732,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "resetPasswordForEmail",
+      "ranges": [
+        {
+          "startOffset": 68139,
+          "endOffset": 69162,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getUserIdentities",
+      "ranges": [
+        {
+          "startOffset": 69232,
+          "endOffset": 69709,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "linkIdentity",
+      "ranges": [
+        {
+          "startOffset": 69825,
+          "endOffset": 71601,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "unlinkIdentity",
+      "ranges": [
+        {
+          "startOffset": 71759,
+          "endOffset": 72568,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_refreshAccessToken",
+      "ranges": [
+        {
+          "startOffset": 72694,
+          "endOffset": 74369,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_isValidSession",
+      "ranges": [
+        {
+          "startOffset": 74374,
+          "endOffset": 74681,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_handleProviderSignIn",
+      "ranges": [
+        {
+          "startOffset": 74686,
+          "endOffset": 75288,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_recoverAndRefresh",
+      "ranges": [
+        {
+          "startOffset": 75467,
+          "endOffset": 77584,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_callRefreshToken",
+      "ranges": [
+        {
+          "startOffset": 77589,
+          "endOffset": 79334,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_notifyAllSubscribers",
+      "ranges": [
+        {
+          "startOffset": 79339,
+          "endOffset": 80349,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_saveSession",
+      "ranges": [
+        {
+          "startOffset": 80465,
+          "endOffset": 80846,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_removeSession",
+      "ranges": [
+        {
+          "startOffset": 80851,
+          "endOffset": 81062,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_removeVisibilityChangedCallback",
+      "ranges": [
+        {
+          "startOffset": 81210,
+          "endOffset": 81771,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_startAutoRefresh",
+      "ranges": [
+        {
+          "startOffset": 81900,
+          "endOffset": 83428,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_stopAutoRefresh",
+      "ranges": [
+        {
+          "startOffset": 83556,
+          "endOffset": 83785,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "startAutoRefresh",
+      "ranges": [
+        {
+          "startOffset": 84876,
+          "endOffset": 84997,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stopAutoRefresh",
+      "ranges": [
+        {
+          "startOffset": 85312,
+          "endOffset": 85431,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_autoRefreshTokenTick",
+      "ranges": [
+        {
+          "startOffset": 85493,
+          "endOffset": 87482,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_handleVisibilityChange",
+      "ranges": [
+        {
+          "startOffset": 87702,
+          "endOffset": 88673,
+          "count": 36
+        },
+        {
+          "startOffset": 87827,
+          "endOffset": 87904,
+          "count": 0
+        },
+        {
+          "startOffset": 87947,
+          "endOffset": 88087,
+          "count": 0
+        },
+        {
+          "startOffset": 88123,
+          "endOffset": 88283,
+          "count": 0
+        },
+        {
+          "startOffset": 88284,
+          "endOffset": 88292,
+          "count": 0
+        },
+        {
+          "startOffset": 88293,
+          "endOffset": 88370,
+          "count": 0
+        },
+        {
+          "startOffset": 88546,
+          "endOffset": 88667,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "visibilityChangedCallback",
+      "ranges": [
+        {
+          "startOffset": 88183,
+          "endOffset": 88233,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_onVisibilityChanged",
+      "ranges": [
+        {
+          "startOffset": 88773,
+          "endOffset": 90390,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getUrlForProvider",
+      "ranges": [
+        {
+          "startOffset": 90803,
+          "endOffset": 92180,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_unenroll",
+      "ranges": [
+        {
+          "startOffset": 92185,
+          "endOffset": 93050,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_enroll",
+      "ranges": [
+        {
+          "startOffset": 93055,
+          "endOffset": 94563,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_verify",
+      "ranges": [
+        {
+          "startOffset": 94618,
+          "endOffset": 96099,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_challenge",
+      "ranges": [
+        {
+          "startOffset": 96157,
+          "endOffset": 97229,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_challengeAndVerify",
+      "ranges": [
+        {
+          "startOffset": 97296,
+          "endOffset": 97846,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_listFactors",
+      "ranges": [
+        {
+          "startOffset": 97906,
+          "endOffset": 98652,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getAuthenticatorAssuranceLevel",
+      "ranges": [
+        {
+          "startOffset": 98731,
+          "endOffset": 100143,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fetchJwk",
+      "ranges": [
+        {
+          "startOffset": 100148,
+          "endOffset": 101348,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getClaims",
+      "ranges": [
+        {
+          "startOffset": 101652,
+          "endOffset": 104034,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

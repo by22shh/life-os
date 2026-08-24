@@ -1,0 +1,39 @@
+{
+  "scriptId": "285",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/user_context.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1711,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "handleCorsPreflight",
+      "ranges": [
+        {
+          "startOffset": 192,
+          "endOffset": 263,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "resolveUserContext",
+      "ranges": [
+        {
+          "startOffset": 271,
+          "endOffset": 1710,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

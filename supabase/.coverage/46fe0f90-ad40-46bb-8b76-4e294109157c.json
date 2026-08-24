@@ -1,0 +1,270 @@
+{
+  "scriptId": "283",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/supabase.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3592,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "serviceRoleClient",
+      "ranges": [
+        {
+          "startOffset": 226,
+          "endOffset": 576,
+          "count": 21576
+        },
+        {
+          "startOffset": 369,
+          "endOffset": 376,
+          "count": 0
+        },
+        {
+          "startOffset": 457,
+          "endOffset": 575,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "anonClient",
+      "ranges": [
+        {
+          "startOffset": 584,
+          "endOffset": 1001,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "json",
+      "ranges": [
+        {
+          "startOffset": 1009,
+          "endOffset": 1266,
+          "count": 6
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeCorrelationId",
+      "ranges": [
+        {
+          "startOffset": 1267,
+          "endOffset": 1450,
+          "count": 6
+        },
+        {
+          "startOffset": 1329,
+          "endOffset": 1335,
+          "count": 1
+        },
+        {
+          "startOffset": 1338,
+          "endOffset": 1343,
+          "count": 5
+        },
+        {
+          "startOffset": 1391,
+          "endOffset": 1418,
+          "count": 1
+        },
+        {
+          "startOffset": 1418,
+          "endOffset": 1449,
+          "count": 5
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "correlationIdFromRequest",
+      "ranges": [
+        {
+          "startOffset": 1458,
+          "endOffset": 1581,
+          "count": 6
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "jsonWithRequest",
+      "ranges": [
+        {
+          "startOffset": 1589,
+          "endOffset": 1896,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "parseBearer",
+      "ranges": [
+        {
+          "startOffset": 1904,
+          "endOffset": 2391,
+          "count": 1412
+        },
+        {
+          "startOffset": 2020,
+          "endOffset": 2030,
+          "count": 1
+        },
+        {
+          "startOffset": 2030,
+          "endOffset": 2145,
+          "count": 1411
+        },
+        {
+          "startOffset": 2145,
+          "endOffset": 2155,
+          "count": 2
+        },
+        {
+          "startOffset": 2155,
+          "endOffset": 2248,
+          "count": 1409
+        },
+        {
+          "startOffset": 2248,
+          "endOffset": 2258,
+          "count": 201
+        },
+        {
+          "startOffset": 2258,
+          "endOffset": 2349,
+          "count": 1208
+        },
+        {
+          "startOffset": 2351,
+          "endOffset": 2361,
+          "count": 201
+        },
+        {
+          "startOffset": 2361,
+          "endOffset": 2390,
+          "count": 1007
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "validateInternalServiceRoleRequest",
+      "ranges": [
+        {
+          "startOffset": 2399,
+          "endOffset": 3591,
+          "count": 6
+        },
+        {
+          "startOffset": 2534,
+          "endOffset": 2540,
+          "count": 5
+        },
+        {
+          "startOffset": 2543,
+          "endOffset": 2548,
+          "count": 1
+        },
+        {
+          "startOffset": 2573,
+          "endOffset": 2677,
+          "count": 1
+        },
+        {
+          "startOffset": 2677,
+          "endOffset": 2825,
+          "count": 5
+        },
+        {
+          "startOffset": 2825,
+          "endOffset": 2914,
+          "count": 1
+        },
+        {
+          "startOffset": 2914,
+          "endOffset": 2967,
+          "count": 4
+        },
+        {
+          "startOffset": 2970,
+          "endOffset": 2975,
+          "count": 0
+        },
+        {
+          "startOffset": 3010,
+          "endOffset": 3099,
+          "count": 1
+        },
+        {
+          "startOffset": 3099,
+          "endOffset": 3159,
+          "count": 3
+        },
+        {
+          "startOffset": 3159,
+          "endOffset": 3165,
+          "count": 2
+        },
+        {
+          "startOffset": 3168,
+          "endOffset": 3173,
+          "count": 1
+        },
+        {
+          "startOffset": 3236,
+          "endOffset": 3242,
+          "count": 2
+        },
+        {
+          "startOffset": 3245,
+          "endOffset": 3250,
+          "count": 1
+        },
+        {
+          "startOffset": 3279,
+          "endOffset": 3303,
+          "count": 2
+        },
+        {
+          "startOffset": 3305,
+          "endOffset": 3560,
+          "count": 2
+        },
+        {
+          "startOffset": 3382,
+          "endOffset": 3388,
+          "count": 1
+        },
+        {
+          "startOffset": 3391,
+          "endOffset": 3396,
+          "count": 1
+        },
+        {
+          "startOffset": 3455,
+          "endOffset": 3556,
+          "count": 1
+        },
+        {
+          "startOffset": 3560,
+          "endOffset": 3590,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

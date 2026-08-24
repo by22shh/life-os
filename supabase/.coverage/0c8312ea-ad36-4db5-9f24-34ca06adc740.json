@@ -1,0 +1,92 @@
+{
+  "scriptId": "830",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/storage-js/2.7.1/dist/main/index.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1098,
+          "count": 1
+        },
+        {
+          "startOffset": 407,
+          "endOffset": 488,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 88,
+          "endOffset": 405,
+          "count": 4
+        },
+        {
+          "startOffset": 232,
+          "endOffset": 247,
+          "count": 0
+        },
+        {
+          "startOffset": 264,
+          "endOffset": 284,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "get",
+      "ranges": [
+        {
+          "startOffset": 327,
+          "endOffset": 354,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 410,
+          "endOffset": 487,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__exportStar",
+      "ranges": [
+        {
+          "startOffset": 541,
+          "endOffset": 692,
+          "count": 2
+        },
+        {
+          "startOffset": 585,
+          "endOffset": 690,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "get",
+      "ranges": [
+        {
+          "startOffset": 912,
+          "endOffset": 965,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

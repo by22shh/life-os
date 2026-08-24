@@ -1,0 +1,61 @@
+{
+  "scriptId": "331",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/functions-js/2.4.4/dist/main/FunctionsClient.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 5499,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__awaiter",
+      "ranges": [
+        {
+          "startOffset": 58,
+          "endOffset": 693,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "FunctionsClient",
+      "ranges": [
+        {
+          "startOffset": 894,
+          "endOffset": 1140,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setAuth",
+      "ranges": [
+        {
+          "startOffset": 1274,
+          "endOffset": 1352,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "invoke",
+      "ranges": [
+        {
+          "startOffset": 1523,
+          "endOffset": 5410,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

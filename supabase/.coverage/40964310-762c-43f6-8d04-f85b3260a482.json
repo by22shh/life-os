@@ -1,0 +1,613 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/food_image_analysis.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 8603,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "asTrimmedString",
+      "ranges": [
+        {
+          "startOffset": 188,
+          "endOffset": 379,
+          "count": 32
+        },
+        {
+          "startOffset": 266,
+          "endOffset": 278,
+          "count": 8
+        },
+        {
+          "startOffset": 278,
+          "endOffset": 327,
+          "count": 24
+        },
+        {
+          "startOffset": 327,
+          "endOffset": 339,
+          "count": 3
+        },
+        {
+          "startOffset": 339,
+          "endOffset": 378,
+          "count": 21
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "clampNumber",
+      "ranges": [
+        {
+          "startOffset": 380,
+          "endOffset": 554,
+          "count": 45
+        },
+        {
+          "startOffset": 462,
+          "endOffset": 488,
+          "count": 34
+        },
+        {
+          "startOffset": 490,
+          "endOffset": 506,
+          "count": 13
+        },
+        {
+          "startOffset": 506,
+          "endOffset": 553,
+          "count": 32
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "roundMacro",
+      "ranges": [
+        {
+          "startOffset": 555,
+          "endOffset": 623,
+          "count": 51
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "cleanStringArray",
+      "ranges": [
+        {
+          "startOffset": 624,
+          "endOffset": 1059,
+          "count": 9
+        },
+        {
+          "startOffset": 709,
+          "endOffset": 719,
+          "count": 4
+        },
+        {
+          "startOffset": 719,
+          "endOffset": 794,
+          "count": 5
+        },
+        {
+          "startOffset": 794,
+          "endOffset": 1040,
+          "count": 13
+        },
+        {
+          "startOffset": 868,
+          "endOffset": 877,
+          "count": 2
+        },
+        {
+          "startOffset": 877,
+          "endOffset": 940,
+          "count": 11
+        },
+        {
+          "startOffset": 940,
+          "endOffset": 949,
+          "count": 1
+        },
+        {
+          "startOffset": 949,
+          "endOffset": 1030,
+          "count": 10
+        },
+        {
+          "startOffset": 1030,
+          "endOffset": 1036,
+          "count": 1
+        },
+        {
+          "startOffset": 1040,
+          "endOffset": 1058,
+          "count": 5
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeDetectedItem",
+      "ranges": [
+        {
+          "startOffset": 1060,
+          "endOffset": 1970,
+          "count": 5
+        },
+        {
+          "startOffset": 1109,
+          "endOffset": 1135,
+          "count": 4
+        },
+        {
+          "startOffset": 1137,
+          "endOffset": 1149,
+          "count": 1
+        },
+        {
+          "startOffset": 1149,
+          "endOffset": 1235,
+          "count": 4
+        },
+        {
+          "startOffset": 1235,
+          "endOffset": 1247,
+          "count": 1
+        },
+        {
+          "startOffset": 1247,
+          "endOffset": 1319,
+          "count": 3
+        },
+        {
+          "startOffset": 1322,
+          "endOffset": 1332,
+          "count": 0
+        },
+        {
+          "startOffset": 1386,
+          "endOffset": 1399,
+          "count": 2
+        },
+        {
+          "startOffset": 1400,
+          "endOffset": 1409,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeTotals",
+      "ranges": [
+        {
+          "startOffset": 1971,
+          "endOffset": 2415,
+          "count": 4
+        },
+        {
+          "startOffset": 2024,
+          "endOffset": 2050,
+          "count": 2
+        },
+        {
+          "startOffset": 2051,
+          "endOffset": 2056,
+          "count": 2
+        },
+        {
+          "startOffset": 2057,
+          "endOffset": 2061,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "inferTotalsFromItems",
+      "ranges": [
+        {
+          "startOffset": 2416,
+          "endOffset": 2848,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2504,
+          "endOffset": 2536,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2582,
+          "endOffset": 2615,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2657,
+          "endOffset": 2686,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2730,
+          "endOffset": 2761,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 2805,
+          "endOffset": 2836,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "localizedFallbackContextAnalysis",
+      "ranges": [
+        {
+          "startOffset": 2849,
+          "endOffset": 3477,
+          "count": 4
+        },
+        {
+          "startOffset": 2953,
+          "endOffset": 2966,
+          "count": 3
+        },
+        {
+          "startOffset": 2986,
+          "endOffset": 2994,
+          "count": 1
+        },
+        {
+          "startOffset": 3024,
+          "endOffset": 3307,
+          "count": 2
+        },
+        {
+          "startOffset": 3085,
+          "endOffset": 3307,
+          "count": 1
+        },
+        {
+          "startOffset": 3307,
+          "endOffset": 3325,
+          "count": 2
+        },
+        {
+          "startOffset": 3325,
+          "endOffset": 3476,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "parseAIJsonContent",
+      "ranges": [
+        {
+          "startOffset": 3485,
+          "endOffset": 3719,
+          "count": 3
+        },
+        {
+          "startOffset": 3631,
+          "endOffset": 3643,
+          "count": 1
+        },
+        {
+          "startOffset": 3643,
+          "endOffset": 3688,
+          "count": 2
+        },
+        {
+          "startOffset": 3688,
+          "endOffset": 3717,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeFoodImageAnalysis",
+      "ranges": [
+        {
+          "startOffset": 3727,
+          "endOffset": 5476,
+          "count": 6
+        },
+        {
+          "startOffset": 3789,
+          "endOffset": 3815,
+          "count": 5
+        },
+        {
+          "startOffset": 3817,
+          "endOffset": 3829,
+          "count": 2
+        },
+        {
+          "startOffset": 3829,
+          "endOffset": 3914,
+          "count": 4
+        },
+        {
+          "startOffset": 3914,
+          "endOffset": 4007,
+          "count": 3
+        },
+        {
+          "startOffset": 4008,
+          "endOffset": 4012,
+          "count": 1
+        },
+        {
+          "startOffset": 4197,
+          "endOffset": 4227,
+          "count": 3
+        },
+        {
+          "startOffset": 4228,
+          "endOffset": 4251,
+          "count": 3
+        },
+        {
+          "startOffset": 4252,
+          "endOffset": 4277,
+          "count": 1
+        },
+        {
+          "startOffset": 4321,
+          "endOffset": 4351,
+          "count": 3
+        },
+        {
+          "startOffset": 4352,
+          "endOffset": 4376,
+          "count": 3
+        },
+        {
+          "startOffset": 4377,
+          "endOffset": 4403,
+          "count": 1
+        },
+        {
+          "startOffset": 4439,
+          "endOffset": 4469,
+          "count": 3
+        },
+        {
+          "startOffset": 4470,
+          "endOffset": 4490,
+          "count": 3
+        },
+        {
+          "startOffset": 4491,
+          "endOffset": 4513,
+          "count": 1
+        },
+        {
+          "startOffset": 4553,
+          "endOffset": 4583,
+          "count": 3
+        },
+        {
+          "startOffset": 4584,
+          "endOffset": 4606,
+          "count": 3
+        },
+        {
+          "startOffset": 4607,
+          "endOffset": 4631,
+          "count": 1
+        },
+        {
+          "startOffset": 4671,
+          "endOffset": 4701,
+          "count": 3
+        },
+        {
+          "startOffset": 4702,
+          "endOffset": 4724,
+          "count": 3
+        },
+        {
+          "startOffset": 4725,
+          "endOffset": 4749,
+          "count": 1
+        },
+        {
+          "startOffset": 4814,
+          "endOffset": 4827,
+          "count": 2
+        },
+        {
+          "startOffset": 4830,
+          "endOffset": 4837,
+          "count": 2
+        },
+        {
+          "startOffset": 4871,
+          "endOffset": 4901,
+          "count": 2
+        },
+        {
+          "startOffset": 4902,
+          "endOffset": 4915,
+          "count": 1
+        },
+        {
+          "startOffset": 4916,
+          "endOffset": 4922,
+          "count": 3
+        },
+        {
+          "startOffset": 5127,
+          "endOffset": 5226,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 3972,
+          "endOffset": 3993,
+          "count": 5
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 5190,
+          "endOffset": 5207,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "localizedNarrativeLanguage",
+      "ranges": [
+        {
+          "startOffset": 5477,
+          "endOffset": 5781,
+          "count": 4
+        },
+        {
+          "startOffset": 5550,
+          "endOffset": 5556,
+          "count": 3
+        },
+        {
+          "startOffset": 5559,
+          "endOffset": 5564,
+          "count": 1
+        },
+        {
+          "startOffset": 5585,
+          "endOffset": 5624,
+          "count": 1
+        },
+        {
+          "startOffset": 5624,
+          "endOffset": 5674,
+          "count": 3
+        },
+        {
+          "startOffset": 5674,
+          "endOffset": 5691,
+          "count": 1
+        },
+        {
+          "startOffset": 5691,
+          "endOffset": 5741,
+          "count": 2
+        },
+        {
+          "startOffset": 5741,
+          "endOffset": 5780,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "formatPromptValue",
+      "ranges": [
+        {
+          "startOffset": 5782,
+          "endOffset": 5889,
+          "count": 3
+        },
+        {
+          "startOffset": 5875,
+          "endOffset": 5886,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "buildFoodImageSystemPrompt",
+      "ranges": [
+        {
+          "startOffset": 5897,
+          "endOffset": 7580,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "buildFoodImageUserPrompt",
+      "ranges": [
+        {
+          "startOffset": 7588,
+          "endOffset": 8602,
+          "count": 1
+        },
+        {
+          "startOffset": 7879,
+          "endOffset": 7888,
+          "count": 0
+        },
+        {
+          "startOffset": 7954,
+          "endOffset": 7963,
+          "count": 0
+        },
+        {
+          "startOffset": 8186,
+          "endOffset": 8197,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

@@ -1,0 +1,1007 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/account_deletion.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 13533,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "delay",
+      "ranges": [
+        {
+          "startOffset": 659,
+          "endOffset": 739,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 701,
+          "endOffset": 735,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "deleteAuthPrincipalWithRetry",
+      "ranges": [
+        {
+          "startOffset": 747,
+          "endOffset": 1235,
+          "count": 4
+        },
+        {
+          "startOffset": 989,
+          "endOffset": 1216,
+          "count": 6
+        },
+        {
+          "startOffset": 1071,
+          "endOffset": 1146,
+          "count": 3
+        },
+        {
+          "startOffset": 1146,
+          "endOffset": 1212,
+          "count": 2
+        },
+        {
+          "startOffset": 1216,
+          "endOffset": 1234,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "deletePostgresData",
+      "ranges": [
+        {
+          "startOffset": 1243,
+          "endOffset": 2098,
+          "count": 5
+        },
+        {
+          "startOffset": 1437,
+          "endOffset": 1543,
+          "count": 1
+        },
+        {
+          "startOffset": 1543,
+          "endOffset": 1571,
+          "count": 4
+        },
+        {
+          "startOffset": 1571,
+          "endOffset": 1611,
+          "count": 1
+        },
+        {
+          "startOffset": 1611,
+          "endOffset": 1772,
+          "count": 3
+        },
+        {
+          "startOffset": 1772,
+          "endOffset": 1925,
+          "count": 1
+        },
+        {
+          "startOffset": 1925,
+          "endOffset": 1948,
+          "count": 2
+        },
+        {
+          "startOffset": 1948,
+          "endOffset": 2097,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "verifyVectorDeletion",
+      "ranges": [
+        {
+          "startOffset": 2106,
+          "endOffset": 2687,
+          "count": 4
+        },
+        {
+          "startOffset": 2354,
+          "endOffset": 2494,
+          "count": 1
+        },
+        {
+          "startOffset": 2494,
+          "endOffset": 2519,
+          "count": 3
+        },
+        {
+          "startOffset": 2519,
+          "endOffset": 2523,
+          "count": 1
+        },
+        {
+          "startOffset": 2530,
+          "endOffset": 2656,
+          "count": 1
+        },
+        {
+          "startOffset": 2656,
+          "endOffset": 2686,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "recordFailure",
+      "ranges": [
+        {
+          "startOffset": 2695,
+          "endOffset": 2946,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "upsertDeletionAudit",
+      "ranges": [
+        {
+          "startOffset": 2954,
+          "endOffset": 3533,
+          "count": 2
+        },
+        {
+          "startOffset": 3413,
+          "endOffset": 3438,
+          "count": 1
+        },
+        {
+          "startOffset": 3513,
+          "endOffset": 3522,
+          "count": 1
+        },
+        {
+          "startOffset": 3523,
+          "endOffset": 3530,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getOrCreateDeletionJob",
+      "ranges": [
+        {
+          "startOffset": 3541,
+          "endOffset": 4464,
+          "count": 5
+        },
+        {
+          "startOffset": 3712,
+          "endOffset": 3738,
+          "count": 1
+        },
+        {
+          "startOffset": 3738,
+          "endOffset": 4192,
+          "count": 4
+        },
+        {
+          "startOffset": 4192,
+          "endOffset": 4422,
+          "count": 3
+        },
+        {
+          "startOffset": 4228,
+          "endOffset": 4382,
+          "count": 2
+        },
+        {
+          "startOffset": 4345,
+          "endOffset": 4376,
+          "count": 1
+        },
+        {
+          "startOffset": 4382,
+          "endOffset": 4422,
+          "count": 2
+        },
+        {
+          "startOffset": 4422,
+          "endOffset": 4463,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fetchDeletionJobByKey",
+      "ranges": [
+        {
+          "startOffset": 4472,
+          "endOffset": 4827,
+          "count": 10
+        },
+        {
+          "startOffset": 4730,
+          "endOffset": 4771,
+          "count": 1
+        },
+        {
+          "startOffset": 4771,
+          "endOffset": 4786,
+          "count": 9
+        },
+        {
+          "startOffset": 4786,
+          "endOffset": 4817,
+          "count": 4
+        },
+        {
+          "startOffset": 4818,
+          "endOffset": 4824,
+          "count": 5
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "updateDeletionJobState",
+      "ranges": [
+        {
+          "startOffset": 4835,
+          "endOffset": 5392,
+          "count": 3
+        },
+        {
+          "startOffset": 5193,
+          "endOffset": 5234,
+          "count": 1
+        },
+        {
+          "startOffset": 5234,
+          "endOffset": 5248,
+          "count": 2
+        },
+        {
+          "startOffset": 5248,
+          "endOffset": 5391,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "updateDeletionJob",
+      "ranges": [
+        {
+          "startOffset": 5400,
+          "endOffset": 5784,
+          "count": 8
+        },
+        {
+          "startOffset": 5621,
+          "endOffset": 5662,
+          "count": 1
+        },
+        {
+          "startOffset": 5662,
+          "endOffset": 5676,
+          "count": 7
+        },
+        {
+          "startOffset": 5676,
+          "endOffset": 5742,
+          "count": 1
+        },
+        {
+          "startOffset": 5742,
+          "endOffset": 5783,
+          "count": 6
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "deletionJobCascadeDeletedAfterUserRemoval",
+      "ranges": [
+        {
+          "startOffset": 5792,
+          "endOffset": 6375,
+          "count": 4
+        },
+        {
+          "startOffset": 5929,
+          "endOffset": 5952,
+          "count": 1
+        },
+        {
+          "startOffset": 5952,
+          "endOffset": 6128,
+          "count": 3
+        },
+        {
+          "startOffset": 6130,
+          "endOffset": 6153,
+          "count": 1
+        },
+        {
+          "startOffset": 6153,
+          "endOffset": 6333,
+          "count": 2
+        },
+        {
+          "startOffset": 6335,
+          "endOffset": 6374,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isDeletionJobStateConflict",
+      "ranges": [
+        {
+          "startOffset": 6383,
+          "endOffset": 6562,
+          "count": 7
+        },
+        {
+          "startOffset": 6468,
+          "endOffset": 6483,
+          "count": 6
+        },
+        {
+          "startOffset": 6484,
+          "endOffset": 6499,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "cascadedFailureState",
+      "ranges": [
+        {
+          "startOffset": 6570,
+          "endOffset": 6658,
+          "count": 2
+        },
+        {
+          "startOffset": 6637,
+          "endOffset": 6644,
+          "count": 1
+        },
+        {
+          "startOffset": 6645,
+          "endOffset": 6655,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeIdempotencyKey",
+      "ranges": [
+        {
+          "startOffset": 6666,
+          "endOffset": 6912,
+          "count": 6
+        },
+        {
+          "startOffset": 6722,
+          "endOffset": 6734,
+          "count": 2
+        },
+        {
+          "startOffset": 6734,
+          "endOffset": 6783,
+          "count": 4
+        },
+        {
+          "startOffset": 6783,
+          "endOffset": 6795,
+          "count": 1
+        },
+        {
+          "startOffset": 6795,
+          "endOffset": 6824,
+          "count": 3
+        },
+        {
+          "startOffset": 6824,
+          "endOffset": 6836,
+          "count": 1
+        },
+        {
+          "startOffset": 6836,
+          "endOffset": 6880,
+          "count": 2
+        },
+        {
+          "startOffset": 6880,
+          "endOffset": 6911,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "retryAfterSeconds",
+      "ranges": [
+        {
+          "startOffset": 6920,
+          "endOffset": 7149,
+          "count": 4
+        },
+        {
+          "startOffset": 6982,
+          "endOffset": 6991,
+          "count": 1
+        },
+        {
+          "startOffset": 6991,
+          "endOffset": 7072,
+          "count": 3
+        },
+        {
+          "startOffset": 7072,
+          "endOffset": 7081,
+          "count": 1
+        },
+        {
+          "startOffset": 7081,
+          "endOffset": 7148,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeMedicalScanStoragePath",
+      "ranges": [
+        {
+          "startOffset": 7157,
+          "endOffset": 7511,
+          "count": 18
+        },
+        {
+          "startOffset": 7244,
+          "endOffset": 7250,
+          "count": 17
+        },
+        {
+          "startOffset": 7266,
+          "endOffset": 7278,
+          "count": 1
+        },
+        {
+          "startOffset": 7278,
+          "endOffset": 7405,
+          "count": 17
+        },
+        {
+          "startOffset": 7405,
+          "endOffset": 7417,
+          "count": 1
+        },
+        {
+          "startOffset": 7417,
+          "endOffset": 7477,
+          "count": 16
+        },
+        {
+          "startOffset": 7477,
+          "endOffset": 7489,
+          "count": 1
+        },
+        {
+          "startOffset": 7489,
+          "endOffset": 7510,
+          "count": 15
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "ensureDeletionJobStorageManifest",
+      "ranges": [
+        {
+          "startOffset": 7519,
+          "endOffset": 8588,
+          "count": 10
+        },
+        {
+          "startOffset": 7626,
+          "endOffset": 7647,
+          "count": 1
+        },
+        {
+          "startOffset": 7647,
+          "endOffset": 7783,
+          "count": 9
+        },
+        {
+          "startOffset": 7783,
+          "endOffset": 8079,
+          "count": 6
+        },
+        {
+          "startOffset": 7855,
+          "endOffset": 7938,
+          "count": 5
+        },
+        {
+          "startOffset": 7940,
+          "endOffset": 8059,
+          "count": 1
+        },
+        {
+          "startOffset": 8059,
+          "endOffset": 8079,
+          "count": 5
+        },
+        {
+          "startOffset": 8079,
+          "endOffset": 8218,
+          "count": 3
+        },
+        {
+          "startOffset": 8218,
+          "endOffset": 8294,
+          "count": 1
+        },
+        {
+          "startOffset": 8294,
+          "endOffset": 8348,
+          "count": 2
+        },
+        {
+          "startOffset": 8348,
+          "endOffset": 8353,
+          "count": 0
+        },
+        {
+          "startOffset": 8529,
+          "endOffset": 8544,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 7882,
+          "endOffset": 7937,
+          "count": 6
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 8363,
+          "endOffset": 8427,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "cleanupMedicalScanStorage",
+      "ranges": [
+        {
+          "startOffset": 8596,
+          "endOffset": 10481,
+          "count": 6
+        },
+        {
+          "startOffset": 8696,
+          "endOffset": 8747,
+          "count": 1
+        },
+        {
+          "startOffset": 8747,
+          "endOffset": 8931,
+          "count": 5
+        },
+        {
+          "startOffset": 8931,
+          "endOffset": 10203,
+          "count": 4
+        },
+        {
+          "startOffset": 9112,
+          "endOffset": 9290,
+          "count": 1
+        },
+        {
+          "startOffset": 9296,
+          "endOffset": 9961,
+          "count": 3
+        },
+        {
+          "startOffset": 9613,
+          "endOffset": 9797,
+          "count": 1
+        },
+        {
+          "startOffset": 9797,
+          "endOffset": 9869,
+          "count": 2
+        },
+        {
+          "startOffset": 9869,
+          "endOffset": 9874,
+          "count": 0
+        },
+        {
+          "startOffset": 9912,
+          "endOffset": 9955,
+          "count": 1
+        },
+        {
+          "startOffset": 9955,
+          "endOffset": 9961,
+          "count": 2
+        },
+        {
+          "startOffset": 9961,
+          "endOffset": 9995,
+          "count": 2
+        },
+        {
+          "startOffset": 9995,
+          "endOffset": 10199,
+          "count": 1
+        },
+        {
+          "startOffset": 10203,
+          "endOffset": 10287,
+          "count": 2
+        },
+        {
+          "startOffset": 10287,
+          "endOffset": 10302,
+          "count": 0
+        },
+        {
+          "startOffset": 10441,
+          "endOffset": 10480,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 9880,
+          "endOffset": 9895,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isUniqueViolation",
+      "ranges": [
+        {
+          "startOffset": 10489,
+          "endOffset": 10559,
+          "count": 5
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeDeletionJobRow",
+      "ranges": [
+        {
+          "startOffset": 10560,
+          "endOffset": 10981,
+          "count": 12
+        },
+        {
+          "startOffset": 10658,
+          "endOffset": 10665,
+          "count": 4
+        },
+        {
+          "startOffset": 10733,
+          "endOffset": 10822,
+          "count": 11
+        },
+        {
+          "startOffset": 10823,
+          "endOffset": 10827,
+          "count": 1
+        },
+        {
+          "startOffset": 10967,
+          "endOffset": 10974,
+          "count": 9
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 10767,
+          "endOffset": 10821,
+          "count": 9
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeStorageObjectPaths",
+      "ranges": [
+        {
+          "startOffset": 10982,
+          "endOffset": 11284,
+          "count": 18
+        },
+        {
+          "startOffset": 11197,
+          "endOffset": 11237,
+          "count": 15
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractStorageObjectPath",
+      "ranges": [
+        {
+          "startOffset": 11285,
+          "endOffset": 12133,
+          "count": 17
+        },
+        {
+          "startOffset": 11360,
+          "endOffset": 11372,
+          "count": 0
+        },
+        {
+          "startOffset": 11448,
+          "endOffset": 11501,
+          "count": 15
+        },
+        {
+          "startOffset": 11501,
+          "endOffset": 11554,
+          "count": 2
+        },
+        {
+          "startOffset": 11554,
+          "endOffset": 11583,
+          "count": 0
+        },
+        {
+          "startOffset": 11583,
+          "endOffset": 11816,
+          "count": 2
+        },
+        {
+          "startOffset": 11816,
+          "endOffset": 11864,
+          "count": 1
+        },
+        {
+          "startOffset": 11864,
+          "endOffset": 11886,
+          "count": 0
+        },
+        {
+          "startOffset": 11886,
+          "endOffset": 11997,
+          "count": 1
+        },
+        {
+          "startOffset": 11997,
+          "endOffset": 12019,
+          "count": 0
+        },
+        {
+          "startOffset": 12019,
+          "endOffset": 12132,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 11674,
+          "endOffset": 11703,
+          "count": 13
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 11747,
+          "endOffset": 11790,
+          "count": 8
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "sanitizeStorageObjectPath",
+      "ranges": [
+        {
+          "startOffset": 12134,
+          "endOffset": 12700,
+          "count": 16
+        },
+        {
+          "startOffset": 12258,
+          "endOffset": 12270,
+          "count": 0
+        },
+        {
+          "startOffset": 12348,
+          "endOffset": 12396,
+          "count": 2
+        },
+        {
+          "startOffset": 12397,
+          "endOffset": 12406,
+          "count": 14
+        },
+        {
+          "startOffset": 12436,
+          "endOffset": 12448,
+          "count": 0
+        },
+        {
+          "startOffset": 12565,
+          "endOffset": 12577,
+          "count": 0
+        },
+        {
+          "startOffset": 12647,
+          "endOffset": 12669,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 12506,
+          "endOffset": 12535,
+          "count": 48
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 12598,
+          "endOffset": 12644,
+          "count": 48
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "deleteAuthPrincipal",
+      "ranges": [
+        {
+          "startOffset": 12701,
+          "endOffset": 13043,
+          "count": 6
+        },
+        {
+          "startOffset": 12842,
+          "endOffset": 12882,
+          "count": 1
+        },
+        {
+          "startOffset": 12882,
+          "endOffset": 12920,
+          "count": 5
+        },
+        {
+          "startOffset": 12920,
+          "endOffset": 12960,
+          "count": 2
+        },
+        {
+          "startOffset": 12960,
+          "endOffset": 13042,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isAuthPrincipalMissing",
+      "ranges": [
+        {
+          "startOffset": 13044,
+          "endOffset": 13299,
+          "count": 5
+        },
+        {
+          "startOffset": 13135,
+          "endOffset": 13149,
+          "count": 1
+        },
+        {
+          "startOffset": 13150,
+          "endOffset": 13156,
+          "count": 4
+        },
+        {
+          "startOffset": 13180,
+          "endOffset": 13202,
+          "count": 1
+        },
+        {
+          "startOffset": 13202,
+          "endOffset": 13236,
+          "count": 4
+        },
+        {
+          "startOffset": 13236,
+          "endOffset": 13241,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "chunkArray",
+      "ranges": [
+        {
+          "startOffset": 13300,
+          "endOffset": 13532,
+          "count": 7
+        },
+        {
+          "startOffset": 13363,
+          "endOffset": 13373,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

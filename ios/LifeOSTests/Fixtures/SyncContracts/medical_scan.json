@@ -1,0 +1,12 @@
+{
+  "id": "00000000-0000-0000-0000-000000000024",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "created_at": "2026-02-20T06:43:00Z",
+  "updated_at": "2026-02-20T06:44:00Z",
+  "scan_type": "blood_test",
+  "status": "completed",
+  "needs_review": false,
+  "user_reviewed": false,
+  "manually_verified": false,
+  "pinned_by_user": false
+}

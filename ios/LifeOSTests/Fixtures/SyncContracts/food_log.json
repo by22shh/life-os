@@ -1,0 +1,18 @@
+{
+  "id": "00000000-0000-0000-0000-000000000007",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "created_at": "2026-02-20T06:10:00Z",
+  "updated_at": "2026-02-20T06:11:00Z",
+  "logged_at": "2026-02-20T06:10:00Z",
+  "logged_date": "2026-02-20",
+  "input_method": "manual",
+  "pre_workout": false,
+  "post_workout": false,
+  "calories": 520.0,
+  "protein_g": 36.0,
+  "fat_g": 18.0,
+  "carbs_g": 48.0,
+  "needs_review": false,
+  "user_corrected": false,
+  "synced_to_vector_db": false
+}

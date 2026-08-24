@@ -1,0 +1,99 @@
+{
+  "scriptId": "768",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/postgrest-js/1.19.4/dist/cjs/PostgrestBuilder.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 9084,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 70,
+          "endOffset": 151,
+          "count": 2
+        },
+        {
+          "startOffset": 128,
+          "endOffset": 148,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "PostgrestBuilder",
+      "ranges": [
+        {
+          "startOffset": 401,
+          "endOffset": 1046,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "throwOnError",
+      "ranges": [
+        {
+          "startOffset": 1306,
+          "endOffset": 1389,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setHeader",
+      "ranges": [
+        {
+          "startOffset": 1453,
+          "endOffset": 1596,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "then",
+      "ranges": [
+        {
+          "startOffset": 1601,
+          "endOffset": 7716,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "returns",
+      "ranges": [
+        {
+          "startOffset": 7972,
+          "endOffset": 8045,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "overrideTypes",
+      "ranges": [
+        {
+          "startOffset": 8957,
+          "endOffset": 9001,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

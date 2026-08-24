@@ -1,0 +1,390 @@
+{
+  "scriptId": "314",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/api/settings/privacy/index.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 6834,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 653,
+          "endOffset": 3847,
+          "count": 12
+        },
+        {
+          "startOffset": 730,
+          "endOffset": 747,
+          "count": 1
+        },
+        {
+          "startOffset": 747,
+          "endOffset": 779,
+          "count": 11
+        },
+        {
+          "startOffset": 779,
+          "endOffset": 808,
+          "count": 6
+        },
+        {
+          "startOffset": 809,
+          "endOffset": 837,
+          "count": 1
+        },
+        {
+          "startOffset": 839,
+          "endOffset": 929,
+          "count": 1
+        },
+        {
+          "startOffset": 929,
+          "endOffset": 1014,
+          "count": 10
+        },
+        {
+          "startOffset": 1014,
+          "endOffset": 1098,
+          "count": 1
+        },
+        {
+          "startOffset": 1098,
+          "endOffset": 1257,
+          "count": 9
+        },
+        {
+          "startOffset": 1259,
+          "endOffset": 1343,
+          "count": 0
+        },
+        {
+          "startOffset": 1343,
+          "endOffset": 1542,
+          "count": 9
+        },
+        {
+          "startOffset": 1542,
+          "endOffset": 1665,
+          "count": 0
+        },
+        {
+          "startOffset": 1665,
+          "endOffset": 1682,
+          "count": 9
+        },
+        {
+          "startOffset": 1682,
+          "endOffset": 1768,
+          "count": 0
+        },
+        {
+          "startOffset": 1768,
+          "endOffset": 1867,
+          "count": 9
+        },
+        {
+          "startOffset": 1867,
+          "endOffset": 1896,
+          "count": 1
+        },
+        {
+          "startOffset": 1896,
+          "endOffset": 1929,
+          "count": 8
+        },
+        {
+          "startOffset": 1929,
+          "endOffset": 2312,
+          "count": 3
+        },
+        {
+          "startOffset": 2015,
+          "endOffset": 2022,
+          "count": 2
+        },
+        {
+          "startOffset": 2022,
+          "endOffset": 2248,
+          "count": 1
+        },
+        {
+          "startOffset": 2083,
+          "endOffset": 2098,
+          "count": 0
+        },
+        {
+          "startOffset": 2248,
+          "endOffset": 2312,
+          "count": 2
+        },
+        {
+          "startOffset": 2312,
+          "endOffset": 2377,
+          "count": 5
+        },
+        {
+          "startOffset": 2377,
+          "endOffset": 2382,
+          "count": 4
+        },
+        {
+          "startOffset": 2382,
+          "endOffset": 2473,
+          "count": 1
+        },
+        {
+          "startOffset": 2473,
+          "endOffset": 2572,
+          "count": 4
+        },
+        {
+          "startOffset": 2572,
+          "endOffset": 2694,
+          "count": 1
+        },
+        {
+          "startOffset": 2694,
+          "endOffset": 2827,
+          "count": 3
+        },
+        {
+          "startOffset": 2827,
+          "endOffset": 3041,
+          "count": 0
+        },
+        {
+          "startOffset": 3041,
+          "endOffset": 3340,
+          "count": 3
+        },
+        {
+          "startOffset": 3340,
+          "endOffset": 3477,
+          "count": 1
+        },
+        {
+          "startOffset": 3477,
+          "endOffset": 3567,
+          "count": 2
+        },
+        {
+          "startOffset": 3567,
+          "endOffset": 3783,
+          "count": 1
+        },
+        {
+          "startOffset": 3646,
+          "endOffset": 3661,
+          "count": 0
+        },
+        {
+          "startOffset": 3783,
+          "endOffset": 3846,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fetchOrCreateSettings",
+      "ranges": [
+        {
+          "startOffset": 3850,
+          "endOffset": 4586,
+          "count": 6
+        },
+        {
+          "startOffset": 3969,
+          "endOffset": 3986,
+          "count": 5
+        },
+        {
+          "startOffset": 3986,
+          "endOffset": 4012,
+          "count": 3
+        },
+        {
+          "startOffset": 4012,
+          "endOffset": 4367,
+          "count": 2
+        },
+        {
+          "startOffset": 4367,
+          "endOffset": 4566,
+          "count": 1
+        },
+        {
+          "startOffset": 4539,
+          "endOffset": 4566,
+          "count": 0
+        },
+        {
+          "startOffset": 4566,
+          "endOffset": 4585,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fetchPrivacyByUserId",
+      "ranges": [
+        {
+          "startOffset": 4587,
+          "endOffset": 4827,
+          "count": 7
+        },
+        {
+          "startOffset": 4780,
+          "endOffset": 4802,
+          "count": 1
+        },
+        {
+          "startOffset": 4802,
+          "endOffset": 4817,
+          "count": 6
+        },
+        {
+          "startOffset": 4817,
+          "endOffset": 4824,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isUniqueViolation",
+      "ranges": [
+        {
+          "startOffset": 4828,
+          "endOffset": 4908,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "readErrorCode",
+      "ranges": [
+        {
+          "startOffset": 4909,
+          "endOffset": 5090,
+          "count": 1
+        },
+        {
+          "startOffset": 4984,
+          "endOffset": 4996,
+          "count": 0
+        },
+        {
+          "startOffset": 5081,
+          "endOffset": 5087,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizePayload",
+      "ranges": [
+        {
+          "startOffset": 5091,
+          "endOffset": 5931,
+          "count": 3
+        },
+        {
+          "startOffset": 5210,
+          "endOffset": 5283,
+          "count": 0
+        },
+        {
+          "startOffset": 5344,
+          "endOffset": 5423,
+          "count": 2
+        },
+        {
+          "startOffset": 5474,
+          "endOffset": 5533,
+          "count": 0
+        },
+        {
+          "startOffset": 5588,
+          "endOffset": 5655,
+          "count": 1
+        },
+        {
+          "startOffset": 5710,
+          "endOffset": 5777,
+          "count": 0
+        },
+        {
+          "startOffset": 5835,
+          "endOffset": 5908,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "applyPrivacySideEffects",
+      "ranges": [
+        {
+          "startOffset": 5932,
+          "endOffset": 6482,
+          "count": 2
+        },
+        {
+          "startOffset": 6049,
+          "endOffset": 6057,
+          "count": 0
+        },
+        {
+          "startOffset": 6181,
+          "endOffset": 6264,
+          "count": 1
+        },
+        {
+          "startOffset": 6268,
+          "endOffset": 6455,
+          "count": 1
+        },
+        {
+          "startOffset": 6455,
+          "endOffset": 6463,
+          "count": 0
+        },
+        {
+          "startOffset": 6480,
+          "endOffset": 6481,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "toPublicSettings",
+      "ranges": [
+        {
+          "startOffset": 6483,
+          "endOffset": 6833,
+          "count": 3
+        },
+        {
+          "startOffset": 6818,
+          "endOffset": 6826,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "scriptId": "292",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/cors.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3609,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "readConfiguredValue",
+      "ranges": [
+        {
+          "startOffset": 763,
+          "endOffset": 935,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isValidAbsoluteUrl",
+      "ranges": [
+        {
+          "startOffset": 936,
+          "endOffset": 1124,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isAppleAppStoreHost",
+      "ranges": [
+        {
+          "startOffset": 1125,
+          "endOffset": 1248,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isAppStoreSearchUrl",
+      "ranges": [
+        {
+          "startOffset": 1249,
+          "endOffset": 1571,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeAppStoreId",
+      "ranges": [
+        {
+          "startOffset": 1572,
+          "endOffset": 1750,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "directAppStoreUrl",
+      "ranges": [
+        {
+          "startOffset": 1751,
+          "endOffset": 1848,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resolveConfiguredAppStoreUrl",
+      "ranges": [
+        {
+          "startOffset": 1849,
+          "endOffset": 2336,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "resolveServerManagedHeaders",
+      "ranges": [
+        {
+          "startOffset": 2337,
+          "endOffset": 2939,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "handleCors",
+      "ranges": [
+        {
+          "startOffset": 3166,
+          "endOffset": 3342,
+          "count": 1
+        },
+        {
+          "startOffset": 3325,
+          "endOffset": 3341,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "withCorsHeaders",
+      "ranges": [
+        {
+          "startOffset": 3476,
+          "endOffset": 3608,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

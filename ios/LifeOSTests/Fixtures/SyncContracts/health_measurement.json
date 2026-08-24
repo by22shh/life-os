@@ -1,0 +1,21 @@
+{
+  "id": "00000000-0000-0000-0000-000000000025",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "created_at": "2026-02-20T06:45:00Z",
+  "updated_at": "2026-02-20T06:46:00Z",
+  "marker_id": "glucose",
+  "value": 5.6,
+  "unit": "mmol/L",
+  "original_value": 5.6,
+  "original_unit": "mmol/L",
+  "original_label": "Glucose",
+  "status": "optimal",
+  "reference_range_low": 3.9,
+  "reference_range_high": 5.6,
+  "measured_at": "2026-02-20",
+  "source_scan_id": "00000000-0000-0000-0000-000000000024",
+  "source_type": "scan",
+  "confidence": 0.87,
+  "manually_verified": false,
+  "notes": "Fasting sample"
+}

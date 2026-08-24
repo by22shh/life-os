@@ -1,0 +1,160 @@
+{
+  "scriptId": "812",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/ws/8.21.0/lib/sender.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 16886,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "Sender",
+      "ranges": [
+        {
+          "startOffset": 1053,
+          "endOffset": 1486,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "frame",
+      "ranges": [
+        {
+          "startOffset": 2364,
+          "endOffset": 4872,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "close",
+      "ranges": [
+        {
+          "startOffset": 5206,
+          "endOffset": 6476,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "ping",
+      "ranges": [
+        {
+          "startOffset": 6708,
+          "endOffset": 7799,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "pong",
+      "ranges": [
+        {
+          "startOffset": 8031,
+          "endOffset": 9122,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "send",
+      "ranges": [
+        {
+          "startOffset": 9710,
+          "endOffset": 11370,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getBlobData",
+      "ranges": [
+        {
+          "startOffset": 12283,
+          "endOffset": 13479,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "dispatch",
+      "ranges": [
+        {
+          "startOffset": 14390,
+          "endOffset": 15158,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "dequeue",
+      "ranges": [
+        {
+          "startOffset": 15231,
+          "endOffset": 15463,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "enqueue",
+      "ranges": [
+        {
+          "startOffset": 15584,
+          "endOffset": 15686,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sendFrame",
+      "ranges": [
+        {
+          "startOffset": 15835,
+          "endOffset": 16077,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "callCallbacks",
+      "ranges": [
+        {
+          "startOffset": 16323,
+          "endOffset": 16604,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "onError",
+      "ranges": [
+        {
+          "startOffset": 16791,
+          "endOffset": 16885,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

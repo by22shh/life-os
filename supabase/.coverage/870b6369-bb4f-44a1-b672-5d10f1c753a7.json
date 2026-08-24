@@ -1,0 +1,234 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/tests/_edge_runtime_harness.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 4584,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "jsonResponse",
+      "ranges": [
+        {
+          "startOffset": 43,
+          "endOffset": 256,
+          "count": 45
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "maybeSingleNotFoundResponse",
+      "ranges": [
+        {
+          "startOffset": 264,
+          "endOffset": 471,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "captureEdgeHandler",
+      "ranges": [
+        {
+          "startOffset": 479,
+          "endOffset": 1466,
+          "count": 1
+        },
+        {
+          "startOffset": 592,
+          "endOffset": 616,
+          "count": 0
+        },
+        {
+          "startOffset": 1017,
+          "endOffset": 1024,
+          "count": 0
+        },
+        {
+          "startOffset": 1264,
+          "endOffset": 1302,
+          "count": 0
+        },
+        {
+          "startOffset": 1323,
+          "endOffset": 1401,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "mockServe",
+      "ranges": [
+        {
+          "startOffset": 741,
+          "endOffset": 898,
+          "count": 1
+        },
+        {
+          "startOffset": 808,
+          "endOffset": 817,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "shutdown",
+      "ranges": [
+        {
+          "startOffset": 873,
+          "endOffset": 887,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "withMockedEdgeRuntime",
+      "ranges": [
+        {
+          "startOffset": 1474,
+          "endOffset": 4583,
+          "count": 8
+        },
+        {
+          "startOffset": 1926,
+          "endOffset": 2114,
+          "count": 24
+        },
+        {
+          "startOffset": 2030,
+          "endOffset": 2065,
+          "count": 0
+        },
+        {
+          "startOffset": 4450,
+          "endOffset": 4577,
+          "count": 24
+        },
+        {
+          "startOffset": 4522,
+          "endOffset": 4571,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "globalThis.fetch",
+      "ranges": [
+        {
+          "startOffset": 2136,
+          "endOffset": 4319,
+          "count": 45
+        },
+        {
+          "startOffset": 2204,
+          "endOffset": 2211,
+          "count": 0
+        },
+        {
+          "startOffset": 2453,
+          "endOffset": 2951,
+          "count": 9
+        },
+        {
+          "startOffset": 2521,
+          "endOffset": 2526,
+          "count": 0
+        },
+        {
+          "startOffset": 2560,
+          "endOffset": 2733,
+          "count": 0
+        },
+        {
+          "startOffset": 2770,
+          "endOffset": 2861,
+          "count": 0
+        },
+        {
+          "startOffset": 2951,
+          "endOffset": 2995,
+          "count": 36
+        },
+        {
+          "startOffset": 2995,
+          "endOffset": 3472,
+          "count": 9
+        },
+        {
+          "startOffset": 3083,
+          "endOffset": 3262,
+          "count": 0
+        },
+        {
+          "startOffset": 3301,
+          "endOffset": 3356,
+          "count": 0
+        },
+        {
+          "startOffset": 3411,
+          "endOffset": 3456,
+          "count": 0
+        },
+        {
+          "startOffset": 3472,
+          "endOffset": 3538,
+          "count": 27
+        },
+        {
+          "startOffset": 3538,
+          "endOffset": 4036,
+          "count": 9
+        },
+        {
+          "startOffset": 3605,
+          "endOffset": 3609,
+          "count": 0
+        },
+        {
+          "startOffset": 3648,
+          "endOffset": 3826,
+          "count": 1
+        },
+        {
+          "startOffset": 3826,
+          "endOffset": 4036,
+          "count": 8
+        },
+        {
+          "startOffset": 4036,
+          "endOffset": 4083,
+          "count": 18
+        },
+        {
+          "startOffset": 4083,
+          "endOffset": 4088,
+          "count": 0
+        },
+        {
+          "startOffset": 4089,
+          "endOffset": 4238,
+          "count": 18
+        },
+        {
+          "startOffset": 4238,
+          "endOffset": 4318,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

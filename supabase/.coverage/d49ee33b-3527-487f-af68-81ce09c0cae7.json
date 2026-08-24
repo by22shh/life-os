@@ -1,0 +1,105 @@
+{
+  "scriptId": "294",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/supabase.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3592,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "serviceRoleClient",
+      "ranges": [
+        {
+          "startOffset": 226,
+          "endOffset": 576,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "anonClient",
+      "ranges": [
+        {
+          "startOffset": 584,
+          "endOffset": 1001,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "json",
+      "ranges": [
+        {
+          "startOffset": 1009,
+          "endOffset": 1266,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeCorrelationId",
+      "ranges": [
+        {
+          "startOffset": 1267,
+          "endOffset": 1450,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "correlationIdFromRequest",
+      "ranges": [
+        {
+          "startOffset": 1458,
+          "endOffset": 1581,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "jsonWithRequest",
+      "ranges": [
+        {
+          "startOffset": 1589,
+          "endOffset": 1896,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "parseBearer",
+      "ranges": [
+        {
+          "startOffset": 1904,
+          "endOffset": 2391,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "validateInternalServiceRoleRequest",
+      "ranges": [
+        {
+          "startOffset": 2399,
+          "endOffset": 3591,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

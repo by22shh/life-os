@@ -1,0 +1,395 @@
+name: release-gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  ios-unit-tests:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run iOS unit and widget tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-unit-tests-XXXXXX")"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          if [[ -z "$SIM_NAME" ]]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild test \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -destination "platform=iOS Simulator,name=${SIM_NAME}" \
+            -derivedDataPath "$DERIVED_DATA_DIR" \
+            -only-testing:LifeOSTests \
+            -only-testing:LifeOSWidgetsTests
+
+  ios-ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run iOS UI tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-ui-tests-XXXXXX")"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          if [[ -z "$SIM_NAME" ]]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild test \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -destination "platform=iOS Simulator,name=${SIM_NAME}" \
+            -derivedDataPath "$DERIVED_DATA_DIR" \
+            -only-testing:LifeOSUITests
+
+  ios-accessibility-audit:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run iOS accessibility release-blocker audit
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-accessibility-audit-XXXXXX")"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          if [[ -z "$SIM_NAME" ]]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild test \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -destination "platform=iOS Simulator,name=${SIM_NAME}" \
+            -derivedDataPath "$DERIVED_DATA_DIR" \
+            -only-testing:LifeOSUITests/AccessibilityAuditUITests
+
+  ios-performance-hard-gates:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run iOS performance hard-gates
+        env:
+          LIFEOS_STARTUP_BUDGET_MS: "4000"
+          LIFEOS_SYNC_LATENCY_BUDGET_MS: "2500"
+          LIFEOS_SYNC_MEMORY_BUDGET_MB: "450"
+        run: bash scripts/run_ios_performance_hard_gates.sh
+
+  ios-analyze:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run iOS static analyze
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-analyze-XXXXXX")"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          if [[ -z "$SIM_NAME" ]]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild analyze \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -destination "platform=iOS Simulator,name=${SIM_NAME}" \
+            -derivedDataPath "$DERIVED_DATA_DIR"
+
+  ios-release-config-guard:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release config and privacy manifests
+        run: bash scripts/check_ios_release_config.sh
+
+  watchos-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build watchOS target
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-watch-build-XXXXXX")"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild build \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOSWatch \
+            -destination "generic/platform=watchOS Simulator" \
+            -derivedDataPath "$DERIVED_DATA_DIR"
+
+  watchos-tests:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run watchOS tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-watch-tests-XXXXXX")"
+          WATCH_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/Apple Watch/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          if [[ -z "$WATCH_NAME" ]]; then
+            echo "No available Apple Watch simulator found"
+            exit 1
+          fi
+
+          echo "Using watch simulator: $WATCH_NAME"
+          echo "Using DerivedData: $DERIVED_DATA_DIR"
+
+          xcodebuild test \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOSWatch \
+            -destination "platform=watchOS Simulator,name=${WATCH_NAME}" \
+            -derivedDataPath "$DERIVED_DATA_DIR" \
+            -only-testing:LifeOSWatchTests
+
+  deno-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: deno fmt --check
+        run: deno fmt --check supabase/functions
+
+      - name: deno lint
+        run: deno lint supabase/functions
+
+      - name: deno check
+        shell: bash
+        run: find supabase/functions -type f -name '*.ts' -print0 | xargs -0 deno check
+
+      - name: deno test
+        run: deno test -A supabase/functions/tests
+
+  supabase-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start --workdir .
+
+      - name: Lint DB schema
+        run: supabase db lint --workdir .
+
+      - name: Reset DB from migrations
+        run: supabase db reset --workdir . --no-seed --yes
+
+      - name: Verify PostgREST table grants
+        run: bash scripts/check_supabase_table_grants.sh
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --workdir . --no-backup --yes
+
+  supabase-edge-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run local Supabase edge e2e
+        run: bash scripts/run_supabase_edge_e2e.sh
+
+  supabase-edge-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run local Supabase edge load test
+        env:
+          EDGE_LOAD_FOOD_REQUESTS: "120"
+          EDGE_LOAD_SETTINGS_REQUESTS: "90"
+          EDGE_LOAD_CONCURRENCY: "16"
+          EDGE_LOAD_FOOD_P95_MS: "1200"
+          EDGE_LOAD_SETTINGS_P95_MS: "800"
+          EDGE_LOAD_MAX_ERROR_RATE: "0"
+        run: bash scripts/run_supabase_edge_load.sh
+
+  security-preprod-pass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run pre-prod security pass
+        env:
+          SECURITY_PASS_SKIP_EDGE_E2E: "1"
+        run: bash scripts/run_preprod_security_pass.sh
+
+  release-gate:
+    if: always()
+    needs:
+      - ios-unit-tests
+      - ios-ui-tests
+      - ios-accessibility-audit
+      - ios-performance-hard-gates
+      - ios-analyze
+      - ios-release-config-guard
+      - watchos-build
+      - watchos-tests
+      - deno-gates
+      - supabase-db
+      - supabase-edge-e2e
+      - supabase-edge-load
+      - security-preprod-pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce required jobs
+        shell: bash
+        run: |
+          if [[ "${{ needs.ios-unit-tests.result }}" != "success" ]]; then
+            echo "ios-unit-tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-ui-tests.result }}" != "success" ]]; then
+            echo "ios-ui-tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-accessibility-audit.result }}" != "success" ]]; then
+            echo "ios-accessibility-audit failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-performance-hard-gates.result }}" != "success" ]]; then
+            echo "ios-performance-hard-gates failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-analyze.result }}" != "success" ]]; then
+            echo "ios-analyze failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-release-config-guard.result }}" != "success" ]]; then
+            echo "ios-release-config-guard failed"
+            exit 1
+          fi
+          if [[ "${{ needs.watchos-build.result }}" != "success" ]]; then
+            echo "watchos-build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.watchos-tests.result }}" != "success" ]]; then
+            echo "watchos-tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.deno-gates.result }}" != "success" ]]; then
+            echo "deno-gates failed"
+            exit 1
+          fi
+          if [[ "${{ needs.supabase-db.result }}" != "success" ]]; then
+            echo "supabase-db failed"
+            exit 1
+          fi
+          if [[ "${{ needs.supabase-edge-e2e.result }}" != "success" ]]; then
+            echo "supabase-edge-e2e failed"
+            exit 1
+          fi
+          if [[ "${{ needs.supabase-edge-load.result }}" != "success" ]]; then
+            echo "supabase-edge-load failed"
+            exit 1
+          fi
+          if [[ "${{ needs.security-preprod-pass.result }}" != "success" ]]; then
+            echo "security-preprod-pass failed"
+            exit 1
+          fi
+          echo "Release gate passed"

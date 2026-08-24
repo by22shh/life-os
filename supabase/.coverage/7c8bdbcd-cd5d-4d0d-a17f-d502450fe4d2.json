@@ -1,0 +1,140 @@
+{
+  "scriptId": "337",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/@supabase/postgrest-js/1.19.4/dist/cjs/PostgrestQueryBuilder.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 9978,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "__importDefault",
+      "ranges": [
+        {
+          "startOffset": 70,
+          "endOffset": 151,
+          "count": 1
+        },
+        {
+          "startOffset": 128,
+          "endOffset": 148,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "PostgrestQueryBuilder",
+      "ranges": [
+        {
+          "startOffset": 337,
+          "endOffset": 509,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "select",
+      "ranges": [
+        {
+          "startOffset": 1321,
+          "endOffset": 2242,
+          "count": 4
+        },
+        {
+          "startOffset": 1398,
+          "endOffset": 1406,
+          "count": 0
+        },
+        {
+          "startOffset": 1574,
+          "endOffset": 1579,
+          "count": 0
+        },
+        {
+          "startOffset": 1927,
+          "endOffset": 1993,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1621,
+          "endOffset": 1822,
+          "count": 44
+        },
+        {
+          "startOffset": 1659,
+          "endOffset": 1669,
+          "count": 0
+        },
+        {
+          "startOffset": 1671,
+          "endOffset": 1713,
+          "count": 0
+        },
+        {
+          "startOffset": 1741,
+          "endOffset": 1790,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "insert",
+      "ranges": [
+        {
+          "startOffset": 3193,
+          "endOffset": 4284,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "upsert",
+      "ranges": [
+        {
+          "startOffset": 6023,
+          "endOffset": 7320,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "update",
+      "ranges": [
+        {
+          "startOffset": 8025,
+          "endOffset": 8646,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "delete",
+      "ranges": [
+        {
+          "startOffset": 9294,
+          "endOffset": 9885,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

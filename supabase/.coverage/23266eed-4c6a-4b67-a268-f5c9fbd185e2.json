@@ -1,0 +1,182 @@
+{
+  "scriptId": "379",
+  "url": "file:///Users/Bayramov_N/Library/Caches/deno/npm/registry.npmjs.org/ws/8.21.0/lib/permessage-deflate.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 14532,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "PerMessageDeflate",
+      "ranges": [
+        {
+          "startOffset": 2115,
+          "endOffset": 2668,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "get extensionName",
+      "ranges": [
+        {
+          "startOffset": 2711,
+          "endOffset": 2769,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "offer",
+      "ranges": [
+        {
+          "startOffset": 2890,
+          "endOffset": 3505,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "accept",
+      "ranges": [
+        {
+          "startOffset": 3713,
+          "endOffset": 3948,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "cleanup",
+      "ranges": [
+        {
+          "startOffset": 4033,
+          "endOffset": 4443,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "acceptAsServer",
+      "ranges": [
+        {
+          "startOffset": 4628,
+          "endOffset": 5972,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "acceptAsClient",
+      "ranges": [
+        {
+          "startOffset": 6164,
+          "endOffset": 6957,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizeParams",
+      "ranges": [
+        {
+          "startOffset": 7163,
+          "endOffset": 8703,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "decompress",
+      "ranges": [
+        {
+          "startOffset": 8940,
+          "endOffset": 9127,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "compress",
+      "ranges": [
+        {
+          "startOffset": 9372,
+          "endOffset": 9555,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_decompress",
+      "ranges": [
+        {
+          "startOffset": 9772,
+          "endOffset": 11230,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_compress",
+      "ranges": [
+        {
+          "startOffset": 11455,
+          "endOffset": 12886,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "deflateOnData",
+      "ranges": [
+        {
+          "startOffset": 13055,
+          "endOffset": 13156,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "inflateOnData",
+      "ranges": [
+        {
+          "startOffset": 13286,
+          "endOffset": 14075,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "inflateOnError",
+      "ranges": [
+        {
+          "startOffset": 14205,
+          "endOffset": 14531,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}

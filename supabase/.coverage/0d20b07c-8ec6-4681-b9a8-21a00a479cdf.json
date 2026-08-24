@@ -1,0 +1,255 @@
+{
+  "scriptId": "281",
+  "url": "file:///Users/Bayramov_N/Desktop/Other/life-os/supabase/functions/_shared/datetime.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 3104,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isLocalDate",
+      "ranges": [
+        {
+          "startOffset": 126,
+          "endOffset": 430,
+          "count": 5009
+        },
+        {
+          "startOffset": 252,
+          "endOffset": 265,
+          "count": 5
+        },
+        {
+          "startOffset": 265,
+          "endOffset": 359,
+          "count": 5004
+        },
+        {
+          "startOffset": 359,
+          "endOffset": 372,
+          "count": 4
+        },
+        {
+          "startOffset": 372,
+          "endOffset": 429,
+          "count": 5000
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizeWallClockTime",
+      "ranges": [
+        {
+          "startOffset": 438,
+          "endOffset": 975,
+          "count": 11014
+        },
+        {
+          "startOffset": 512,
+          "endOffset": 524,
+          "count": 5
+        },
+        {
+          "startOffset": 524,
+          "endOffset": 573,
+          "count": 11009
+        },
+        {
+          "startOffset": 573,
+          "endOffset": 585,
+          "count": 1
+        },
+        {
+          "startOffset": 585,
+          "endOffset": 650,
+          "count": 11008
+        },
+        {
+          "startOffset": 650,
+          "endOffset": 662,
+          "count": 717
+        },
+        {
+          "startOffset": 662,
+          "endOffset": 767,
+          "count": 10291
+        },
+        {
+          "startOffset": 767,
+          "endOffset": 773,
+          "count": 5276
+        },
+        {
+          "startOffset": 792,
+          "endOffset": 805,
+          "count": 10291
+        },
+        {
+          "startOffset": 806,
+          "endOffset": 820,
+          "count": 10003
+        },
+        {
+          "startOffset": 821,
+          "endOffset": 836,
+          "count": 10003
+        },
+        {
+          "startOffset": 837,
+          "endOffset": 851,
+          "count": 10002
+        },
+        {
+          "startOffset": 852,
+          "endOffset": 867,
+          "count": 10002
+        },
+        {
+          "startOffset": 869,
+          "endOffset": 891,
+          "count": 290
+        },
+        {
+          "startOffset": 891,
+          "endOffset": 974,
+          "count": 10001
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "localDateInTimeZone",
+      "ranges": [
+        {
+          "startOffset": 983,
+          "endOffset": 1223,
+          "count": 7
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "utcOffsetMinutesAt",
+      "ranges": [
+        {
+          "startOffset": 1231,
+          "endOffset": 1985,
+          "count": 6
+        },
+        {
+          "startOffset": 1762,
+          "endOffset": 1771,
+          "count": 0
+        },
+        {
+          "startOffset": 1795,
+          "endOffset": 1801,
+          "count": 0
+        },
+        {
+          "startOffset": 1827,
+          "endOffset": 1833,
+          "count": 0
+        },
+        {
+          "startOffset": 1856,
+          "endOffset": 1862,
+          "count": 0
+        },
+        {
+          "startOffset": 1887,
+          "endOffset": 1893,
+          "count": 0
+        },
+        {
+          "startOffset": 1918,
+          "endOffset": 1924,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1627,
+          "endOffset": 1658,
+          "count": 66
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1664,
+          "endOffset": 1713,
+          "count": 36
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "representativeTimestampForLocalDate",
+      "ranges": [
+        {
+          "startOffset": 1993,
+          "endOffset": 2807,
+          "count": 2
+        },
+        {
+          "startOffset": 2409,
+          "endOffset": 2559,
+          "count": 0
+        },
+        {
+          "startOffset": 2616,
+          "endOffset": 2785,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "safeTimeZone",
+      "ranges": [
+        {
+          "startOffset": 2815,
+          "endOffset": 3103,
+          "count": 18
+        },
+        {
+          "startOffset": 2907,
+          "endOffset": 2911,
+          "count": 0
+        },
+        {
+          "startOffset": 2931,
+          "endOffset": 2944,
+          "count": 1
+        },
+        {
+          "startOffset": 2944,
+          "endOffset": 3071,
+          "count": 17
+        },
+        {
+          "startOffset": 3071,
+          "endOffset": 3101,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}
