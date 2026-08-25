@@ -36,3 +36,6 @@ audits/*/phase-*-traces/
 
 # SwiftPM
 .build/
+
+# nested coverage artifacts
+supabase/.coverage/
