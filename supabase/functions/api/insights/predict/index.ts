@@ -334,6 +334,7 @@ ${contextBundle.historicalContextText}`;
       { role: "user", content: userMessage },
     ],
     temperature: 0.15,
+    max_tokens: 1_200,
   };
 
   const controller = new AbortController();

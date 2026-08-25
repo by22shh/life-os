@@ -56,7 +56,9 @@ export const OpenRouterGatewayBodySchema = v.object({
 
 export const DeleteAccountBodySchema = v.object({
   immediate: v.optional(v.boolean()),
-  reason: v.optional(v.string()),
+  reason: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(500))),
+  ),
 });
 
 export const AnalyticsBatchEventSchema = v.object({
@@ -79,11 +81,13 @@ export const FoodLogPayloadSchema = v.object({
   user_id: v.optional(v.string()),
   logged_at: v.optional(v.string()),
   logged_date: v.optional(v.string()),
-  logged_timezone: v.optional(v.nullable(v.string())),
+  logged_timezone: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(64))),
+  ),
   logged_utc_offset_minutes: v.optional(v.nullable(v.number())),
   input_method: v.optional(v.picklist(INPUT_METHODS)),
-  meal_type: v.optional(v.nullable(v.string())),
-  context: v.optional(v.nullable(v.string())),
+  meal_type: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(40)))),
+  context: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(240)))),
   pre_workout: v.optional(v.boolean()),
   post_workout: v.optional(v.boolean()),
   minutes_since_workout: v.optional(v.nullable(v.number())),
@@ -101,21 +105,35 @@ export const FoodLogPayloadSchema = v.object({
   iron_mg: v.optional(v.nullable(v.number())),
   vitamin_d_mcg: v.optional(v.nullable(v.number())),
   vitamin_b12_mcg: v.optional(v.nullable(v.number())),
-  image_url: v.optional(v.nullable(v.string())),
+  image_url: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(2_048))),
+  ),
   image_uploaded_at: v.optional(v.nullable(v.string())),
   ai_detected_items: v.optional(v.unknown()),
   ai_confidence: v.optional(v.nullable(v.number())),
-  ai_context_analysis: v.optional(v.nullable(v.string())),
+  ai_context_analysis: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(1_000))),
+  ),
   needs_review: v.optional(v.boolean()),
   user_corrected: v.optional(v.boolean()),
-  user_notes: v.optional(v.nullable(v.string())),
-  ai_feedback: v.optional(v.nullable(v.string())),
-  ai_feedback_details: v.optional(v.nullable(v.string())),
+  user_notes: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(2_000))),
+  ),
+  ai_feedback: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(4_000))),
+  ),
+  ai_feedback_details: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(4_000))),
+  ),
   ai_feedback_at: v.optional(v.nullable(v.string())),
   deleted_at: v.optional(v.nullable(v.string())),
-  deleted_reason: v.optional(v.nullable(v.string())),
+  deleted_reason: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(120))),
+  ),
   synced_to_vector_db: v.optional(v.boolean()),
-  vector_id: v.optional(v.nullable(v.string())),
+  vector_id: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(128))),
+  ),
 });
 
 export const InsightAcknowledgePayloadSchema = v.object({
@@ -220,27 +238,32 @@ export const AnalyzeFoodLabelBodySchema = v.object({
 });
 
 export const AnalyzeBatchRecipeImageBodySchema = v.object({
-  recipe_name: v.string(),
+  recipe_name: v.pipe(v.string(), v.maxLength(200)),
   total_weight_grams: v.number(),
   portions_planned: v.number(),
-  cooking_method: v.optional(v.nullable(v.string())),
+  cooking_method: v.optional(
+    v.nullable(v.pipe(v.string(), v.maxLength(100))),
+  ),
   known_ingredients: v.optional(
-    v.array(
-      v.object({
-        name: v.string(),
-        raw_weight_g: v.optional(v.number()),
-      }),
+    v.pipe(
+      v.array(
+        v.object({
+          name: v.pipe(v.string(), v.maxLength(160)),
+          raw_weight_g: v.optional(v.number()),
+        }),
+      ),
+      v.maxLength(50),
     ),
   ),
   image_base64: v.string(),
-  locale: v.optional(v.string()),
+  locale: v.optional(v.pipe(v.string(), v.maxLength(32))),
 });
 
 export const ParseFoodTextBodySchema = v.object({
-  text: v.optional(v.string()),
-  locale: v.optional(v.string()),
+  text: v.optional(v.pipe(v.string(), v.maxLength(4_000))),
+  locale: v.optional(v.pipe(v.string(), v.maxLength(32))),
   context: v.optional(v.picklist(MEAL_CONTEXTS)),
-  meal_type: v.optional(v.string()),
+  meal_type: v.optional(v.pipe(v.string(), v.maxLength(40))),
 });
 
 export const MenstrualPayloadSchema = v.object({
@@ -306,22 +329,22 @@ export const WatchSnapshotPostBodySchema = v.object({
 
 export const SendNotificationPayloadSchema = v.object({
   user_id: v.optional(v.string()),
-  title: v.string(),
-  body: v.string(),
+  title: v.pipe(v.string(), v.maxLength(120)),
+  body: v.pipe(v.string(), v.maxLength(500)),
   category: v.picklist(NOTIFICATION_CATEGORIES),
   priority: v.picklist(NOTIFICATION_PRIORITIES),
-  deep_link: v.optional(v.string()),
-  scheduled_at_local: v.optional(v.string()),
+  deep_link: v.optional(v.pipe(v.string(), v.maxLength(256))),
+  scheduled_at_local: v.optional(v.pipe(v.string(), v.maxLength(40))),
   delivery_mode: v.optional(v.picklist(["remote_only", "local_scheduled"])),
 });
 
 export const PushDevicePayloadSchema = v.object({
-  device_id: v.optional(v.string()),
-  push_token: v.optional(v.string()),
-  platform: v.optional(v.string()),
-  environment: v.optional(v.string()),
-  locale: v.optional(v.string()),
-  timezone: v.optional(v.string()),
-  app_version: v.optional(v.string()),
-  build_number: v.optional(v.string()),
+  device_id: v.optional(v.pipe(v.string(), v.maxLength(128))),
+  push_token: v.optional(v.pipe(v.string(), v.maxLength(512))),
+  platform: v.optional(v.pipe(v.string(), v.maxLength(32))),
+  environment: v.optional(v.pipe(v.string(), v.maxLength(16))),
+  locale: v.optional(v.pipe(v.string(), v.maxLength(32))),
+  timezone: v.optional(v.pipe(v.string(), v.maxLength(64))),
+  app_version: v.optional(v.pipe(v.string(), v.maxLength(32))),
+  build_number: v.optional(v.pipe(v.string(), v.maxLength(32))),
 });

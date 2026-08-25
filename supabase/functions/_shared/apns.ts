@@ -22,6 +22,8 @@ interface APNsConfig {
   bundleId: string;
 }
 
+const APNS_REQUEST_TIMEOUT_MS = 10_000;
+
 export async function dispatchAPNsNotifications(
   requests: APNsDispatchRequest[],
 ): Promise<APNsDispatchSummary> {
@@ -56,28 +58,37 @@ export async function dispatchAPNsNotifications(
       ? "https://api.sandbox.push.apple.com"
       : "https://api.push.apple.com";
 
-    const response = await fetch(`${endpoint}/3/device/${request.pushToken}`, {
-      method: "POST",
-      headers: {
-        authorization: `bearer ${bearerToken}`,
-        "apns-topic": config.bundleId,
-        "apns-push-type": "alert",
-        "apns-priority": request.interruptionLevel === "time-sensitive"
-          ? "10"
-          : "5",
-      },
-      body: JSON.stringify({
-        aps: {
-          alert: {
-            title: request.title,
-            body: request.body,
-          },
-          sound: "default",
-          "interruption-level": request.interruptionLevel ?? "active",
+    let response: Response;
+    try {
+      response = await fetch(`${endpoint}/3/device/${request.pushToken}`, {
+        method: "POST",
+        signal: AbortSignal.timeout(APNS_REQUEST_TIMEOUT_MS),
+        headers: {
+          authorization: `bearer ${bearerToken}`,
+          "apns-topic": config.bundleId,
+          "apns-push-type": "alert",
+          "apns-priority": request.interruptionLevel === "time-sensitive"
+            ? "10"
+            : "5",
         },
-        deep_link: request.deepLink ?? null,
-      }),
-    });
+        body: JSON.stringify({
+          aps: {
+            alert: {
+              title: request.title,
+              body: request.body,
+            },
+            sound: "default",
+            "interruption-level": request.interruptionLevel ?? "active",
+          },
+          deep_link: request.deepLink ?? null,
+        }),
+      });
+    } catch {
+      // Timeout or transport error for this device: count it as failed and
+      // keep draining the rest of the batch.
+      failed += 1;
+      continue;
+    }
 
     if (response.ok) {
       sent += 1;

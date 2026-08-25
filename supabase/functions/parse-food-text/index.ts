@@ -5,6 +5,7 @@ import {
 } from "../_shared/user_context.ts";
 import { parseWithSchema } from "../_shared/runtime_schema.ts";
 import { ParseFoodTextBodySchema } from "../_shared/payload_schemas.ts";
+import { readJsonBody } from "../_shared/request_limits.ts";
 import {
   createSupabaseFoodsRepository,
   defaultFoodsProvider,
@@ -383,12 +384,15 @@ Deno.serve(async (request) => {
   const userResult = await resolveUserContext(request, "ai_parse");
   if (!userResult.ok) return userResult.response;
 
-  let bodyRaw: unknown;
-  try {
-    bodyRaw = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return jsonWithRequest(
+      request,
+      { error: bodyResult.reason },
+      bodyResult.reason === "body_too_large" ? 413 : 400,
+    );
   }
+  const bodyRaw: unknown = bodyResult.body;
 
   const bodyParse = parseWithSchema(ParseFoodTextBodySchema, bodyRaw);
   if (!bodyParse.ok) {

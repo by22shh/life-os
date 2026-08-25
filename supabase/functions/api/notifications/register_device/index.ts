@@ -7,6 +7,7 @@ import {
 import { handleCors } from "../../../_shared/cors.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { PushDevicePayloadSchema } from "../../../_shared/payload_schemas.ts";
+import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 
 interface PushDevicePayload {
   device_id?: string;
@@ -83,10 +84,21 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "user_not_found" }, 404);
   }
 
+  const rateLimited = await enforceRateLimit(
+    request,
+    userRow.id,
+    "write_heavy",
+  );
+  if (rateLimited) return rateLimited;
+
+  // Re-own the token when the same physical device switches accounts. The
+  // device_id match proves physical possession; revoking purely on a known
+  // push_token would let an attacker silence another user's notifications.
   await service
     .from("push_devices")
     .update({ revoked_at: new Date().toISOString() })
     .eq("push_token", pushToken)
+    .eq("device_id", deviceId)
     .neq("user_id", userRow.id)
     .is("revoked_at", null);
 

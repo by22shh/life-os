@@ -2576,7 +2576,7 @@ Deno.test("analyze-batch-recipe-image sanitizes prompt fallbacks and stringifies
     openrouterResponse: (_request, body) => {
       const userMessage = ((body.messages as Array<Record<string, unknown>>)[1]
         ?.content as Array<Record<string, unknown>>)[0]?.text as string;
-      assertStringIncludes(userMessage, '"recipe_name": "   "');
+      assertStringIncludes(userMessage, '"recipe_name": ""');
       assertStringIncludes(userMessage, '"cooking_method": "unknown"');
       assertStringIncludes(userMessage, '"portion_size_grams": 300');
       return jsonResponse({
@@ -2605,7 +2605,7 @@ Deno.test("analyze-batch-recipe-image sanitizes prompt fallbacks and stringifies
     );
 
     assertEquals(response.status, 200);
-    assertEquals((await response.json()).recipe_name, "   ");
+    assertEquals((await response.json()).recipe_name, "");
   });
 
   await withMockedRuntime({

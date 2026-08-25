@@ -7,6 +7,7 @@ import {
   pruneExpiredMedicalScanArtifacts,
 } from "../../_shared/medical_scan_privacy.ts";
 import { jsonWithRequest } from "../../_shared/supabase.ts";
+import { readJsonBody } from "../../_shared/request_limits.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -113,12 +114,18 @@ async function handleScanCreate(
   >,
   userId: string,
 ): Promise<Response> {
-  let payload: Record<string, unknown>;
-  try {
-    payload = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return jsonWithRequest(
+      request,
+      { error: bodyResult.reason },
+      bodyResult.reason === "body_too_large" ? 413 : 400,
+    );
   }
+  const payload: Record<string, unknown> = bodyResult.body as Record<
+    string,
+    unknown
+  >;
 
   const scanType = normalizeScanType(payload.scan_type);
   if (!scanType) {
@@ -214,6 +221,18 @@ async function handleScanCreate(
 
   const processedData = payload.processed_data ??
     existingScan?.processed_data ?? null;
+  if (processedData != null) {
+    const serializedSize = new TextEncoder().encode(
+      JSON.stringify(processedData),
+    ).byteLength;
+    if (serializedSize > 256_000) {
+      return jsonWithRequest(
+        request,
+        { error: "processed_data_too_large" },
+        413,
+      );
+    }
+  }
   const extractedMarkers = extractMarkers(processedData);
   const normalizedStatus = normalizeScanStatus(
     payload.status,

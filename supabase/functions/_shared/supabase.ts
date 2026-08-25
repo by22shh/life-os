@@ -104,6 +104,23 @@ export function parseBearer(request: Request): string {
   return `Bearer ${token}`;
 }
 
+/**
+ * Constant-time string equality so secret comparisons do not leak
+ * prefix-match timing information.
+ */
+function timingSafeEqualStrings(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+  const mismatch = aBytes.byteLength ^ bBytes.byteLength;
+  const longest = Math.max(aBytes.byteLength, bBytes.byteLength);
+  let result = mismatch;
+  for (let i = 0; i < longest; i += 1) {
+    result |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+  return result === 0;
+}
+
 export function validateInternalServiceRoleRequest(
   request: Request,
   options: InternalServiceRoleAuthOptions = {},
@@ -120,7 +137,10 @@ export function validateInternalServiceRoleRequest(
 
   const authHeader = parseBearer(request);
   const expectedAuthorization = `Bearer ${serviceRoleKey}`;
-  if (authHeader !== expectedAuthorization) {
+  if (
+    authHeader.slice(0, 7).toLowerCase() !== "bearer " ||
+    !timingSafeEqualStrings(authHeader, expectedAuthorization)
+  ) {
     return {
       ok: false,
       status: 401,
@@ -129,7 +149,7 @@ export function validateInternalServiceRoleRequest(
   }
 
   const apiKey = request.headers.get("apikey")?.trim() ?? "";
-  if (apiKey !== serviceRoleKey) {
+  if (!timingSafeEqualStrings(apiKey, serviceRoleKey)) {
     return {
       ok: false,
       status: 401,

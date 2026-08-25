@@ -8,6 +8,7 @@ import { enforceRateLimit } from "../_shared/rate_limit.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { parseWithSchema } from "../_shared/runtime_schema.ts";
 import { AnalyzeBatchRecipeImageBodySchema } from "../_shared/payload_schemas.ts";
+import { readJsonBody } from "../_shared/request_limits.ts";
 import { parseAIJsonContent } from "../_shared/food_image_analysis.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -512,12 +513,15 @@ Deno.serve(async (request) => {
   const rateLimited = await enforceRateLimit(request, userRow.id, "ai_vision");
   if (rateLimited) return rateLimited;
 
-  let bodyRaw: unknown;
-  try {
-    bodyRaw = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return jsonWithRequest(
+      request,
+      { error: bodyResult.reason },
+      bodyResult.reason === "body_too_large" ? 413 : 400,
+    );
   }
+  const bodyRaw: unknown = bodyResult.body;
 
   const parsed = parseWithSchema(AnalyzeBatchRecipeImageBodySchema, bodyRaw);
   if (!parsed.ok) {
@@ -536,15 +540,17 @@ Deno.serve(async (request) => {
   }
 
   const recipeName = asTrimmedString(payload.recipe_name, 200) ??
-    payload.recipe_name;
+    payload.recipe_name.trim().slice(0, 200);
   const cookingMethod = asTrimmedString(payload.cooking_method, 100) ??
-    payload.cooking_method ?? "unknown";
+    (payload.cooking_method?.trim().slice(0, 100) || "unknown");
   // deno-coverage-ignore-start -- payload schema normalizes known_ingredients; fallback branch is defensive.
   const sanitizedKnownIngredients = (payload.known_ingredients ?? [])
     .map((ingredient) => ({
-      name: asTrimmedString(ingredient.name, 160) ?? ingredient.name,
+      name: asTrimmedString(ingredient.name, 160) ??
+        ingredient.name.trim().slice(0, 160),
       raw_weight_g: ingredient.raw_weight_g,
-    }));
+    }))
+    .filter((ingredient) => ingredient.name.length > 0);
   // deno-coverage-ignore-stop
 
   const normalizedImage = normalizeImageDataUrl(payload.image_base64);

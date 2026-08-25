@@ -8,23 +8,32 @@ echo "== Security pass: secret/key exposure scan =="
 if rg -n \
   --glob '!ios/build/**' \
   --glob '!output/**' \
+  --glob '!tmp/**' \
+  --glob '!.git/**' \
+  --glob '!.codex-tmp/**' \
+  --glob '!.coverage/**' \
+  --glob '!.deno-coverage-functions*/**' \
+  --glob '!.serena/**' \
+  --glob '!.supergoal/**' \
   --glob '!**/*.log' \
   --glob '!**/*.xcresult/**' \
   --glob '!**/*.trace/**' \
-  "(SUPABASE_SERVICE_ROLE_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|OPENROUTER_API_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|sk-[A-Za-z0-9]{20,}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----)" \
-  ios supabase scripts README.md; then
+  --glob '!*.min.*' \
+  "(SUPABASE_SERVICE_ROLE_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|OPENROUTER_API_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|sk-[A-Za-z0-9]{20,}|sb_secret_[A-Za-z0-9]{10,}|sb_publishable_[A-Za-z0-9]{10,}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----)" \
+  . ; then
   echo "Potential hardcoded secret material detected."
   exit 1
 fi
 
 echo "== Security pass: transport hardening checks =="
-if /usr/libexec/PlistBuddy -c "Print :NSAppTransportSecurity:NSAllowsArbitraryLoads" ios/LifeOS/App/Info.plist >/tmp/lifeos_ats_check.txt 2>/dev/null; then
-  if grep -q "true" /tmp/lifeos_ats_check.txt; then
+ATS_TMP_FILE="$(mktemp "${TMPDIR:-/tmp}/lifeos_ats_check.XXXXXX")"
+trap 'rm -f "$ATS_TMP_FILE"' EXIT
+if /usr/libexec/PlistBuddy -c "Print :NSAppTransportSecurity:NSAllowsArbitraryLoads" ios/LifeOS/App/Info.plist >"$ATS_TMP_FILE" 2>/dev/null; then
+  if grep -q "true" "$ATS_TMP_FILE"; then
     echo "ATS is weakened: NSAllowsArbitraryLoads=true"
     exit 1
   fi
 fi
-rm -f /tmp/lifeos_ats_check.txt
 
 if ! rg -q "scheme\\?\\.lowercased\\(\\)\\s*==\\s*\"https\"" ios/LifeOS/Modules/Shared/Network/SupabaseConfig.swift; then
   echo "Missing explicit HTTPS enforcement guard in SupabaseConfig."

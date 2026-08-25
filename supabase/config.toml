@@ -1,5 +1,22 @@
 project_id = "life-os"
 
+# Auth contract pinned in code so hosted projects can be configured to match
+# the reviewed baseline. Values below intentionally mirror Supabase defaults;
+# change them deliberately and update the security docs together.
+[auth]
+site_url = "http://localhost:3000"
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+max_refresh_tokens = 20
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Email confirmations stay disabled until a production mail provider is wired
+# up; flipping this on requires onboarding + e2e updates in the same change.
+enable_confirmations = false
+
 [functions.send-notification]
 verify_jwt = true
 

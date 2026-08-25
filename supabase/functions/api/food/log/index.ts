@@ -2,6 +2,7 @@ import { pathnameTail } from "../../../_shared/date_range.ts";
 import { isLocalDate } from "../../../_shared/datetime.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { FoodLogPayloadSchema } from "../../../_shared/payload_schemas.ts";
+import { readJsonBody } from "../../../_shared/request_limits.ts";
 import { jsonWithRequest } from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
@@ -283,12 +284,18 @@ async function handlePatchLog(
   userId: string,
   logId: string,
 ): Promise<Response> {
-  let payload: Record<string, unknown>;
-  try {
-    payload = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
+  const patchBody = await readJsonBody(request);
+  if (!patchBody.ok) {
+    return jsonWithRequest(
+      request,
+      { error: patchBody.reason },
+      patchBody.reason === "body_too_large" ? 413 : 400,
+    );
   }
+  const payload: Record<string, unknown> = patchBody.body as Record<
+    string,
+    unknown
+  >;
 
   const { data: existing, error: existingError } = await service
     .from("food_logs")
@@ -351,6 +358,9 @@ async function handlePatchLog(
 
   if (Object.prototype.hasOwnProperty.call(payload, "user_notes")) {
     const userNotes = readOptionalNullableString(payload.user_notes);
+    if (userNotes != null && userNotes.length > 2_000) {
+      return jsonWithRequest(request, { error: "invalid_user_notes" }, 400);
+    }
     updates.user_notes = userNotes;
   }
 
@@ -601,12 +611,15 @@ async function handleCreateLog(
   userId: string,
   timezone: string | null,
 ): Promise<Response> {
-  let payloadRaw: unknown;
-  try {
-    payloadRaw = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return jsonWithRequest(
+      request,
+      { error: bodyResult.reason },
+      bodyResult.reason === "body_too_large" ? 413 : 400,
+    );
   }
+  const payloadRaw: unknown = bodyResult.body;
   const payloadParse = parseWithSchema(FoodLogPayloadSchema, payloadRaw);
   if (!payloadParse.ok) {
     return jsonWithRequest(request, {

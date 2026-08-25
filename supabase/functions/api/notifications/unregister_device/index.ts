@@ -7,6 +7,7 @@ import {
 import { handleCors } from "../../../_shared/cors.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { PushDevicePayloadSchema } from "../../../_shared/payload_schemas.ts";
+import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 
 interface PushDevicePayload {
   device_id?: string;
@@ -71,6 +72,13 @@ Deno.serve(async (request) => {
   if (!userRow) {
     return jsonWithRequest(request, { error: "user_not_found" }, 404);
   }
+
+  const rateLimited = await enforceRateLimit(
+    request,
+    userRow.id,
+    "write_heavy",
+  );
+  if (rateLimited) return rateLimited;
 
   let query = service
     .from("push_devices")
