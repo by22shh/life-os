@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -67,7 +68,7 @@ Deno.serve(async (request) => {
   if (userError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userError.message,
+      detail: sanitizedInternalDetail(request, "index", userError),
     }, 500);
   }
   if (!userRow) {
@@ -84,11 +85,9 @@ Deno.serve(async (request) => {
     try {
       row = await fetchOrCreateSettings(service, userRow.id);
     } catch (error) {
-      // deno-coverage-ignore -- both API error surfaces are covered; message extraction branch is defensive.
-      const message = error instanceof Error ? error.message : String(error);
       return jsonWithRequest(request, {
         error: "privacy_settings_fetch_failed",
-        detail: message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     return jsonWithRequest(request, toPublicSettings(row));
@@ -114,10 +113,9 @@ Deno.serve(async (request) => {
     existing = await fetchOrCreateSettings(service, userRow.id);
     // deno-coverage-ignore-start -- both API error surfaces are covered; message extraction branch is defensive.
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "privacy_settings_fetch_failed",
-      detail: message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   // deno-coverage-ignore-stop
@@ -139,7 +137,7 @@ Deno.serve(async (request) => {
   if (upsertError) {
     return jsonWithRequest(request, {
       error: "privacy_settings_update_failed",
-      detail: upsertError.message,
+      detail: sanitizedInternalDetail(request, "index", upsertError),
     }, 500);
   }
 
@@ -152,10 +150,9 @@ Deno.serve(async (request) => {
     );
   } catch (error) {
     // deno-coverage-ignore -- both side-effect error surfaces are covered; message extraction branch is defensive.
-    const detail = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "privacy_settings_side_effects_failed",
-      detail,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

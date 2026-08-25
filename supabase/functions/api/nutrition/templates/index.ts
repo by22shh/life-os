@@ -5,7 +5,10 @@ import {
   safeTimeZone,
 } from "../../../_shared/date_range.ts";
 import { isLocalDate } from "../../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -74,7 +77,7 @@ Deno.serve(async (request) => {
       if (error) {
         return jsonWithRequest(request, {
           error: "template_fetch_failed",
-          detail: error.message,
+          detail: sanitizedInternalDetail(request, "index", error),
         }, 500);
       }
       if (!data) {
@@ -96,7 +99,7 @@ Deno.serve(async (request) => {
     if (error) {
       return jsonWithRequest(request, {
         error: "templates_fetch_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
 
@@ -188,7 +191,7 @@ Deno.serve(async (request) => {
     if (error) {
       return jsonWithRequest(request, {
         error: "template_update_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     if (!data) {
@@ -223,7 +226,7 @@ Deno.serve(async (request) => {
     if (templateError) {
       return jsonWithRequest(request, {
         error: "template_fetch_failed",
-        detail: templateError.message,
+        detail: sanitizedInternalDetail(request, "index", templateError),
       }, 500);
     }
     if (!template) {
@@ -301,7 +304,7 @@ Deno.serve(async (request) => {
     if (insertError) {
       return jsonWithRequest(request, {
         error: "food_log_insert_failed",
-        detail: insertError.message,
+        detail: sanitizedInternalDetail(request, "index", insertError),
       }, 500);
     }
 
@@ -318,7 +321,7 @@ Deno.serve(async (request) => {
     if (usageError) {
       return jsonWithRequest(request, {
         error: "template_usage_update_failed",
-        detail: usageError.message,
+        detail: sanitizedInternalDetail(request, "index", usageError),
       }, 500);
     }
 
@@ -404,7 +407,7 @@ Deno.serve(async (request) => {
   if (existingError) {
     return jsonWithRequest(request, {
       error: "template_fetch_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
 
@@ -437,7 +440,7 @@ Deno.serve(async (request) => {
   if (createError) {
     return jsonWithRequest(request, {
       error: "template_create_failed",
-      detail: createError.message,
+      detail: sanitizedInternalDetail(request, "index", createError),
     }, 500);
   }
 

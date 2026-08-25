@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -91,7 +92,7 @@ Deno.serve(async (request) => {
   if (userError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userError.message,
+      detail: sanitizedInternalDetail(request, "index", userError),
     }, 500);
   }
   if (!userRow) {
@@ -108,11 +109,9 @@ Deno.serve(async (request) => {
     try {
       featureFlags = await resolveFeatureFlags(service, userRow.id);
     } catch (error) {
-      // deno-coverage-ignore -- both API error surfaces are covered; message extraction branch is defensive.
-      const message = error instanceof Error ? error.message : String(error);
       return jsonWithRequest(request, {
         error: "feature_flags_resolve_failed",
-        detail: message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
 
@@ -121,11 +120,9 @@ Deno.serve(async (request) => {
       row = await fetchOrCreateSettings(service, userRow.id);
       row = await enforceGuardianFeatureFlag(service, row, featureFlags);
     } catch (error) {
-      // deno-coverage-ignore -- both API error surfaces are covered; message extraction branch is defensive.
-      const message = error instanceof Error ? error.message : String(error);
       return jsonWithRequest(request, {
         error: "settings_fetch_failed",
-        detail: message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     return jsonWithRequest(request, toPublicSettings(row));
@@ -184,11 +181,9 @@ Deno.serve(async (request) => {
   try {
     existing = await fetchOrCreateSettings(service, userRow.id);
   } catch (error) {
-    // deno-coverage-ignore -- both API error surfaces are covered; message extraction branch is defensive.
-    const message = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "settings_fetch_failed",
-      detail: message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -199,10 +194,9 @@ Deno.serve(async (request) => {
     featureFlags = await resolveFeatureFlags(service, userRow.id);
     // deno-coverage-ignore-start -- both API error surfaces are covered; message extraction branch is defensive.
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "feature_flags_resolve_failed",
-      detail: message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   // deno-coverage-ignore-stop
@@ -254,7 +248,7 @@ Deno.serve(async (request) => {
   if (upsertError) {
     return jsonWithRequest(request, {
       error: "settings_update_failed",
-      detail: upsertError.message,
+      detail: sanitizedInternalDetail(request, "index", upsertError),
     }, 500);
   }
 

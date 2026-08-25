@@ -488,10 +488,7 @@ Deno.test("privacy settings edge handler creates defaults and runs real cleanup 
 
         assertEquals(response.status, 500);
         assertEquals(payload.error, "privacy_settings_side_effects_failed");
-        assertStringIncludes(
-          payload.detail,
-          "user_health_flags_cleanup_failed:cleanup denied",
-        );
+        assertEquals(payload.detail, "internal_error");
       });
     },
   );
@@ -591,11 +588,7 @@ Deno.test("privacy settings edge handler creates defaults and runs real cleanup 
       assertEquals(response.status, 500);
       const payload = await response.json();
       assertEquals(payload.error, "privacy_settings_side_effects_failed");
-      assertStringIncludes(
-        payload.detail,
-        "user_health_flags_cleanup_failed",
-      );
-      assertStringIncludes(payload.detail, "FetchError");
+      assertEquals(payload.detail, "internal_error");
     });
   });
 });

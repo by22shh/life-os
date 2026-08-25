@@ -4,7 +4,10 @@ import {
   safeTimeZone,
   utcOffsetMinutesAt,
 } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -188,7 +191,7 @@ async function handleCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "body_composition_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -220,7 +223,7 @@ async function handleHistory(
   if (error) {
     return jsonWithRequest(request, {
       error: "body_composition_history_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -322,7 +325,7 @@ async function handlePatch(
     if (existingRowError) {
       return jsonWithRequest(request, {
         error: "body_composition_update_failed",
-        detail: existingRowError.message,
+        detail: sanitizedInternalDetail(request, "index", existingRowError),
       }, 500);
     }
     if (!existingRow) {
@@ -369,7 +372,7 @@ async function handlePatch(
   if (error) {
     return jsonWithRequest(request, {
       error: "body_composition_update_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -401,7 +404,7 @@ async function handleDelete(
   if (error) {
     return jsonWithRequest(request, {
       error: "body_composition_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

@@ -1,5 +1,8 @@
 import { localDateToday } from "../../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -50,7 +53,7 @@ Deno.serve(async (request) => {
   if (sessionsError) {
     return jsonWithRequest(request, {
       error: "workout_summary_fetch_failed",
-      detail: sessionsError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionsError),
     }, 500);
   }
 
@@ -67,7 +70,7 @@ Deno.serve(async (request) => {
   if (loadError) {
     return jsonWithRequest(request, {
       error: "training_load_fetch_failed",
-      detail: loadError.message,
+      detail: sanitizedInternalDetail(request, "index", loadError),
     }, 500);
   }
 

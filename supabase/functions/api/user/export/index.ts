@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -58,7 +59,7 @@ Deno.serve(async (request) => {
   if (userLookupError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", userLookupError),
     }, 500);
   }
   if (!userRow) {
@@ -83,7 +84,7 @@ Deno.serve(async (request) => {
     if (existingJobError) {
       return jsonWithRequest(request, {
         error: "export_job_lookup_failed",
-        detail: existingJobError.message,
+        detail: sanitizedInternalDetail(request, "index", existingJobError),
       }, 500);
     }
     if (existingJob) {
@@ -114,7 +115,7 @@ Deno.serve(async (request) => {
   if (error) {
     return jsonWithRequest(request, {
       error: "export_job_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

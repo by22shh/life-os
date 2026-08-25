@@ -8,7 +8,10 @@ import {
   type MacrosPer100g,
   searchFoods,
 } from "../../_shared/foods_provider.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -114,7 +117,7 @@ async function handleSearch(
     if (isFoodsError(error)) {
       return jsonWithRequest(request, {
         error: error.code,
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, error.status);
     }
     throw error;
@@ -158,7 +161,7 @@ async function handleBarcodeLookup(
     if (isFoodsError(error)) {
       return jsonWithRequest(request, {
         error: error.code,
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, error.status);
     }
     throw error;
@@ -230,7 +233,7 @@ async function handleBarcodeCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "barcode_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -292,7 +295,7 @@ async function handleCustomCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "custom_food_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -347,7 +350,7 @@ async function handleFavoriteCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "favorite_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -382,7 +385,7 @@ async function handleFavoriteList(
   if (error) {
     return jsonWithRequest(request, {
       error: "favorites_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -420,7 +423,7 @@ async function handleFavoriteDelete(
   if (error) {
     return jsonWithRequest(request, {
       error: "favorite_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

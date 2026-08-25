@@ -71,6 +71,29 @@ export function correlationIdFromRequest(request: Request): string {
   return normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER));
 }
 
+/**
+ * Logs the full internal error server-side (with correlation id) and returns
+ * an opaque detail string safe to expose to clients. PostgREST, storage and
+ * upstream provider messages can reveal table/column names and infrastructure
+ * topology, so they must never flow into API responses verbatim.
+ */
+export function sanitizedInternalDetail(
+  request: Request,
+  scope: string,
+  error: unknown,
+): string {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(
+    JSON.stringify({
+      event: "internal_error",
+      scope,
+      correlation_id: correlationIdFromRequest(request),
+      detail: message.slice(0, 500),
+    }),
+  );
+  return "internal_error";
+}
+
 export function jsonWithRequest(
   request: Request,
   data: unknown,

@@ -7,7 +7,10 @@ import {
   safeTimeZone,
 } from "../../_shared/date_range.ts";
 import { isLocalDate } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -146,7 +149,7 @@ async function handleCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "hydration_log_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -175,7 +178,7 @@ async function handleDaily(
   if (error) {
     return jsonWithRequest(request, {
       error: "hydration_logs_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -222,7 +225,7 @@ async function handleHistory(
   if (error) {
     return jsonWithRequest(request, {
       error: "hydration_history_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -317,7 +320,7 @@ async function handlePatch(
   if (error) {
     return jsonWithRequest(request, {
       error: "hydration_log_update_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {
@@ -357,7 +360,7 @@ async function handleDelete(
   if (error) {
     return jsonWithRequest(request, {
       error: "hydration_log_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

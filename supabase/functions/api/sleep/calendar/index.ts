@@ -2,7 +2,10 @@ import {
   enumerateLocalDates,
   parseLocalDateRange,
 } from "../../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -42,7 +45,7 @@ Deno.serve(async (request) => {
   if (error) {
     return jsonWithRequest(request, {
       error: "sleep_calendar_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

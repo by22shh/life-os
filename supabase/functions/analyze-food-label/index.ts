@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rate_limit.ts";
@@ -277,7 +278,7 @@ Deno.serve(async (request) => {
   if (lookupError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: lookupError.message,
+      detail: sanitizedInternalDetail(request, "index", lookupError),
     }, 500);
   }
   if (!userRow) {
@@ -383,7 +384,7 @@ Deno.serve(async (request) => {
       return jsonWithRequest(request, {
         error: "openrouter_request_failed",
         status: aiResponse.status,
-        detail: detail.slice(0, 300),
+        detail: sanitizedInternalDetail(request, "index", detail),
       }, 502);
     }
 
@@ -407,7 +408,7 @@ Deno.serve(async (request) => {
     // deno-coverage-ignore-start -- non-Error upstream failures are covered through guardrail tests.
     return jsonWithRequest(request, {
       error: "upstream_request_failed",
-      detail: error instanceof Error ? error.message : String(error),
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 502);
     // deno-coverage-ignore-stop
     // deno-coverage-ignore-start -- timer setup/cleanup is deterministic infrastructure, not product logic.

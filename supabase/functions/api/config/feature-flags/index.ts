@@ -1,4 +1,7 @@
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   FEATURE_FLAG_CACHE_TTL_SECONDS,
   mergeResolvedFeatureFlags,
@@ -33,7 +36,7 @@ Deno.serve(async (request) => {
   if (error) {
     return jsonWithRequest(request, {
       error: "feature_flags_resolve_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

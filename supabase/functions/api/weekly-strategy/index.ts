@@ -1,5 +1,8 @@
 import { isLocalDate } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -52,7 +55,7 @@ Deno.serve(async (request) => {
   if (existingError) {
     return jsonWithRequest(request, {
       error: "weekly_strategy_fetch_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
 
@@ -108,7 +111,7 @@ Deno.serve(async (request) => {
     if (pair[0]) {
       return jsonWithRequest(request, {
         error: pair[1],
-        detail: pair[0].message,
+        detail: sanitizedInternalDetail(request, "index", pair[0]),
       }, 500);
     }
   }
@@ -196,7 +199,7 @@ Deno.serve(async (request) => {
     if (updateError) {
       return jsonWithRequest(request, {
         error: "weekly_strategy_update_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       }, 500);
     }
     if (!updated) {
@@ -231,7 +234,7 @@ Deno.serve(async (request) => {
   if (insertError) {
     return jsonWithRequest(request, {
       error: "weekly_strategy_create_failed",
-      detail: insertError.message,
+      detail: sanitizedInternalDetail(request, "index", insertError),
     }, 500);
   }
   if (!inserted) {

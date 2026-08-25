@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -96,7 +97,7 @@ Deno.serve(async (request) => {
   if (userError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userError.message,
+      detail: sanitizedInternalDetail(request, "index", userError),
     }, 500);
   }
   if (!user) {
@@ -127,10 +128,9 @@ Deno.serve(async (request) => {
       scheduledFor,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "deletion_job_create_failed",
-      detail: message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -235,7 +235,7 @@ async function handleScheduledDeletion(
   if (scheduleError) {
     return jsonWithRequest(request, {
       error: "deletion_schedule_failed",
-      detail: scheduleError.message,
+      detail: sanitizedInternalDetail(request, "index", scheduleError),
     }, 500);
   }
 
@@ -327,7 +327,7 @@ async function handleImmediateDeletion(
   if (markInProgressError) {
     return jsonWithRequest(request, {
       error: "deletion_mark_in_progress_failed",
-      detail: markInProgressError.message,
+      detail: sanitizedInternalDetail(request, "index", markInProgressError),
     }, 500);
   }
 
@@ -519,7 +519,7 @@ async function handlePostDeleteFailure(
   if (auditError) {
     return jsonWithRequest(request, {
       error: "deletion_audit_failed",
-      detail: auditError,
+      detail: sanitizedInternalDetail(request, "index", auditError),
       deletion_state: job.state,
       idempotency_key: job.idempotency_key,
     }, 500);
@@ -627,7 +627,7 @@ async function handleImmediateFailure(
   if (auditError) {
     return jsonWithRequest(request, {
       error: "deletion_audit_failed",
-      detail: auditError,
+      detail: sanitizedInternalDetail(request, "index", auditError),
     }, 500);
   }
 

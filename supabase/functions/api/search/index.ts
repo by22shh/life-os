@@ -1,4 +1,7 @@
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -63,14 +66,14 @@ Deno.serve(async (request) => {
   if (foodsRes.error) {
     return jsonWithRequest(request, {
       error: "search_foods_failed",
-      detail: foodsRes.error.message,
+      detail: sanitizedInternalDetail(request, "index", foodsRes.error),
     }, 500);
   }
 
   if (exercisesRes.error) {
     return jsonWithRequest(request, {
       error: "search_exercises_failed",
-      detail: exercisesRes.error.message,
+      detail: sanitizedInternalDetail(request, "index", exercisesRes.error),
     }, 500);
   }
 

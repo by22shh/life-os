@@ -8,6 +8,7 @@ import { enforceRateLimit } from "./rate_limit.ts";
 import { handleCors } from "./cors.ts";
 import { parseWithSchema } from "./runtime_schema.ts";
 import { SupplementLogPayloadSchema } from "./payload_schemas.ts";
+import { sanitizedInternalDetail } from "../_shared/supabase.ts";
 
 interface SupplementLogPayload {
   supplement_name?: string;
@@ -155,7 +156,11 @@ export async function serveSupplementLog(request: Request): Promise<Response> {
       request,
       {
         error: "user_lookup_failed",
-        detail: userLookupError.message,
+        detail: sanitizedInternalDetail(
+          request,
+          "supplement_log_handler",
+          userLookupError,
+        ),
       },
       500,
     );
@@ -226,7 +231,11 @@ export async function serveSupplementLog(request: Request): Promise<Response> {
       request,
       {
         error: "supplement_log_failed",
-        detail: insertError.message,
+        detail: sanitizedInternalDetail(
+          request,
+          "supplement_log_handler",
+          insertError,
+        ),
       },
       500,
     );

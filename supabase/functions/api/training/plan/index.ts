@@ -4,7 +4,10 @@ import {
   pathnameTail,
   safeTimeZone,
 } from "../../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -156,7 +159,7 @@ async function handleGenerate(
   if (planError) {
     return jsonWithRequest(request, {
       error: "training_plan_create_failed",
-      detail: planError.message,
+      detail: sanitizedInternalDetail(request, "index", planError),
     }, 500);
   }
 
@@ -191,7 +194,7 @@ async function handleGenerate(
     if (sessionsError) {
       return jsonWithRequest(request, {
         error: "training_plan_sessions_create_failed",
-        detail: sessionsError.message,
+        detail: sanitizedInternalDetail(request, "index", sessionsError),
       }, 500);
     }
   }
@@ -222,7 +225,7 @@ async function handleActive(
   if (planError) {
     return jsonWithRequest(request, {
       error: "training_plan_fetch_failed",
-      detail: planError.message,
+      detail: sanitizedInternalDetail(request, "index", planError),
     }, 500);
   }
 
@@ -247,7 +250,7 @@ async function handleActive(
   if (sessionsError) {
     return jsonWithRequest(request, {
       error: "training_plan_sessions_fetch_failed",
-      detail: sessionsError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionsError),
     }, 500);
   }
 
@@ -293,7 +296,7 @@ async function handleGetById(
   if (error) {
     return jsonWithRequest(request, {
       error: "training_plan_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -338,7 +341,7 @@ async function handleSessions(
   if (activePlanError) {
     return jsonWithRequest(request, {
       error: "training_plan_fetch_failed",
-      detail: activePlanError.message,
+      detail: sanitizedInternalDetail(request, "index", activePlanError),
     }, 500);
   }
 
@@ -373,7 +376,7 @@ async function handleSessions(
   if (sessionsError) {
     return jsonWithRequest(request, {
       error: "training_plan_sessions_fetch_failed",
-      detail: sessionsError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionsError),
     }, 500);
   }
 
@@ -442,7 +445,7 @@ async function handlePatchPlan(
   if (error) {
     return jsonWithRequest(request, {
       error: "training_plan_update_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {
@@ -495,7 +498,7 @@ async function handleAdjustPlan(
   if (existingPlanError) {
     return jsonWithRequest(request, {
       error: "training_plan_fetch_failed",
-      detail: existingPlanError.message,
+      detail: sanitizedInternalDetail(request, "index", existingPlanError),
     }, 500);
   }
   if (!existingPlan) {
@@ -519,7 +522,7 @@ async function handleAdjustPlan(
   if (updateError) {
     return jsonWithRequest(request, {
       error: "training_plan_adjust_failed",
-      detail: updateError.message,
+      detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
 

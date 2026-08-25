@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -61,7 +62,7 @@ Deno.serve(async (request) => {
   if (userError) {
     return jsonWithRequest(request, {
       error: "deletion_status_failed",
-      detail: userError.message,
+      detail: sanitizedInternalDetail(request, "index", userError),
     }, 500);
   }
 
@@ -102,7 +103,7 @@ Deno.serve(async (request) => {
   if (jobError) {
     return jsonWithRequest(request, {
       error: "deletion_status_job_lookup_failed",
-      detail: jobError.message,
+      detail: sanitizedInternalDetail(request, "index", jobError),
     }, 500);
   }
 

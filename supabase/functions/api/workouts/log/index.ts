@@ -1,5 +1,8 @@
 import { isLocalDate } from "../../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -259,7 +262,7 @@ Deno.serve(async (request) => {
   if (sessionError) {
     return jsonWithRequest(request, {
       error: "workout_session_insert_failed",
-      detail: sessionError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionError),
     }, 500);
   }
 
@@ -314,7 +317,7 @@ Deno.serve(async (request) => {
     if (insertExerciseError) {
       return jsonWithRequest(request, {
         error: "workout_exercise_insert_failed",
-        detail: insertExerciseError.message,
+        detail: sanitizedInternalDetail(request, "index", insertExerciseError),
       }, 500);
     }
 
@@ -342,7 +345,7 @@ Deno.serve(async (request) => {
       if (insertSetError) {
         return jsonWithRequest(request, {
           error: "workout_set_insert_failed",
-          detail: insertSetError.message,
+          detail: sanitizedInternalDetail(request, "index", insertSetError),
         }, 500);
       }
     }
@@ -556,7 +559,7 @@ async function createCustomExerciseCatalogEntry(
       ok: false,
       response: jsonWithRequest(request, {
         error: "exercise_catalog_insert_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500),
     };
   }
@@ -599,7 +602,7 @@ async function syncTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_fetch_failed",
-        detail: candidateError.message,
+        detail: sanitizedInternalDetail(request, "index", candidateError),
       },
     };
   }
@@ -625,7 +628,7 @@ async function syncTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_update_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       },
     };
   }

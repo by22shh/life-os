@@ -3,7 +3,10 @@ import { isLocalDate } from "../../../_shared/datetime.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { FoodLogPayloadSchema } from "../../../_shared/payload_schemas.ts";
 import { readJsonBody } from "../../../_shared/request_limits.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -212,7 +215,7 @@ async function handleGetLog(
   if (logError) {
     return jsonWithRequest(request, {
       error: "food_log_fetch_failed",
-      detail: logError.message,
+      detail: sanitizedInternalDetail(request, "index", logError),
     }, 500);
   }
   if (!log) {
@@ -232,7 +235,7 @@ async function handleGetLog(
   if (itemsError) {
     return jsonWithRequest(request, {
       error: "food_items_fetch_failed",
-      detail: itemsError.message,
+      detail: sanitizedInternalDetail(request, "index", itemsError),
     }, 500);
   }
 
@@ -308,7 +311,7 @@ async function handlePatchLog(
   if (existingError) {
     return jsonWithRequest(request, {
       error: "food_log_fetch_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
   if (!existing) {
@@ -481,7 +484,7 @@ async function handlePatchLog(
   if (updateError) {
     return jsonWithRequest(request, {
       error: "food_log_update_failed",
-      detail: updateError.message,
+      detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
 
@@ -495,7 +498,7 @@ async function handlePatchLog(
     if (deleteItemsError) {
       return jsonWithRequest(request, {
         error: "food_items_replace_failed",
-        detail: deleteItemsError.message,
+        detail: sanitizedInternalDetail(request, "index", deleteItemsError),
       }, 500);
     }
 
@@ -527,7 +530,7 @@ async function handlePatchLog(
     if (insertItemsError) {
       return jsonWithRequest(request, {
         error: "food_items_insert_failed",
-        detail: insertItemsError.message,
+        detail: sanitizedInternalDetail(request, "index", insertItemsError),
       }, 500);
     }
   }
@@ -558,7 +561,7 @@ async function handleDeleteLog(
   if (error) {
     return jsonWithRequest(request, {
       error: "food_log_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {
@@ -589,7 +592,7 @@ async function handleUndoLog(
   if (error) {
     return jsonWithRequest(request, {
       error: "food_log_undo_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {
@@ -656,7 +659,7 @@ async function handleCreateLog(
     if (existingLookupError) {
       return jsonWithRequest(request, {
         error: "food_log_lookup_failed",
-        detail: existingLookupError.message,
+        detail: sanitizedInternalDetail(request, "index", existingLookupError),
       }, 500);
     }
     existingRow = existing ?? null;
@@ -865,7 +868,7 @@ async function handleCreateLog(
   if (upsertError) {
     return jsonWithRequest(request, {
       error: "food_log_upsert_failed",
-      detail: upsertError.message,
+      detail: sanitizedInternalDetail(request, "index", upsertError),
     }, 500);
   }
 

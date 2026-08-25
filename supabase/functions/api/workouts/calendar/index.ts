@@ -2,7 +2,10 @@ import {
   enumerateLocalDates,
   parseLocalDateRange,
 } from "../../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -48,7 +51,7 @@ Deno.serve(async (request) => {
   if (sessionsError) {
     return jsonWithRequest(request, {
       error: "workout_sessions_fetch_failed",
-      detail: sessionsError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionsError),
     }, 500);
   }
 
@@ -63,7 +66,7 @@ Deno.serve(async (request) => {
   if (plannedError) {
     return jsonWithRequest(request, {
       error: "planned_sessions_fetch_failed",
-      detail: plannedError.message,
+      detail: sanitizedInternalDetail(request, "index", plannedError),
     }, 500);
   }
 

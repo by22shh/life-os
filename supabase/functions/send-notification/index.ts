@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rate_limit.ts";
@@ -120,7 +121,7 @@ Deno.serve(async (request) => {
   if (userRowError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userRowError.message,
+      detail: sanitizedInternalDetail(request, "index", userRowError),
     }, 500);
   }
   if (!userRow) {
@@ -149,7 +150,7 @@ Deno.serve(async (request) => {
   if (settingsError) {
     return jsonWithRequest(request, {
       error: "settings_fetch_failed",
-      detail: settingsError.message,
+      detail: sanitizedInternalDetail(request, "index", settingsError),
     }, 500);
   }
 
@@ -248,7 +249,7 @@ Deno.serve(async (request) => {
   if (insertStatusError) {
     return jsonWithRequest(request, {
       error: "notification_insert_failed",
-      detail: insertStatusError.message,
+      detail: sanitizedInternalDetail(request, "index", insertStatusError),
     }, 500);
   }
 
@@ -311,7 +312,7 @@ async function dispatchNotificationToDevices(
       sent: 0,
       failed: 0,
       invalid_tokens: [] as string[],
-      detail: devicesError.message,
+      detail: sanitizedInternalDetail(request, "index", devicesError),
       delivery_state: "lookup_failed",
     };
   }

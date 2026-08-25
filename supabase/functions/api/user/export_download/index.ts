@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { handleCors, withCorsHeaders } from "../../../_shared/cors.ts";
@@ -46,7 +47,7 @@ Deno.serve(async (request) => {
   if (userLookupError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", userLookupError),
     }, 500);
   }
   if (!userRow) {

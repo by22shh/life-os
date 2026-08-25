@@ -4,7 +4,10 @@ import {
   safeTimeZone,
 } from "../../_shared/date_range.ts";
 import { isLocalDate } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -106,7 +109,7 @@ async function handleList(
   if (error) {
     return jsonWithRequest(request, {
       error: "experiments_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -197,7 +200,7 @@ async function handleCreate(
   if (existingError) {
     return jsonWithRequest(request, {
       error: "experiment_lookup_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
 
@@ -249,7 +252,7 @@ async function handleCreate(
   if (activeExperimentError) {
     return jsonWithRequest(request, {
       error: "active_experiment_lookup_failed",
-      detail: activeExperimentError.message,
+      detail: sanitizedInternalDetail(request, "index", activeExperimentError),
     }, 500);
   }
 
@@ -323,7 +326,7 @@ async function handleCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "experiment_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -377,7 +380,7 @@ async function handleLog(
   if (experimentError) {
     return jsonWithRequest(request, {
       error: "experiment_fetch_failed",
-      detail: experimentError.message,
+      detail: sanitizedInternalDetail(request, "index", experimentError),
     }, 500);
   }
   if (!experiment) {
@@ -430,7 +433,7 @@ async function handleLog(
     if (error) {
       return jsonWithRequest(request, {
         error: "experiment_log_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
   }
@@ -482,7 +485,7 @@ async function handleDelete(
   if (error) {
     return jsonWithRequest(request, {
       error: "experiment_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -517,7 +520,7 @@ async function handleUndo(
   if (error) {
     return jsonWithRequest(request, {
       error: "experiment_undo_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

@@ -8,7 +8,10 @@ import {
   supplementStatus,
   type UserSupplementRow,
 } from "../../../_shared/supplements.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -48,7 +51,7 @@ Deno.serve(async (request) => {
   if (supplementsError) {
     return jsonWithRequest(request, {
       error: "supplements_fetch_failed",
-      detail: supplementsError.message,
+      detail: sanitizedInternalDetail(request, "index", supplementsError),
     }, 500);
   }
 
@@ -66,7 +69,7 @@ Deno.serve(async (request) => {
   if (logsError) {
     return jsonWithRequest(request, {
       error: "supplement_logs_fetch_failed",
-      detail: logsError.message,
+      detail: sanitizedInternalDetail(request, "index", logsError),
     }, 500);
   }
 
@@ -85,7 +88,7 @@ Deno.serve(async (request) => {
     if (catalogError) {
       return jsonWithRequest(request, {
         error: "supplement_catalog_fetch_failed",
-        detail: catalogError.message,
+        detail: sanitizedInternalDetail(request, "index", catalogError),
       }, 500);
     }
 

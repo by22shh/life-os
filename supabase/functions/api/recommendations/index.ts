@@ -7,7 +7,10 @@ import {
   pathnameTail,
   safeTimeZone,
 } from "../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -63,7 +66,7 @@ Deno.serve(async (request) => {
     } catch (error) {
       return jsonWithRequest(request, {
         error: "recommendations_generation_failed",
-        detail: error instanceof Error ? error.message : String(error),
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
   }
@@ -82,7 +85,7 @@ Deno.serve(async (request) => {
     if (error) {
       return jsonWithRequest(request, {
         error: "recommendation_dismiss_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     if (!data) {

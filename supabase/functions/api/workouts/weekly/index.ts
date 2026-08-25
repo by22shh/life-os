@@ -1,6 +1,9 @@
 import { parseLocalDateRange } from "../../../_shared/date_range.ts";
 import { isLocalDate } from "../../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -53,7 +56,7 @@ Deno.serve(async (request) => {
   if (sessionsError) {
     return jsonWithRequest(request, {
       error: "workout_weekly_fetch_failed",
-      detail: sessionsError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionsError),
     }, 500);
   }
 

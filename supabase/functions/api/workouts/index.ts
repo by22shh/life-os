@@ -1,6 +1,9 @@
 import { pathnameTail } from "../../_shared/date_range.ts";
 import { isLocalDate } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -167,7 +170,7 @@ async function handleGetWorkout(
   if (sessionError) {
     return jsonWithRequest(request, {
       error: "workout_session_fetch_failed",
-      detail: sessionError.message,
+      detail: sanitizedInternalDetail(request, "index", sessionError),
     }, 500);
   }
   if (!session) {
@@ -186,7 +189,7 @@ async function handleGetWorkout(
   if (exercisesError) {
     return jsonWithRequest(request, {
       error: "workout_exercises_fetch_failed",
-      detail: exercisesError.message,
+      detail: sanitizedInternalDetail(request, "index", exercisesError),
     }, 500);
   }
 
@@ -208,7 +211,7 @@ async function handleGetWorkout(
     if (setsError) {
       return jsonWithRequest(request, {
         error: "workout_sets_fetch_failed",
-        detail: setsError.message,
+        detail: sanitizedInternalDetail(request, "index", setsError),
       }, 500);
     }
 
@@ -237,7 +240,7 @@ async function handleGetWorkout(
     if (catalogError) {
       return jsonWithRequest(request, {
         error: "exercise_catalog_fetch_failed",
-        detail: catalogError.message,
+        detail: sanitizedInternalDetail(request, "index", catalogError),
       }, 500);
     }
 
@@ -333,7 +336,7 @@ async function handlePatchWorkout(
   if (existingError) {
     return jsonWithRequest(request, {
       error: "workout_session_fetch_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
   if (!existing) {
@@ -633,7 +636,7 @@ async function handlePatchWorkout(
   if (updateError) {
     return jsonWithRequest(request, {
       error: "workout_session_update_failed",
-      detail: updateError.message,
+      detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
 
@@ -646,7 +649,7 @@ async function handlePatchWorkout(
     if (deleteExercisesError) {
       return jsonWithRequest(request, {
         error: "workout_exercises_replace_failed",
-        detail: deleteExercisesError.message,
+        detail: sanitizedInternalDetail(request, "index", deleteExercisesError),
       }, 500);
     }
 
@@ -669,7 +672,11 @@ async function handlePatchWorkout(
       if (insertExerciseError) {
         return jsonWithRequest(request, {
           error: "workout_exercise_insert_failed",
-          detail: insertExerciseError.message,
+          detail: sanitizedInternalDetail(
+            request,
+            "index",
+            insertExerciseError,
+          ),
         }, 500);
       }
 
@@ -693,7 +700,7 @@ async function handlePatchWorkout(
         if (insertSetError) {
           return jsonWithRequest(request, {
             error: "workout_set_insert_failed",
-            detail: insertSetError.message,
+            detail: sanitizedInternalDetail(request, "index", insertSetError),
           }, 500);
         }
       }
@@ -742,7 +749,7 @@ async function handleDeleteWorkout(
   if (fetchError) {
     return jsonWithRequest(request, {
       error: "workout_session_fetch_failed",
-      detail: fetchError.message,
+      detail: sanitizedInternalDetail(request, "index", fetchError),
     }, 500);
   }
   if (!existing) {
@@ -765,7 +772,7 @@ async function handleDeleteWorkout(
     if (error) {
       return jsonWithRequest(request, {
         error: "workout_delete_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     if (!data) {
@@ -815,7 +822,7 @@ async function handleUndoWorkout(
   if (fetchError) {
     return jsonWithRequest(request, {
       error: "workout_session_fetch_failed",
-      detail: fetchError.message,
+      detail: sanitizedInternalDetail(request, "index", fetchError),
     }, 500);
   }
   if (!existing) {
@@ -857,7 +864,7 @@ async function handleUndoWorkout(
     if (error) {
       return jsonWithRequest(request, {
         error: "workout_undo_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     if (!data) {
@@ -1075,7 +1082,7 @@ async function createCustomExerciseCatalogEntry(
       ok: false,
       response: jsonWithRequest(request, {
         error: "exercise_catalog_insert_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500),
     };
   }
@@ -1179,7 +1186,7 @@ async function syncTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_fetch_failed",
-        detail: candidateError.message,
+        detail: sanitizedInternalDetail(request, "index", candidateError),
       },
     };
   }
@@ -1205,7 +1212,7 @@ async function syncTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_update_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       },
     };
   }
@@ -1247,7 +1254,7 @@ async function unlinkTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_fetch_failed",
-        detail: fetchError.message,
+        detail: sanitizedInternalDetail(request, "index", fetchError),
       },
     };
   }
@@ -1269,7 +1276,7 @@ async function unlinkTrainingPlanSessionCompletion(
       status: 500,
       body: {
         error: "training_plan_session_update_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       },
     };
   }

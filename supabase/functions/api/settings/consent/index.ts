@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -89,7 +90,7 @@ Deno.serve(async (request) => {
   if (userError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userError.message,
+      detail: sanitizedInternalDetail(request, "index", userError),
     }, 500);
   }
   if (!userRow) {
@@ -131,7 +132,7 @@ Deno.serve(async (request) => {
   if (existingError) {
     return jsonWithRequest(request, {
       error: "consent_lookup_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
   if (existing) {
@@ -160,7 +161,7 @@ Deno.serve(async (request) => {
   if (insertError) {
     return jsonWithRequest(request, {
       error: "consent_record_failed",
-      detail: insertError.message,
+      detail: sanitizedInternalDetail(request, "index", insertError),
     }, 500);
   }
 

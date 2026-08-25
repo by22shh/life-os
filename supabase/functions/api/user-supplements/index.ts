@@ -1,5 +1,8 @@
 import { localDateToday, pathnameTail } from "../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -96,7 +99,7 @@ async function handleList(
   if (error) {
     return jsonWithRequest(request, {
       error: "user_supplements_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -115,7 +118,7 @@ async function handleList(
     if (catalogError) {
       return jsonWithRequest(request, {
         error: "supplement_catalog_fetch_failed",
-        detail: catalogError.message,
+        detail: sanitizedInternalDetail(request, "index", catalogError),
       }, 500);
     }
 
@@ -171,7 +174,7 @@ async function handleCreate(
   if (error) {
     return jsonWithRequest(request, {
       error: "user_supplement_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -213,7 +216,7 @@ async function handlePatch(
   if (error) {
     return jsonWithRequest(request, {
       error: "user_supplement_update_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {
@@ -249,7 +252,7 @@ async function handleDelete(
   if (error) {
     return jsonWithRequest(request, {
       error: "user_supplement_delete_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!data) {

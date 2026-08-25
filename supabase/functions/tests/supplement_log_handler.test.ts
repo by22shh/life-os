@@ -408,7 +408,7 @@ Deno.test("supplement log handler surfaces lookup rate-limit and insert failures
     assertEquals(response.status, 500);
     assertEquals(await response.json(), {
       error: "user_lookup_failed",
-      detail: "lookup failed",
+      detail: "internal_error",
     });
     assertEquals(calls.rateLimitCalls.length, 0);
   });
@@ -473,7 +473,7 @@ Deno.test("supplement log handler surfaces lookup rate-limit and insert failures
     assertEquals(response.status, 500);
     assertEquals(await response.json(), {
       error: "supplement_log_failed",
-      detail: "insert failed",
+      detail: "internal_error",
     });
     assertEquals(calls.insertedRows.length, 1);
   });

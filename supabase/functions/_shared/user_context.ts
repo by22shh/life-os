@@ -4,6 +4,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "./supabase.ts";
 
@@ -56,7 +57,11 @@ export async function resolveUserContext(
       ok: false,
       response: jsonWithRequest(request, {
         error: "user_lookup_failed",
-        detail: userLookupError.message,
+        detail: sanitizedInternalDetail(
+          request,
+          "user_context",
+          userLookupError,
+        ),
       }, 500),
     };
   }

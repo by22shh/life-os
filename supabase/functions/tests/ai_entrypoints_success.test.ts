@@ -1292,7 +1292,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 500);
         assertEquals(await response.json(), {
           error: "user_lookup_failed",
-          detail: "db blew up",
+          detail: "internal_error",
         });
       });
 
@@ -1559,7 +1559,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 500);
         assertEquals(await response.json(), {
           error: "user_lookup_failed",
-          detail: "lookup failed",
+          detail: "internal_error",
         });
       });
 
@@ -1668,7 +1668,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(await response.json(), {
           error: "openrouter_request_failed",
           status: 429,
-          detail: "upstream said no",
+          detail: "internal_error",
         });
       });
 
@@ -1723,7 +1723,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 502);
         assertEquals(await response.json(), {
           error: "upstream_request_failed",
-          detail: "network broke",
+          detail: "internal_error",
         });
       });
 
@@ -1891,7 +1891,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 500);
         assertEquals(await response.json(), {
           error: "user_lookup_failed",
-          detail: "lookup failed",
+          detail: "internal_error",
         });
       });
 
@@ -1999,7 +1999,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(await response.json(), {
           error: "openrouter_request_failed",
           status: 503,
-          detail: "bad label",
+          detail: "internal_error",
         });
       });
 
@@ -2087,7 +2087,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 502);
         assertEquals(await response.json(), {
           error: "upstream_request_failed",
-          detail: "socket hang up",
+          detail: "internal_error",
         });
       });
 
@@ -2116,7 +2116,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 502);
         assertEquals(await response.json(), {
           error: "upstream_request_failed",
-          detail: "transport down",
+          detail: "internal_error",
         });
       });
     },
@@ -2319,7 +2319,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 500);
         assertEquals(await response.json(), {
           error: "user_lookup_failed",
-          detail: "db blew up",
+          detail: "internal_error",
         });
       });
 
@@ -2457,7 +2457,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(await response.json(), {
           error: "openrouter_request_failed",
           status: 500,
-          detail: "batch upstream failed",
+          detail: "internal_error",
         });
       });
 
@@ -2526,7 +2526,7 @@ Deno.test("AI edge entrypoints cover guardrails and failure responses", async (t
         assertEquals(response.status, 502);
         assertEquals(await response.json(), {
           error: "upstream_request_failed",
-          detail: "network broke",
+          detail: "internal_error",
         });
       });
 
@@ -2637,7 +2637,7 @@ Deno.test("analyze-batch-recipe-image sanitizes prompt fallbacks and stringifies
     assertEquals(response.status, 502);
     assertEquals(await response.json(), {
       error: "upstream_request_failed",
-      detail: "socket closed",
+      detail: "internal_error",
     });
   });
 });

@@ -198,7 +198,7 @@ Deno.test("resolveUserContext maps auth, lookup, not-found, and rate-limit failu
         assertEquals(result.response.status, 500);
         assertEquals(await result.response.json(), {
           error: "user_lookup_failed",
-          detail: "query cancelled",
+          detail: "internal_error",
         });
       }
     });

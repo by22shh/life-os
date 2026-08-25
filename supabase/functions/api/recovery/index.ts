@@ -3,7 +3,10 @@ import {
   parseLocalDateParam,
   safeTimeZone,
 } from "../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -58,7 +61,7 @@ Deno.serve(async (request) => {
     if (todayError) {
       return jsonWithRequest(request, {
         error: "recovery_fetch_failed",
-        detail: todayError.message,
+        detail: sanitizedInternalDetail(request, "index", todayError),
       }, 500);
     }
 
@@ -77,7 +80,7 @@ Deno.serve(async (request) => {
       if (fallbackError) {
         return jsonWithRequest(request, {
           error: "recovery_fetch_failed",
-          detail: fallbackError.message,
+          detail: sanitizedInternalDetail(request, "index", fallbackError),
         }, 500);
       }
       row = fallbackRow;
@@ -153,7 +156,7 @@ Deno.serve(async (request) => {
     if (error) {
       return jsonWithRequest(request, {
         error: "recovery_fetch_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
     if (!row) {
@@ -198,7 +201,7 @@ Deno.serve(async (request) => {
     if (error) {
       return jsonWithRequest(request, {
         error: "recovery_trend_fetch_failed",
-        detail: error.message,
+        detail: sanitizedInternalDetail(request, "index", error),
       }, 500);
     }
 

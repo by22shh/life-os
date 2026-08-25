@@ -1,6 +1,9 @@
 import { parseLocalDateParam } from "../../../_shared/date_range.ts";
 import { generateAndPersistDailyInsights } from "../../../_shared/daily_insights.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -31,7 +34,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     return jsonWithRequest(request, {
       error: "daily_insights_generation_failed",
-      detail: error instanceof Error ? error.message : String(error),
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 });

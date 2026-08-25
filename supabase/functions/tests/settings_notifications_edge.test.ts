@@ -858,7 +858,7 @@ Deno.test("notification settings edge handler enforces guardian invariants and p
         assertEquals(response.status, 500);
         const payload = await response.json();
         assertEquals(payload.error, "feature_flags_resolve_failed");
-        assertStringIncludes(payload.detail, "FetchError");
+        assertEquals(payload.detail, "internal_error");
       });
     },
   );

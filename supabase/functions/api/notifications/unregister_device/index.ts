@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { handleCors } from "../../../_shared/cors.ts";
@@ -66,7 +67,7 @@ Deno.serve(async (request) => {
   if (userLookupError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", userLookupError),
     }, 500);
   }
   if (!userRow) {
@@ -100,7 +101,7 @@ Deno.serve(async (request) => {
   if (revokeError) {
     return jsonWithRequest(request, {
       error: "push_device_unregister_failed",
-      detail: revokeError.message,
+      detail: sanitizedInternalDetail(request, "index", revokeError),
     }, 500);
   }
 

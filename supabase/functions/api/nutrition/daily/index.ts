@@ -1,5 +1,8 @@
 import { parseRequiredLocalDate } from "../../../_shared/date_range.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -58,7 +61,7 @@ Deno.serve(async (request) => {
   if (logsError) {
     return jsonWithRequest(request, {
       error: "food_logs_fetch_failed",
-      detail: logsError.message,
+      detail: sanitizedInternalDetail(request, "index", logsError),
     }, 500);
   }
 
@@ -72,7 +75,7 @@ Deno.serve(async (request) => {
   if (targetError) {
     return jsonWithRequest(request, {
       error: "nutrition_target_fetch_failed",
-      detail: targetError.message,
+      detail: sanitizedInternalDetail(request, "index", targetError),
     }, 500);
   }
 

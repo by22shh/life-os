@@ -2,6 +2,7 @@ import {
   anonClient,
   jsonWithRequest,
   parseBearer,
+  sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
@@ -73,7 +74,7 @@ Deno.serve(async (request) => {
   if (userLookupError) {
     return jsonWithRequest(request, {
       error: "user_lookup_failed",
-      detail: userLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", userLookupError),
     }, 500);
   }
   if (!userRow) {
@@ -99,7 +100,7 @@ Deno.serve(async (request) => {
   if (existingLookupError) {
     return jsonWithRequest(request, {
       error: "menstrual_lookup_failed",
-      detail: existingLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", existingLookupError),
     }, 500);
   }
   if (existingRow && existingRow.user_id !== userRow.id) {
@@ -119,7 +120,7 @@ Deno.serve(async (request) => {
     if (deleteError) {
       return jsonWithRequest(request, {
         error: "menstrual_delete_failed",
-        detail: deleteError.message,
+        detail: sanitizedInternalDetail(request, "index", deleteError),
       }, 500);
     }
     return jsonWithRequest(request, { ok: true });
@@ -160,7 +161,7 @@ Deno.serve(async (request) => {
   if (upsertError) {
     return jsonWithRequest(request, {
       error: "menstrual_sync_failed",
-      detail: upsertError.message,
+      detail: sanitizedInternalDetail(request, "index", upsertError),
     }, 500);
   }
 

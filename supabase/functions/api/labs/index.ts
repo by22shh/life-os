@@ -6,7 +6,10 @@ import {
   type MedicalScanPrivacySettings,
   pruneExpiredMedicalScanArtifacts,
 } from "../../_shared/medical_scan_privacy.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import { readJsonBody } from "../../_shared/request_limits.ts";
 import {
   handleCorsPreflight,
@@ -159,7 +162,7 @@ async function handleScanCreate(
   if (existingScanError) {
     return jsonWithRequest(request, {
       error: "scan_lookup_failed",
-      detail: existingScanError.message,
+      detail: sanitizedInternalDetail(request, "index", existingScanError),
     }, 500);
   }
 
@@ -318,7 +321,7 @@ async function handleScanCreate(
   if (scanError) {
     return jsonWithRequest(request, {
       error: "scan_create_failed",
-      detail: scanError.message,
+      detail: sanitizedInternalDetail(request, "index", scanError),
     }, 500);
   }
 
@@ -334,7 +337,11 @@ async function handleScanCreate(
   if (existingMeasurementsResult.error) {
     return jsonWithRequest(request, {
       error: "scan_measurements_lookup_failed",
-      detail: existingMeasurementsResult.error.message,
+      detail: sanitizedInternalDetail(
+        request,
+        "index",
+        existingMeasurementsResult.error,
+      ),
     }, 500);
   }
 
@@ -385,7 +392,7 @@ async function handleScanCreate(
     if (markerError) {
       return jsonWithRequest(request, {
         error: "scan_markers_upsert_failed",
-        detail: markerError.message,
+        detail: sanitizedInternalDetail(request, "index", markerError),
       }, 500);
     }
   }
@@ -405,7 +412,7 @@ async function handleScanCreate(
       if (deleteError) {
         return jsonWithRequest(request, {
           error: "scan_markers_delete_failed",
-          detail: deleteError.message,
+          detail: sanitizedInternalDetail(request, "index", deleteError),
         }, 500);
       }
     }
@@ -441,7 +448,7 @@ async function handleScanGet(
   if (error) {
     return jsonWithRequest(request, {
       error: "scan_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!row) {
@@ -486,7 +493,7 @@ async function handleMarkersLatest(
   if (error) {
     return jsonWithRequest(request, {
       error: "marker_history_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -539,14 +546,14 @@ async function handleMarkersHistory(
   if (markerRes.error) {
     return jsonWithRequest(request, {
       error: "marker_catalog_fetch_failed",
-      detail: markerRes.error.message,
+      detail: sanitizedInternalDetail(request, "index", markerRes.error),
     }, 500);
   }
 
   if (historyRes.error) {
     return jsonWithRequest(request, {
       error: "marker_history_fetch_failed",
-      detail: historyRes.error.message,
+      detail: sanitizedInternalDetail(request, "index", historyRes.error),
     }, 500);
   }
 

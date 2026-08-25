@@ -5,7 +5,10 @@ import {
   safeTimeZone,
   utcOffsetMinutesAt,
 } from "../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -140,7 +143,7 @@ async function handleCheck(
   if (error) {
     return jsonWithRequest(request, {
       error: "wellness_check_create_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -187,7 +190,7 @@ async function handleHistory(
   if (error) {
     return jsonWithRequest(request, {
       error: "wellness_history_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 

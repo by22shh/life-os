@@ -5,7 +5,10 @@ import {
   safeTimeZone,
 } from "../../../_shared/date_range.ts";
 import { isLocalDate } from "../../../_shared/datetime.ts";
-import { jsonWithRequest } from "../../../_shared/supabase.ts";
+import {
+  jsonWithRequest,
+  sanitizedInternalDetail,
+} from "../../../_shared/supabase.ts";
 import {
   handleCorsPreflight,
   resolveUserContext,
@@ -174,7 +177,7 @@ async function handleList(
   if (error) {
     return jsonWithRequest(request, {
       error: "batch_list_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -215,7 +218,7 @@ async function handleGetDetail(
   if (error) {
     return jsonWithRequest(request, {
       error: "batch_fetch_failed",
-      detail: error.message,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
   if (!row) {
@@ -234,7 +237,7 @@ async function handleGetDetail(
   if (ingredientsError) {
     return jsonWithRequest(request, {
       error: "batch_ingredients_fetch_failed",
-      detail: ingredientsError.message,
+      detail: sanitizedInternalDetail(request, "index", ingredientsError),
     }, 500);
   }
 
@@ -276,7 +279,7 @@ async function handleCreate(
   if (existingLookupError) {
     return jsonWithRequest(request, {
       error: "batch_fetch_failed",
-      detail: existingLookupError.message,
+      detail: sanitizedInternalDetail(request, "index", existingLookupError),
     }, 500);
   }
 
@@ -308,7 +311,7 @@ async function handleCreate(
     if (updateError) {
       return jsonWithRequest(request, {
         error: "batch_create_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       }, 500);
     }
 
@@ -320,7 +323,7 @@ async function handleCreate(
     if (ingredientError) {
       return jsonWithRequest(request, {
         error: "batch_ingredients_create_failed",
-        detail: ingredientError,
+        detail: sanitizedInternalDetail(request, "index", ingredientError),
       }, 500);
     }
 
@@ -339,7 +342,7 @@ async function handleCreate(
   if (insertError) {
     return jsonWithRequest(request, {
       error: "batch_create_failed",
-      detail: insertError.message,
+      detail: sanitizedInternalDetail(request, "index", insertError),
     }, 500);
   }
 
@@ -351,7 +354,7 @@ async function handleCreate(
   if (ingredientError) {
     return jsonWithRequest(request, {
       error: "batch_ingredients_create_failed",
-      detail: ingredientError,
+      detail: sanitizedInternalDetail(request, "index", ingredientError),
     }, 500);
   }
 
@@ -379,7 +382,7 @@ async function handlePatch(
   if (existingError) {
     return jsonWithRequest(request, {
       error: "batch_fetch_failed",
-      detail: existingError.message,
+      detail: sanitizedInternalDetail(request, "index", existingError),
     }, 500);
   }
   if (!existing) {
@@ -495,7 +498,11 @@ async function handlePatch(
   if (previousIngredientsResponse?.error) {
     return jsonWithRequest(request, {
       error: "batch_ingredients_fetch_failed",
-      detail: previousIngredientsResponse.error.message,
+      detail: sanitizedInternalDetail(
+        request,
+        "index",
+        previousIngredientsResponse.error,
+      ),
     }, 500);
   }
   const previousIngredients = previousIngredientsResponse?.data ?? [];
@@ -531,7 +538,7 @@ async function handlePatch(
   if (updateError) {
     return jsonWithRequest(request, {
       error: "batch_update_failed",
-      detail: updateError.message,
+      detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
 
@@ -551,7 +558,7 @@ async function handlePatch(
       await replaceBatchIngredients(service, batchId, previousIngredients);
       return jsonWithRequest(request, {
         error: "batch_ingredients_insert_failed",
-        detail: replaceError,
+        detail: sanitizedInternalDetail(request, "index", replaceError),
       }, 500);
     }
   }
@@ -581,7 +588,7 @@ async function handleLog(
   if (batchError) {
     return jsonWithRequest(request, {
       error: "batch_fetch_failed",
-      detail: batchError.message,
+      detail: sanitizedInternalDetail(request, "index", batchError),
     }, 500);
   }
   if (!batch) {
@@ -605,7 +612,7 @@ async function handleLog(
   if (existingLogError) {
     return jsonWithRequest(request, {
       error: "food_log_lookup_failed",
-      detail: existingLogError.message,
+      detail: sanitizedInternalDetail(request, "index", existingLogError),
     }, 500);
   }
 
@@ -618,7 +625,7 @@ async function handleLog(
   if (existingItemError) {
     return jsonWithRequest(request, {
       error: "food_item_lookup_failed",
-      detail: existingItemError.message,
+      detail: sanitizedInternalDetail(request, "index", existingItemError),
     }, 500);
   }
   const isReplay = existingLog != null || existingItem != null;
@@ -701,7 +708,7 @@ async function handleLog(
     if (foodLogError) {
       return jsonWithRequest(request, {
         error: "food_log_insert_failed",
-        detail: foodLogError.message,
+        detail: sanitizedInternalDetail(request, "index", foodLogError),
       }, 500);
     }
   }
@@ -728,7 +735,7 @@ async function handleLog(
     if (foodItemError) {
       return jsonWithRequest(request, {
         error: "food_item_insert_failed",
-        detail: foodItemError.message,
+        detail: sanitizedInternalDetail(request, "index", foodItemError),
       }, 500);
     }
   }
@@ -737,7 +744,7 @@ async function handleLog(
   if (usageError) {
     return jsonWithRequest(request, {
       error: "batch_usage_update_failed",
-      detail: usageError,
+      detail: sanitizedInternalDetail(request, "index", usageError),
     }, 500);
   }
 
@@ -778,7 +785,7 @@ async function handleDuplicate(
   if (batchError) {
     return jsonWithRequest(request, {
       error: "batch_fetch_failed",
-      detail: batchError.message,
+      detail: sanitizedInternalDetail(request, "index", batchError),
     }, 500);
   }
   if (!batch) {
@@ -797,7 +804,7 @@ async function handleDuplicate(
   if (ingredientsError) {
     return jsonWithRequest(request, {
       error: "batch_ingredients_fetch_failed",
-      detail: ingredientsError.message,
+      detail: sanitizedInternalDetail(request, "index", ingredientsError),
     }, 500);
   }
 
@@ -819,7 +826,7 @@ async function handleDuplicate(
   if (existingReplayError) {
     return jsonWithRequest(request, {
       error: "batch_duplicate_failed",
-      detail: existingReplayError.message,
+      detail: sanitizedInternalDetail(request, "index", existingReplayError),
     }, 500);
   }
 
@@ -864,7 +871,7 @@ async function handleDuplicate(
     if (updateError) {
       return jsonWithRequest(request, {
         error: "batch_duplicate_failed",
-        detail: updateError.message,
+        detail: sanitizedInternalDetail(request, "index", updateError),
       }, 500);
     }
 
@@ -879,7 +886,11 @@ async function handleDuplicate(
     if (ingredientRepairError) {
       return jsonWithRequest(request, {
         error: "batch_duplicate_ingredients_failed",
-        detail: ingredientRepairError,
+        detail: sanitizedInternalDetail(
+          request,
+          "index",
+          ingredientRepairError,
+        ),
       }, 500);
     }
 
@@ -898,7 +909,7 @@ async function handleDuplicate(
   if (createError) {
     return jsonWithRequest(request, {
       error: "batch_duplicate_failed",
-      detail: createError.message,
+      detail: sanitizedInternalDetail(request, "index", createError),
     }, 500);
   }
 
@@ -914,7 +925,7 @@ async function handleDuplicate(
   if (ingredientInsertError) {
     return jsonWithRequest(request, {
       error: "batch_duplicate_ingredients_failed",
-      detail: ingredientInsertError,
+      detail: sanitizedInternalDetail(request, "index", ingredientInsertError),
     }, 500);
   }
 
