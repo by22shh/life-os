@@ -393,7 +393,10 @@ Deno.test("AI edge entrypoints cover success paths and upstream shaping", async 
 
         assertStringIncludes(prompt, "BARCODES: 4601234567890, 012345678905");
         assertStringIncludes(prompt, "Recovery score: 100");
-        assertStringIncludes(prompt, "OCR HINT:\nsalmon bowl");
+        assertStringIncludes(
+          prompt,
+          "OCR HINT:\n<ocr_hint>salmon bowl</ocr_hint>",
+        );
         assertEquals(
           (userContent[1].image_url as { url: string }).url,
           TINY_PNG_DATA_URL,
