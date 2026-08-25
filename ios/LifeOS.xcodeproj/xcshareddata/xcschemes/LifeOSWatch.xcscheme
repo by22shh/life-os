@@ -43,7 +43,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B1C2D3E4F5A6012345678906"
+               BlueprintIdentifier = "91AFAB11EA9B5CB8451DE658"
                BuildableName = "LifeOSWatchTests.xctest"
                BlueprintName = "LifeOSWatchTests"
                ReferencedContainer = "container:LifeOS.xcodeproj">
@@ -72,7 +72,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B1C2D3E4F5A6012345678906"
+               BlueprintIdentifier = "91AFAB11EA9B5CB8451DE658"
                BuildableName = "LifeOSWatchTests.xctest"
                BlueprintName = "LifeOSWatchTests"
                ReferencedContainer = "container:LifeOS.xcodeproj">

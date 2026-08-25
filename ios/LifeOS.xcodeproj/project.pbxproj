@@ -6,18 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
-		/* Begin PBXBuildFile section */
-			04BE15D06E9DE136151C43E0 /* DailyInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FDA7DC511BFEE28F9B0BAF /* DailyInsightsService.swift */; };
-			04E298C661C3C7920632CF35 /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9435A92F23B389AA628BBAC1 /* DeepLinkRouter.swift */; };
-			04E89AC3350556CCDC1BB712 /* TrainingSyncHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D23D891C6750642F3537759 /* TrainingSyncHandler.swift */; };
-			D0A000000000000000000011 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0A000000000000000000001 /* PrivacyInfo.xcprivacy */; };
-			D0A000000000000000000012 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0A000000000000000000002 /* PrivacyInfo.xcprivacy */; };
-			D0A000000000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0A000000000000000000003 /* PrivacyInfo.xcprivacy */; };
-			D0A000000000000000000014 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0A000000000000000000004 /* PrivacyInfo.xcprivacy */; };
-			D0A000000000000000000015 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0A000000000000000000005 /* PrivacyInfo.xcprivacy */; };
-			0574C51D94E0D02C9A1FF27E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAC4C99D5F268782B53AA99 /* OnboardingView.swift */; };
+/* Begin PBXBuildFile section */
+		04BE15D06E9DE136151C43E0 /* DailyInsightsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FDA7DC511BFEE28F9B0BAF /* DailyInsightsService.swift */; };
+		04E298C661C3C7920632CF35 /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9435A92F23B389AA628BBAC1 /* DeepLinkRouter.swift */; };
+		04E89AC3350556CCDC1BB712 /* TrainingSyncHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D23D891C6750642F3537759 /* TrainingSyncHandler.swift */; };
+		0574C51D94E0D02C9A1FF27E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAC4C99D5F268782B53AA99 /* OnboardingView.swift */; };
 		06D3284D15438930F18B64DB /* DailyInsightsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4766CC6359DE68D6E1EF79 /* DailyInsightsServiceTests.swift */; };
 		074D34D08B002F59AE1956DB /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 905E205C950C619B3FCCEC7F /* ComposableArchitecture */; };
+		096D85F04B1DD98B76B52CB9 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 88C805B317D30432F1565950 /* PrivacyInfo.xcprivacy */; };
 		0A9B8E878B82579118639FAC /* NotificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F7F087E15B0F2C855D357F /* NotificationEngine.swift */; };
 		0B632EF743440EA2BB912596 /* NutritionCleanupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5376714F4C35D2808CB123F /* NutritionCleanupService.swift */; };
 		0FAFE84F3FA43CA74C5DE45A /* health_marker_catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 5D67D466F4895DC671E647FF /* health_marker_catalog.json */; };
@@ -28,16 +24,18 @@
 		137D8A395B64BE92D04E6B93 /* SupplementModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0195D84581858DD692FFE025 /* SupplementModels.swift */; };
 		13DB2F83457A101875DF2D93 /* LifeOSComplications.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D28170980048CB49F472F285 /* LifeOSComplications.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		16047C0663E2B512154FD30D /* NutritionSyncHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B59F7080781885906DCAAA97 /* NutritionSyncHandler.swift */; };
+		176DAD31A1DF4280D6065D74 /* NutritionSupportAndHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FCBD8549D44DF77082D03C /* NutritionSupportAndHarness.swift */; };
 		17891261BD6B4326EB4374D1 /* WatchHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73F69DB0BA81481E99B99B1 /* WatchHomeView.swift */; };
 		183E4AF8F214306C713CD402 /* SleepScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A9CDC8CD5CCD8914A6D808 /* SleepScorer.swift */; };
 		18532F0EB4C916F38E490750 /* AccessibilityContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72198A4A95AF14DB89F5CEA8 /* AccessibilityContractTests.swift */; };
 		1A242C317A64DC34A10FE006 /* RecoveryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91546B0EC7E52961AF33F9A /* RecoveryModels.swift */; };
 		1A87571678734214E16629FA /* ComplicationEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F61ED8B598A69776A55FDD /* ComplicationEntry.swift */; };
+		1A966EDA1B390CF0525836BD /* NutritionCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F388D458D0BA733AEBDD835E /* NutritionCalendarView.swift */; };
 		1CA47F12DF906A8C3A69025E /* HealthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A326DC99FF3C03590D87A9 /* HealthModels.swift */; };
+		1CD2852B414C11FB18A3647C /* NutritionAIServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C36E8FEFBB24AFAFAEFA45D /* NutritionAIServices.swift */; };
 		1D5E082D255772D2BC59D8AD /* HistoricalLocalDayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8CB1B5EE1D4F4676339EAB /* HistoricalLocalDayContext.swift */; };
 		1D6785721716E8EB481051A9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DBABCA5316958A86C1537C77 /* Assets.xcassets */; };
 		1F11CBB1210CEB4508AAEF16 /* RealDeviceSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB7B9EBA1DE40535D3852D00 /* RealDeviceSmokeTests.swift */; };
-		A7F0C1D2E3B4456789ABCD02 /* LabsViewCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0C1D2E3B4456789ABCD01 /* LabsViewCoverageTests.swift */; };
 		1F4476AC0A4D671BC526057C /* LabsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = C04A1FB5B0E393D3DD969D3A /* LabsFeature.swift */; };
 		1FAB63F06272F70F83CF0F3C /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61718BD4FBB66F7B9B7D540 /* KeychainHelper.swift */; };
 		1FD4F89181439BAE96A93B15 /* NutritionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2810102D93BA0E3DCDC93 /* NutritionModels.swift */; };
@@ -98,6 +96,7 @@
 		48D9B3B1E12EFCABA32055C0 /* UserModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB77AC9722B33AFD61F3247 /* UserModels.swift */; };
 		490F5AD3CA61E51F828B2881 /* user_food.json in Resources */ = {isa = PBXBuildFile; fileRef = 60898D8106D2CDA8067D768F /* user_food.json */; };
 		4AF574CD8E56ACDEE6FC7E30 /* HealthMeasurementContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1E61E54B008C7192340EE0 /* HealthMeasurementContractTests.swift */; };
+		4BCE466540D94DE38BB8D975 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A3B831458BCBD35AD50E6D14 /* PrivacyInfo.xcprivacy */; };
 		4C279FAA145601E2E4B7B0BD /* medical_scan.json in Resources */ = {isa = PBXBuildFile; fileRef = ECD012D1E29FF428FA71BE19 /* medical_scan.json */; };
 		4D1055F6E4E648F61CCD8574 /* SleepTargetEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD691EAA8430928FFDEFFC13 /* SleepTargetEngineTests.swift */; };
 		4F5A9708FA5756074BC2B5EE /* WeeklyStrategyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F140275C8CD37EC754053870 /* WeeklyStrategyService.swift */; };
@@ -107,7 +106,9 @@
 		5359287DAFDE1D59BBE0A0FD /* ExerciseCatalogSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4733F1387F6C77CEC9FD20 /* ExerciseCatalogSupport.swift */; };
 		53E17E9F523FB6C13E7883C5 /* SleepDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48067AE8E027C74EDFA54411 /* SleepDayView.swift */; };
 		549420D6250CF68369E7DA4B /* user_health_flags.json in Resources */ = {isa = PBXBuildFile; fileRef = 92509D841F22E251D0D3A629 /* user_health_flags.json */; };
+		56549888CD1B16A8CD30B712 /* LabsViewCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F209E1BFBF2D11CA80E32F0B /* LabsViewCoverageTests.swift */; };
 		56F48D73657ACC86E8B7E304 /* RecoveryZoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633E17537A0946E7F2F26E1A /* RecoveryZoneTests.swift */; };
+		57C3DFB868BE0C591FAC2F00 /* NutritionMealTemplateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3647FC78EE408CBEE6A35CAE /* NutritionMealTemplateViews.swift */; };
 		5877AA4BDBACAE7F2604A19B /* AdditionalModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DC8C6DAD684E6E4D6C9C79 /* AdditionalModelsTests.swift */; };
 		5956A07C97295DEE977A1E49 /* HealthSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0242CA2671460FE34AC82F9D /* HealthSyncManager.swift */; };
 		596EAD5C98639D4533A44636 /* health_measurement.json in Resources */ = {isa = PBXBuildFile; fileRef = E4C8F5D365ABB2F7C476E020 /* health_measurement.json */; };
@@ -119,6 +120,7 @@
 		5FFAFA965E7E6B5688EFF720 /* privacy_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = C080559661871C098B48935E /* privacy_settings.json */; };
 		6016A55707552119459AD5F1 /* training_template.json in Resources */ = {isa = PBXBuildFile; fileRef = 24466D0C3C3A762F8C5C32CF /* training_template.json */; };
 		630F7CE237A2382F35A06DEE /* SleepTargetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68F7E0AD50363D1B2EB041F /* SleepTargetEngine.swift */; };
+		63D2EEF2E0C9B0F6BF8EC605 /* NutritionSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3258DF5E63D367A1299BBFBF /* NutritionSearchView.swift */; };
 		65438B7612B3B1FEEC393979 /* UserIdentityReconcilerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8084A58043C1E17D1E20BAEE /* UserIdentityReconcilerTests.swift */; };
 		665CA5C03D52CA823F8346B9 /* SleepLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1AFE97453FF9C609F96793 /* SleepLog.swift */; };
 		672942822A4DA9FF72B29D92 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83FAAEACA5D7A8F36885929B /* SupabaseConfig.swift */; };
@@ -131,10 +133,10 @@
 		6C98F0D9CFB07F12904093C8 /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A50310513916A3DBC3941BB /* WatchSnapshotStore.swift */; };
 		6DD0A6854BB017C28A1B4220 /* WidgetSnapshotShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63890DD1964875A8DCC3068E /* WidgetSnapshotShared.swift */; };
 		6E8FF698F646245CE251383A /* WidgetSnapshotCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FE9C2A01B842DA98D9B00C /* WidgetSnapshotCoordinator.swift */; };
+		6F8A30FA9A5DA51841C6F4D8 /* AccessibilityAuditUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500C90FCC2165C2FA359786F /* AccessibilityAuditUITests.swift */; };
 		703827A30A987B146AEE95F3 /* BiometricAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9E46180083D6ED4345FA54 /* BiometricAuthManager.swift */; };
 		712C9FF4E504EDDDCE616A10 /* MenstrualStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F6333AD126E7E0CCEF8FBF0 /* MenstrualStoreTests.swift */; };
 		7295658D71AB2EE6A4C1A136 /* TrainingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8336598F8C1D79F487BC653 /* TrainingServiceTests.swift */; };
-		1C2A07B2A6EB4CE0869626DD /* TrainingCalendarSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7224E32AC9C144308F6A0ADF /* TrainingCalendarSupportTests.swift */; };
 		7353D0A322E1D2CB5D304E38 /* NotificationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C1B315EB98D88FFB88E30A /* NotificationEngineTests.swift */; };
 		745423AAE4E697A1E696600E /* AppCapabilityAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ABE15653963BF8FF7B7328 /* AppCapabilityAvailability.swift */; };
 		75A4784297EE2BF9BC6FFAEC /* exercise_catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 286E894C12C463692728593A /* exercise_catalog.json */; };
@@ -165,6 +167,7 @@
 		8FF27734CBAF51A7338B7193 /* AuthCallbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB8C4B88D428528B1F468EE /* AuthCallbackView.swift */; };
 		91DDD026625F9D88B3DA479D /* NutritionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74345D168478B833DE18D81A /* NutritionServiceTests.swift */; };
 		92018028F4A335C80DA8F514 /* AppErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7933D39313A94E5E16944378 /* AppErrors.swift */; };
+		9484EA10856D653E8CE5CCD9 /* LifeOSWatchCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F741918BCD2A58BFB8363D2B /* LifeOSWatchCoverageTests.swift */; };
 		94E69A43D2228F011C76B91F /* RecoveryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9CE6FDD8E75CD5911C50155 /* RecoveryEngine.swift */; };
 		94F2432FED63E00B4992A5AE /* LockedTestOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196560D2B22E5588EAFF3C81 /* LockedTestOverride.swift */; };
 		9521C87A458BC0F2F62930B2 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C669258067AC0B2D1C7F96F /* HealthKitManager.swift */; };
@@ -192,6 +195,7 @@
 		AD9D9BBFD5DAE20C7AAC3FC5 /* batch_recipe_ingredient.json in Resources */ = {isa = PBXBuildFile; fileRef = 86C6AC66CF235B7958FC4F3D /* batch_recipe_ingredient.json */; };
 		AE053AA592FC42029A94056E /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCE2097CA6510028639766D /* DateFormatting.swift */; };
 		AFA8A5D038B636CD59083088 /* sleep_log.json in Resources */ = {isa = PBXBuildFile; fileRef = 4BE1CACC3B421DBA22F2529D /* sleep_log.json */; };
+		AFB63789F069DE21B3F68C09 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CC09B5F0C3CC08FBC2E4463B /* PrivacyInfo.xcprivacy */; };
 		B2405ABCA786379D1FB93601 /* wellness_check.json in Resources */ = {isa = PBXBuildFile; fileRef = 101E9AEFDB37500785F4328A /* wellness_check.json */; };
 		B2573FA78360C15AF6C32CB7 /* SyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB25325089892517319B1F2 /* SyncModels.swift */; };
 		B2D1ADF2B1EB0955E5449CB1 /* LifeOSAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEEDFAFE54EED3D2CE0711F /* LifeOSAppDelegate.swift */; };
@@ -205,6 +209,7 @@
 		B88B2A77C03CE69D2850DAAE /* AuthManagerOnboardingFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C123DECF9371D95A2EF344A /* AuthManagerOnboardingFlowTests.swift */; };
 		B89E2C57F24C5C36B12E09BA /* CoverageFinalPushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016F979BF5C78D22538DFC57 /* CoverageFinalPushTests.swift */; };
 		BB1319D55142E9F3654DBF62 /* meal_template.json in Resources */ = {isa = PBXBuildFile; fileRef = 6009E9CEEB286986A5B60680 /* meal_template.json */; };
+		BC0EB6B79619C694E7F73968 /* NutritionSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E29C593CD789B060DA5DF55 /* NutritionSpeechRecognizer.swift */; };
 		BDBD26BEAE6EEF97833CF6AB /* LabsPrivacySettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F789E2491511A9C62AF01D4 /* LabsPrivacySettingsTests.swift */; };
 		C04702509504777585D05050 /* hydration_log.json in Resources */ = {isa = PBXBuildFile; fileRef = EC7CA6648023B10EEB601C5D /* hydration_log.json */; };
 		C080A9F64483F0A4A6847227 /* recommendation.json in Resources */ = {isa = PBXBuildFile; fileRef = EC509D59EED3015A7EC8D510 /* recommendation.json */; };
@@ -213,21 +218,24 @@
 		C453D5FB20179B3D2794C13C /* experiment.json in Resources */ = {isa = PBXBuildFile; fileRef = 6FDB2545C47B66A251C2EAFA /* experiment.json */; };
 		C471D4222454F15A43015C79 /* PerformanceBudgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C972FC0A3B1440D713271D91 /* PerformanceBudgetTests.swift */; };
 		C5471D5A18D8DD37698CBC81 /* EndToEndScenariosUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914563A241728DF8C2908952 /* EndToEndScenariosUITests.swift */; };
-		C5A11A0D17571A0B00000001 /* AccessibilityAuditUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A11A0D17571A0B00000002 /* AccessibilityAuditUITests.swift */; };
+		C5FFD232C28871B8E061F529 /* TrainingCalendarSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78B98EB097F680126859363 /* TrainingCalendarSupportTests.swift */; };
 		C667C129B8298D9BA05F391B /* UserIdentityReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE4517037437EEB9EDB3A89 /* UserIdentityReconciler.swift */; };
 		C9606849C3CDD23C588D67BB /* TrainingZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1CC01D578A788AC1CE66D9 /* TrainingZone.swift */; };
 		C977A4C2899CC2C1A19B917C /* PerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0AB54E5C4E5D93BA45ADA0 /* PerformanceMonitor.swift */; };
 		CA407F631D53CF185BBD4AEE /* onboarding_state.json in Resources */ = {isa = PBXBuildFile; fileRef = 5791B92DBFA44E378BA16AC3 /* onboarding_state.json */; };
+		CAA36CD010D26C4CCAB1E39F /* NutritionCaptureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F03272AB99FF6A59203D29F /* NutritionCaptureViews.swift */; };
 		CB7EF0E0A202A3E42608835F /* CloudUserBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3D02C051D73672805FB54FA /* CloudUserBootstrapper.swift */; };
 		CC1E2EA0A41834066DEF0E76 /* DatabaseMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A90CA2357E4609E2632B90D /* DatabaseMigrationTests.swift */; };
 		CDE2FFEA4CE483BD616C5DD7 /* NutritionReviewGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A116C37E504684930C8A20 /* NutritionReviewGate.swift */; };
 		CE30784CB3281ECEDE06F700 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D292DDD80290BCD72AE2C7 /* InsightDetailView.swift */; };
 		D0F1B6CDD04DDC2CDD277225 /* MainTabViewBadgeObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABFF9354B54D55F27BCD6A4 /* MainTabViewBadgeObservationTests.swift */; };
+		D24D1E2A461B0798459779E6 /* LifeOSWidgetExtensionCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29F8067FDB9E8D84372550E /* LifeOSWidgetExtensionCoverageTests.swift */; };
 		D4708204EBEF0BECD36C6E4B /* SetupChecklistFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7503B3EBC7D1AE7C3D3A28DC /* SetupChecklistFeatureTests.swift */; };
 		D533ECB6BD1C6B22AEBCE1C9 /* GuardianMonitorIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDFA43EB22195A5605D65EC /* GuardianMonitorIdentifiers.swift */; };
 		D67E540131629C44B645D3F3 /* WidgetSnapshotCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317C921F1A90FE3E142C1CD8 /* WidgetSnapshotCoordinatorTests.swift */; };
 		DABD052C18848E8E8BD3D1B8 /* LifeOSWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5D961E2243263D86652AB4 /* LifeOSWatchApp.swift */; };
 		DB447981CC17BF73980F4453 /* supplement_log.json in Resources */ = {isa = PBXBuildFile; fileRef = B4A63952DB4679E4879E31B3 /* supplement_log.json */; };
+		DC8753CCFC1B2CB164D848DE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FC5EBAF7F7141BEF472EFC4B /* PrivacyInfo.xcprivacy */; };
 		DD4EF0D59620A60426E6482E /* ModelCoverageExpansionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544A997CAB044F1B8C72C496 /* ModelCoverageExpansionTests.swift */; };
 		DDA5E4879E03BD0DFF188960 /* EnvironmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 746B4F02B4B79ADD83A141AE /* EnvironmentService.swift */; };
 		DDAB91A74A8A88DDA7CD06CB /* food_item.json in Resources */ = {isa = PBXBuildFile; fileRef = 4165AC9A0CF50F6C4E8456E8 /* food_item.json */; };
@@ -253,12 +261,18 @@
 		FDC787EFAB4FE3566AA9DE05 /* WidgetSnapshotShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63890DD1964875A8DCC3068E /* WidgetSnapshotShared.swift */; };
 		FDE38B6B314E969B3116BB63 /* BiometricLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837D8CB286E7111A59B7092F /* BiometricLockView.swift */; };
 		FEC2899A94C294EA7003A9F8 /* PrivacyGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D56DEC650606906B20EA1E3 /* PrivacyGateway.swift */; };
+		FEC6E9F234260E1E692D7790 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DABF221E9AF8399A7B03991A /* PrivacyInfo.xcprivacy */; };
 		FFE47606B07B73F44B39C3F6 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FE08E14E609556A625FF45A /* PushNotificationManager.swift */; };
-		A1B2C3D4E5F6012345678902 /* LifeOSWidgetExtensionCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6012345678901 /* LifeOSWidgetExtensionCoverageTests.swift */; };
-		B1C2D3E4F5A6012345678902 /* LifeOSWatchCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6012345678901 /* LifeOSWatchCoverageTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		00997ECB26CD939A2DC9AFC0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 238DE0A7A746E0273AAFBB97;
+			remoteInfo = LifeOSWatch;
+		};
 		36CC40404C0BF9783FFF4BD5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
@@ -273,28 +287,21 @@
 			remoteGlobalIDString = AD5DB9344CDCD6867ABB9D4E;
 			remoteInfo = LifeOS;
 		};
-		9D7AF965B9AEBD1673B589F2 /* PBXContainerItemProxy */ = {
+		38F633940A67AC5D80EE5554 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 9010D9F55325C4894C32EBBA;
-			remoteInfo = LifeOSComplications;
+			remoteGlobalIDString = AD5DB9344CDCD6867ABB9D4E;
+			remoteInfo = LifeOS;
 		};
-		A1B2C3D4E5F6012345678903 /* PBXContainerItemProxy */ = {
+		3BA38AB5638F3FA58CB725F8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 20BB86C8C788F078806A43FE;
 			remoteInfo = LifeOSWidgets;
 		};
-		B1C2D3E4F5A6012345678907 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 238DE0A7A746E0273AAFBB97;
-			remoteInfo = LifeOSWatch;
-		};
-		B1C2D3E4F5A6012345678908 /* PBXContainerItemProxy */ = {
+		9D7AF965B9AEBD1673B589F2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
 			proxyType = 1;
@@ -307,6 +314,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = AD5DB9344CDCD6867ABB9D4E;
 			remoteInfo = LifeOS;
+		};
+		F8FC88232A0CA2DE4C87CAEB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9010D9F55325C4894C32EBBA;
+			remoteInfo = LifeOSComplications;
 		};
 		FB45A49E796AA48760F547DF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -348,16 +362,7 @@
 		018F40F575A7937204D5C95F /* PerformanceHardGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceHardGateTests.swift; sourceTree = "<group>"; };
 		0195D84581858DD692FFE025 /* SupplementModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementModels.swift; sourceTree = "<group>"; };
 		02131BBCCB2CD8972A29BD8B /* FeatureFlagRefreshViewModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlagRefreshViewModifier.swift; sourceTree = "<group>"; };
-			0242CA2671460FE34AC82F9D /* HealthSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSyncManager.swift; sourceTree = "<group>"; };
-			D0A000000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-			D0A000000000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-			D0A000000000000000000003 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-			D0A000000000000000000004 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-			D0A000000000000000000005 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-			A1B2C3D4E5F6012345678901 /* LifeOSWidgetExtensionCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSWidgetExtensionCoverageTests.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6012345678905 /* LifeOSWidgetsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LifeOSWidgetsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1C2D3E4F5A6012345678901 /* LifeOSWatchCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSWatchCoverageTests.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6012345678904 /* LifeOSWatchTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LifeOSWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0242CA2671460FE34AC82F9D /* HealthSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSyncManager.swift; sourceTree = "<group>"; };
 		029D4F30B36B4AFA11AB64D3 /* FeatureFlagManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlagManagerTests.swift; sourceTree = "<group>"; };
 		045CDFCB85E3E4ADAD192488 /* batch_recipe.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = batch_recipe.json; sourceTree = "<group>"; };
 		07A6D396C27D29E9E5374552 /* CalendarRangeRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarRangeRoutes.swift; sourceTree = "<group>"; };
@@ -369,6 +374,7 @@
 		0C0B711C2F52C944E2C58215 /* experiment_measurement.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = experiment_measurement.json; sourceTree = "<group>"; };
 		0C3B45A0C6D2A17C0A94C4AC /* DesignAndSyncModelCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignAndSyncModelCoverageTests.swift; sourceTree = "<group>"; };
 		0D7BF5756CF9C907C36E5C7B /* SimulationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationViewModel.swift; sourceTree = "<group>"; };
+		0E29C593CD789B060DA5DF55 /* NutritionSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionSpeechRecognizer.swift; sourceTree = "<group>"; };
 		0F966CF991445737F65E7403 /* LifeOSComplications.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LifeOSComplications.entitlements; sourceTree = "<group>"; };
 		101E9AEFDB37500785F4328A /* wellness_check.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = wellness_check.json; sourceTree = "<group>"; };
 		11220B7DB6C493F348E88368 /* OnboardingFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFeature.swift; sourceTree = "<group>"; };
@@ -386,7 +392,6 @@
 		18AC900A75EDF7DF254BD8AF /* NutritionLogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionLogViewModel.swift; sourceTree = "<group>"; };
 		1955CF7FFAE338FF778AD2CE /* LabScanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabScanDetailView.swift; sourceTree = "<group>"; };
 		196560D2B22E5588EAFF3C81 /* LockedTestOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockedTestOverride.swift; sourceTree = "<group>"; };
-		A7F0C1D2E3B4456789ABCD01 /* LabsViewCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsViewCoverageTests.swift; sourceTree = "<group>"; };
 		19BAEF8740EE4E8B714FB6BA /* LocalPrivacyOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPrivacyOperations.swift; sourceTree = "<group>"; };
 		1A74BF7CF7FF98C5745246CF /* PushNotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManagerTests.swift; sourceTree = "<group>"; };
 		1AB3CAF5FE1EE903AC80CA52 /* GuardianActivityMonitorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuardianActivityMonitorExtension.swift; sourceTree = "<group>"; };
@@ -406,7 +411,9 @@
 		3078398BDE6C896822B1098F /* AIAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAvailability.swift; sourceTree = "<group>"; };
 		31273D02841C3E436B0BB2C0 /* WeightResolutionDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightResolutionDatabaseTests.swift; sourceTree = "<group>"; };
 		317C921F1A90FE3E142C1CD8 /* WidgetSnapshotCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotCoordinatorTests.swift; sourceTree = "<group>"; };
+		3258DF5E63D367A1299BBFBF /* NutritionSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionSearchView.swift; sourceTree = "<group>"; };
 		344BA9545C06AAF191AD325D /* SupplementsSyncHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementsSyncHandler.swift; sourceTree = "<group>"; };
+		3647FC78EE408CBEE6A35CAE /* NutritionMealTemplateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionMealTemplateViews.swift; sourceTree = "<group>"; };
 		36C2B2E87AA85B6EBE47FEC2 /* UserHealthFlagsCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserHealthFlagsCoverageTests.swift; sourceTree = "<group>"; };
 		373EF133AF7BD426C6CA5CB5 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		37B4F56F34701BF54A19E9AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -414,13 +421,16 @@
 		39CEF0AE7B1D6985877381DF /* TrainingDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingDayView.swift; sourceTree = "<group>"; };
 		3A75268BE3551B7CE45A4939 /* notification_settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = notification_settings.json; sourceTree = "<group>"; };
 		3BE4A3BA017DA12A7969D0E1 /* SyncEngineControlFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngineControlFlowTests.swift; sourceTree = "<group>"; };
+		3C36E8FEFBB24AFAFAEFA45D /* NutritionAIServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionAIServices.swift; sourceTree = "<group>"; };
 		3C86A0F4C92A4FFD6E6E39FF /* SyncContractFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncContractFixtures.swift; sourceTree = "<group>"; };
 		3CB8A65849883D30BD64AC74 /* GRDBRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRDBRecords.swift; sourceTree = "<group>"; };
 		3CE9F055BE54C94ECBBBAD21 /* food_catalog_item.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = food_catalog_item.json; sourceTree = "<group>"; };
 		3E3E8D320CAD3D20A5BB2EE4 /* SettingsSecurityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSecurityView.swift; sourceTree = "<group>"; };
+		3F03272AB99FF6A59203D29F /* NutritionCaptureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionCaptureViews.swift; sourceTree = "<group>"; };
 		3F9E46180083D6ED4345FA54 /* BiometricAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthManager.swift; sourceTree = "<group>"; };
 		3FE08E14E609556A625FF45A /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		40BDA9EF7799B7EFE9669D18 /* PredictionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictionServiceTests.swift; sourceTree = "<group>"; };
+		40FCBD8549D44DF77082D03C /* NutritionSupportAndHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionSupportAndHarness.swift; sourceTree = "<group>"; };
 		4165AC9A0CF50F6C4E8456E8 /* food_item.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = food_item.json; sourceTree = "<group>"; };
 		417F952F90F1E316207D65C9 /* TrainingPlanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingPlanService.swift; sourceTree = "<group>"; };
 		4199F9251BFA0655AC35B359 /* PredictiveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveModels.swift; sourceTree = "<group>"; };
@@ -428,6 +438,7 @@
 		4618D9858429A48844431A4E /* LabScanDetailViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabScanDetailViewModelTests.swift; sourceTree = "<group>"; };
 		46CC1F8F2180EA96DAEA62B6 /* health_diagnosis.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = health_diagnosis.json; sourceTree = "<group>"; };
 		48067AE8E027C74EDFA54411 /* SleepDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepDayView.swift; sourceTree = "<group>"; };
+		4BC6CDB8180B3E9579418722 /* LifeOSWidgetsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LifeOSWidgetsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4BE1CACC3B421DBA22F2529D /* sleep_log.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = sleep_log.json; sourceTree = "<group>"; };
 		4C6346C95AF128C307B370F5 /* LabsSyncHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsSyncHandler.swift; sourceTree = "<group>"; };
 		4C7B8C1B8BDECD0D55CE9073 /* PredictionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictionService.swift; sourceTree = "<group>"; };
@@ -435,6 +446,7 @@
 		4EB25325089892517319B1F2 /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
 		4FDB55842E91859AFF2110E1 /* MenstrualModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenstrualModels.swift; sourceTree = "<group>"; };
 		4FEF5D8B025CA555BD99034D /* WatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncManager.swift; sourceTree = "<group>"; };
+		500C90FCC2165C2FA359786F /* AccessibilityAuditUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditUITests.swift; sourceTree = "<group>"; };
 		503C10495E9A2B7176576B00 /* SleepSyncHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSyncHandler.swift; sourceTree = "<group>"; };
 		531B2C3B2E7BB9F84CF61D44 /* UITestBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestBootstrap.swift; sourceTree = "<group>"; };
 		53763637903345F3AA05B024 /* RateLimitPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateLimitPolicy.swift; sourceTree = "<group>"; };
@@ -498,6 +510,7 @@
 		8465B17621678BBAEB976E94 /* WatchSnapshotFallbackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotFallbackTests.swift; sourceTree = "<group>"; };
 		855D8717BD78527028459E2D /* menstrual_log.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = menstrual_log.json; sourceTree = "<group>"; };
 		86C6AC66CF235B7958FC4F3D /* batch_recipe_ingredient.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = batch_recipe_ingredient.json; sourceTree = "<group>"; };
+		88C805B317D30432F1565950 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8B41F187BAFD79954082EDBD /* LifeOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSApp.swift; sourceTree = "<group>"; };
 		8BAC4C99D5F268782B53AA99 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		8BC60511A1084284729E891E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -507,7 +520,6 @@
 		8FBDD84383FE54E0388BF1F3 /* TrainingCalendarSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingCalendarSupport.swift; sourceTree = "<group>"; };
 		8FC55A58DDB373DEFFB00088 /* WeightResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightResolution.swift; sourceTree = "<group>"; };
 		914563A241728DF8C2908952 /* EndToEndScenariosUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndToEndScenariosUITests.swift; sourceTree = "<group>"; };
-		C5A11A0D17571A0B00000002 /* AccessibilityAuditUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditUITests.swift; sourceTree = "<group>"; };
 		92509D841F22E251D0D3A629 /* user_health_flags.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = user_health_flags.json; sourceTree = "<group>"; };
 		929A918C5CD14A72652EBF00 /* RecoveryZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryZone.swift; sourceTree = "<group>"; };
 		92AADA17F9C3FBC31A608525 /* SupplementAndMenstrualModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplementAndMenstrualModelsTests.swift; sourceTree = "<group>"; };
@@ -519,6 +531,7 @@
 		9A5C113CE2969EFD6D2576E0 /* GuardianMonitorExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GuardianMonitorExtension.entitlements; sourceTree = "<group>"; };
 		9C123DECF9371D95A2EF344A /* AuthManagerOnboardingFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManagerOnboardingFlowTests.swift; sourceTree = "<group>"; };
 		9CB759595C79FC22F110B905 /* PredictiveModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveModelsTests.swift; sourceTree = "<group>"; };
+		A3B831458BCBD35AD50E6D14 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A5376714F4C35D2808CB123F /* NutritionCleanupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionCleanupService.swift; sourceTree = "<group>"; };
 		A62F588BD4715E4BCC6AD7E1 /* NutritionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionService.swift; sourceTree = "<group>"; };
 		A6A2AF638A2E362709559D07 /* LifeOSUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LifeOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -550,12 +563,15 @@
 		C04A1FB5B0E393D3DD969D3A /* LabsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsFeature.swift; sourceTree = "<group>"; };
 		C080559661871C098B48935E /* privacy_settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = privacy_settings.json; sourceTree = "<group>"; };
 		C1F7F087E15B0F2C855D357F /* NotificationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEngine.swift; sourceTree = "<group>"; };
+		C29F8067FDB9E8D84372550E /* LifeOSWidgetExtensionCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSWidgetExtensionCoverageTests.swift; sourceTree = "<group>"; };
 		C31FDC7941DA6C751A407C0F /* TrainingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingModels.swift; sourceTree = "<group>"; };
 		C565249EBA5FFF6B5962CD68 /* FeatureFlagManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlagManager.swift; sourceTree = "<group>"; };
 		C61718BD4FBB66F7B9B7D540 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		C68F7E0AD50363D1B2EB041F /* SleepTargetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTargetEngine.swift; sourceTree = "<group>"; };
+		C78B98EB097F680126859363 /* TrainingCalendarSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingCalendarSupportTests.swift; sourceTree = "<group>"; };
 		C972FC0A3B1440D713271D91 /* PerformanceBudgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceBudgetTests.swift; sourceTree = "<group>"; };
 		CB7B9EBA1DE40535D3852D00 /* RealDeviceSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealDeviceSmokeTests.swift; sourceTree = "<group>"; };
+		CC09B5F0C3CC08FBC2E4463B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		CC1CC01D578A788AC1CE66D9 /* TrainingZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingZone.swift; sourceTree = "<group>"; };
 		CE168A7CA5B4AE90915A4755 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		CF66B97C4C2F1A6C87F5C839 /* WeightResolutionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightResolutionTests.swift; sourceTree = "<group>"; };
@@ -565,6 +581,7 @@
 		D6EF2606AA9AE6D57AB0B167 /* GuardianMonitorExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GuardianMonitorExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D82F0058AC8963F80BCFD63E /* insight.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = insight.json; sourceTree = "<group>"; };
 		D9D6F771F95150BC3D5C064E /* RecoveryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailView.swift; sourceTree = "<group>"; };
+		DABF221E9AF8399A7B03991A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DB382CC3B8EC7560FBEDE522 /* food_log.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = food_log.json; sourceTree = "<group>"; };
 		DB475EFE19E5FD699726021E /* SetupChecklist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupChecklist.swift; sourceTree = "<group>"; };
 		DBABCA5316958A86C1537C77 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -577,9 +594,9 @@
 		E4A9CDC8CD5CCD8914A6D808 /* SleepScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScorer.swift; sourceTree = "<group>"; };
 		E4C0DF059C9573362A501844 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E4C8F5D365ABB2F7C476E020 /* health_measurement.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = health_measurement.json; sourceTree = "<group>"; };
+		E4D31CE7E11F0814C0BB13AB /* LifeOSWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LifeOSWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E707AFFC339FF4F48804835F /* SupabaseConfigCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfigCoverageTests.swift; sourceTree = "<group>"; };
 		E8336598F8C1D79F487BC653 /* TrainingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingServiceTests.swift; sourceTree = "<group>"; };
-		7224E32AC9C144308F6A0ADF /* TrainingCalendarSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingCalendarSupportTests.swift; sourceTree = "<group>"; };
 		E865D330E9C7C91599A676D7 /* LifeOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LifeOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E91546B0EC7E52961AF33F9A /* RecoveryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryModels.swift; sourceTree = "<group>"; };
 		E9CE6FDD8E75CD5911C50155 /* RecoveryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryEngine.swift; sourceTree = "<group>"; };
@@ -591,10 +608,13 @@
 		ED067D0AB88277CB60997F3F /* NotificationLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationLog.swift; sourceTree = "<group>"; };
 		EDD3E34DAF9AFAA87561558E /* training_load.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = training_load.json; sourceTree = "<group>"; };
 		F140275C8CD37EC754053870 /* WeeklyStrategyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyStrategyService.swift; sourceTree = "<group>"; };
+		F209E1BFBF2D11CA80E32F0B /* LabsViewCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabsViewCoverageTests.swift; sourceTree = "<group>"; };
+		F388D458D0BA733AEBDD835E /* NutritionCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionCalendarView.swift; sourceTree = "<group>"; };
 		F4FDA7DC511BFEE28F9B0BAF /* DailyInsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyInsightsService.swift; sourceTree = "<group>"; };
 		F5AF770F1F929DB4621FA6C0 /* NutritionDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDayView.swift; sourceTree = "<group>"; };
 		F6AE6B362001B509FC53D4E3 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
 		F6EDEA3D3F64CBAF983924B6 /* LabScanSyncSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabScanSyncSupport.swift; sourceTree = "<group>"; };
+		F741918BCD2A58BFB8363D2B /* LifeOSWatchCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSWatchCoverageTests.swift; sourceTree = "<group>"; };
 		F74BF4072AF61323F9E6DAA6 /* TrainingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingService.swift; sourceTree = "<group>"; };
 		F7DC8C6DAD684E6E4D6C9C79 /* AdditionalModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalModelsTests.swift; sourceTree = "<group>"; };
 		F8F72F1BAF23A8E2C7401676 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
@@ -602,6 +622,7 @@
 		FB293680E7694D9DB4FE112D /* DatabaseDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseDependencies.swift; sourceTree = "<group>"; };
 		FBAAEC2BC46BEE90881D0406 /* LifeOSWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSWidgetsBundle.swift; sourceTree = "<group>"; };
 		FBEEDFAFE54EED3D2CE0711F /* LifeOSAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeOSAppDelegate.swift; sourceTree = "<group>"; };
+		FC5EBAF7F7141BEF472EFC4B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		FFE4517037437EEB9EDB3A89 /* UserIdentityReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentityReconciler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -646,13 +667,13 @@
 		};
 		2E0322BCBC8B9BACE4DA49E6 /* App */ = {
 			isa = PBXGroup;
-				children = (
-					DE91A56DF0C860A4A9E54F8A /* Info.plist */,
-					7A884D36E35EC53A42397E2B /* LifeOS.entitlements */,
-					D0A000000000000000000001 /* PrivacyInfo.xcprivacy */,
-					8B41F187BAFD79954082EDBD /* LifeOSApp.swift */,
-					FBEEDFAFE54EED3D2CE0711F /* LifeOSAppDelegate.swift */,
-					531B2C3B2E7BB9F84CF61D44 /* UITestBootstrap.swift */,
+			children = (
+				DE91A56DF0C860A4A9E54F8A /* Info.plist */,
+				7A884D36E35EC53A42397E2B /* LifeOS.entitlements */,
+				8B41F187BAFD79954082EDBD /* LifeOSApp.swift */,
+				FBEEDFAFE54EED3D2CE0711F /* LifeOSAppDelegate.swift */,
+				DABF221E9AF8399A7B03991A /* PrivacyInfo.xcprivacy */,
+				531B2C3B2E7BB9F84CF61D44 /* UITestBootstrap.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -660,7 +681,7 @@
 		332AB764C9075AFD23E06787 /* LifeOSUITests */ = {
 			isa = PBXGroup;
 			children = (
-				C5A11A0D17571A0B00000002 /* AccessibilityAuditUITests.swift */,
+				500C90FCC2165C2FA359786F /* AccessibilityAuditUITests.swift */,
 				914563A241728DF8C2908952 /* EndToEndScenariosUITests.swift */,
 				17CD7469AA6393343EBDA672 /* PerformanceHardGateUITests.swift */,
 			);
@@ -713,13 +734,21 @@
 		};
 		52A37CB00D6EC2D249DDD938 /* GuardianMonitorExtension */ = {
 			isa = PBXGroup;
-				children = (
-					1AB3CAF5FE1EE903AC80CA52 /* GuardianActivityMonitorExtension.swift */,
-					9A5C113CE2969EFD6D2576E0 /* GuardianMonitorExtension.entitlements */,
-					17C8EEE35EDC1C8A7D0BF458 /* Info.plist */,
-					D0A000000000000000000003 /* PrivacyInfo.xcprivacy */,
-				);
+			children = (
+				1AB3CAF5FE1EE903AC80CA52 /* GuardianActivityMonitorExtension.swift */,
+				9A5C113CE2969EFD6D2576E0 /* GuardianMonitorExtension.entitlements */,
+				17C8EEE35EDC1C8A7D0BF458 /* Info.plist */,
+				CC09B5F0C3CC08FBC2E4463B /* PrivacyInfo.xcprivacy */,
+			);
 			path = GuardianMonitorExtension;
+			sourceTree = "<group>";
+		};
+		57ACFE084EC2F3C2A7F4F8A7 /* LifeOSWidgetsTests */ = {
+			isa = PBXGroup;
+			children = (
+				C29F8067FDB9E8D84372550E /* LifeOSWidgetExtensionCoverageTests.swift */,
+			);
+			path = LifeOSWidgetsTests;
 			sourceTree = "<group>";
 		};
 		58CC69282F0DA56E238CC737 /* LifeOSTests */ = {
@@ -744,7 +773,7 @@
 				B5A92C634FC822697179EBFB /* KeychainHelperCoverageTests.swift */,
 				4618D9858429A48844431A4E /* LabScanDetailViewModelTests.swift */,
 				5F789E2491511A9C62AF01D4 /* LabsPrivacySettingsTests.swift */,
-				A7F0C1D2E3B4456789ABCD01 /* LabsViewCoverageTests.swift */,
+				F209E1BFBF2D11CA80E32F0B /* LabsViewCoverageTests.swift */,
 				15136A94D6FA1EA62BA3B957 /* LocalPrivacyOperationsTests.swift */,
 				92E95478A5221302C99E7389 /* LocalSensitiveFieldEncryptionTests.swift */,
 				BB1D84BE1EF91C35527F4651 /* LowCoverageUtilitiesTests.swift */,
@@ -773,7 +802,7 @@
 				3BE4A3BA017DA12A7969D0E1 /* SyncEngineControlFlowTests.swift */,
 				ECCBC42E16B507678BF694F9 /* SyncEngineLoadTests.swift */,
 				6C729C7F908F00225AC4FC88 /* SyncEngineP1Tests.swift */,
-				7224E32AC9C144308F6A0ADF /* TrainingCalendarSupportTests.swift */,
+				C78B98EB097F680126859363 /* TrainingCalendarSupportTests.swift */,
 				E8336598F8C1D79F487BC653 /* TrainingServiceTests.swift */,
 				36C2B2E87AA85B6EBE47FEC2 /* UserHealthFlagsCoverageTests.swift */,
 				8084A58043C1E17D1E20BAEE /* UserIdentityReconcilerTests.swift */,
@@ -817,7 +846,7 @@
 			children = (
 				9B04B47A54B92417F9D3A3D8 /* LifeOSComplications */,
 				C2D1D2764CCB3189856FF305 /* LifeOSWatchApp */,
-				B1C2D3E4F5A6012345678903 /* LifeOSWatchTests */,
+				640235BD9AF18127BEF4EA66 /* LifeOSWatchTests */,
 			);
 			path = watch;
 			sourceTree = "<group>";
@@ -830,6 +859,14 @@
 			path = Error;
 			sourceTree = "<group>";
 		};
+		640235BD9AF18127BEF4EA66 /* LifeOSWatchTests */ = {
+			isa = PBXGroup;
+			children = (
+				F741918BCD2A58BFB8363D2B /* LifeOSWatchCoverageTests.swift */,
+			);
+			path = LifeOSWatchTests;
+			sourceTree = "<group>";
+		};
 		6BBD885734BE07D038423D8A /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -839,9 +876,9 @@
 				A7B67B4E5EECE53252F9B882 /* LifeOSTests.xctest */,
 				A6A2AF638A2E362709559D07 /* LifeOSUITests.xctest */,
 				7BEEDF6EEAE093F4977687EF /* LifeOSWatch.app */,
-				B1C2D3E4F5A6012345678904 /* LifeOSWatchTests.xctest */,
+				E4D31CE7E11F0814C0BB13AB /* LifeOSWatchTests.xctest */,
 				93C2ADDBBFA859D683DCA41D /* LifeOSWidgets.appex */,
-				A1B2C3D4E5F6012345678905 /* LifeOSWidgetsTests.xctest */,
+				4BC6CDB8180B3E9579418722 /* LifeOSWidgetsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -975,12 +1012,12 @@
 		};
 		9B04B47A54B92417F9D3A3D8 /* LifeOSComplications */ = {
 			isa = PBXGroup;
-				children = (
-					09F61ED8B598A69776A55FDD /* ComplicationEntry.swift */,
-					B292C2E63C551B7BC179BE65 /* Info.plist */,
-					0F966CF991445737F65E7403 /* LifeOSComplications.entitlements */,
-					D0A000000000000000000005 /* PrivacyInfo.xcprivacy */,
-				);
+			children = (
+				09F61ED8B598A69776A55FDD /* ComplicationEntry.swift */,
+				B292C2E63C551B7BC179BE65 /* Info.plist */,
+				0F966CF991445737F65E7403 /* LifeOSComplications.entitlements */,
+				FC5EBAF7F7141BEF472EFC4B /* PrivacyInfo.xcprivacy */,
+			);
 			path = LifeOSComplications;
 			sourceTree = "<group>";
 		};
@@ -1027,11 +1064,18 @@
 		ADB89AD2505608A9E7CB8EBE /* Nutrition */ = {
 			isa = PBXGroup;
 			children = (
+				3C36E8FEFBB24AFAFAEFA45D /* NutritionAIServices.swift */,
+				F388D458D0BA733AEBDD835E /* NutritionCalendarView.swift */,
+				3F03272AB99FF6A59203D29F /* NutritionCaptureViews.swift */,
 				A5376714F4C35D2808CB123F /* NutritionCleanupService.swift */,
 				F5AF770F1F929DB4621FA6C0 /* NutritionDayView.swift */,
 				18AC900A75EDF7DF254BD8AF /* NutritionLogViewModel.swift */,
+				3647FC78EE408CBEE6A35CAE /* NutritionMealTemplateViews.swift */,
 				78A116C37E504684930C8A20 /* NutritionReviewGate.swift */,
+				3258DF5E63D367A1299BBFBF /* NutritionSearchView.swift */,
 				A62F588BD4715E4BCC6AD7E1 /* NutritionService.swift */,
+				0E29C593CD789B060DA5DF55 /* NutritionSpeechRecognizer.swift */,
+				40FCBD8549D44DF77082D03C /* NutritionSupportAndHarness.swift */,
 				B59F7080781885906DCAAA97 /* NutritionSyncHandler.swift */,
 			);
 			path = Nutrition;
@@ -1099,13 +1143,13 @@
 		};
 		C2D1D2764CCB3189856FF305 /* LifeOSWatchApp */ = {
 			isa = PBXGroup;
-				children = (
-					DBABCA5316958A86C1537C77 /* Assets.xcassets */,
-					A7B0E4F1BD6623A3BDA484FF /* LifeOSWatch.entitlements */,
-					D0A000000000000000000004 /* PrivacyInfo.xcprivacy */,
-					7D5D961E2243263D86652AB4 /* LifeOSWatchApp.swift */,
-					B73F69DB0BA81481E99B99B1 /* WatchHomeView.swift */,
-					14B054D118B0D5A4DC2FC31D /* WatchSnapshotModel.swift */,
+			children = (
+				DBABCA5316958A86C1537C77 /* Assets.xcassets */,
+				A7B0E4F1BD6623A3BDA484FF /* LifeOSWatch.entitlements */,
+				7D5D961E2243263D86652AB4 /* LifeOSWatchApp.swift */,
+				A3B831458BCBD35AD50E6D14 /* PrivacyInfo.xcprivacy */,
+				B73F69DB0BA81481E99B99B1 /* WatchHomeView.swift */,
+				14B054D118B0D5A4DC2FC31D /* WatchSnapshotModel.swift */,
 				6A50310513916A3DBC3941BB /* WatchSnapshotStore.swift */,
 			);
 			path = LifeOSWatchApp;
@@ -1189,7 +1233,7 @@
 				58CC69282F0DA56E238CC737 /* LifeOSTests */,
 				332AB764C9075AFD23E06787 /* LifeOSUITests */,
 				F562A19FD4B53C64B3AE66F8 /* LifeOSWidgets */,
-				A1B2C3D4E5F6012345678907 /* LifeOSWidgetsTests */,
+				57ACFE084EC2F3C2A7F4F8A7 /* LifeOSWidgetsTests */,
 				6BBD885734BE07D038423D8A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -1218,29 +1262,13 @@
 		};
 		F562A19FD4B53C64B3AE66F8 /* LifeOSWidgets */ = {
 			isa = PBXGroup;
-				children = (
-					8BC60511A1084284729E891E /* Info.plist */,
-					AF61389D6E45011A8E12F2A8 /* LifeOSWidgets.entitlements */,
-					D0A000000000000000000002 /* PrivacyInfo.xcprivacy */,
-					FBAAEC2BC46BEE90881D0406 /* LifeOSWidgetsBundle.swift */,
-				);
+			children = (
+				8BC60511A1084284729E891E /* Info.plist */,
+				AF61389D6E45011A8E12F2A8 /* LifeOSWidgets.entitlements */,
+				FBAAEC2BC46BEE90881D0406 /* LifeOSWidgetsBundle.swift */,
+				88C805B317D30432F1565950 /* PrivacyInfo.xcprivacy */,
+			);
 			path = LifeOSWidgets;
-			sourceTree = "<group>";
-		};
-		A1B2C3D4E5F6012345678907 /* LifeOSWidgetsTests */ = {
-			isa = PBXGroup;
-			children = (
-				A1B2C3D4E5F6012345678901 /* LifeOSWidgetExtensionCoverageTests.swift */,
-			);
-			path = LifeOSWidgetsTests;
-			sourceTree = "<group>";
-		};
-		B1C2D3E4F5A6012345678903 /* LifeOSWatchTests */ = {
-			isa = PBXGroup;
-			children = (
-				B1C2D3E4F5A6012345678901 /* LifeOSWatchCoverageTests.swift */,
-			);
-			path = LifeOSWatchTests;
 			sourceTree = "<group>";
 		};
 		F9D6467423A1732A82509F93 /* Extensions */ = {
@@ -1275,10 +1303,10 @@
 		20BB86C8C788F078806A43FE /* LifeOSWidgets */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7CCE57869CB51C40CADBD2D6 /* Build configuration list for PBXNativeTarget "LifeOSWidgets" */;
-				buildPhases = (
-					F040FF607AAAA340FD6A756B /* Sources */,
-					D0A000000000000000000021 /* Resources */,
-				);
+			buildPhases = (
+				F040FF607AAAA340FD6A756B /* Sources */,
+				E9384D1F77C7B3EF1255E2C7 /* Resources */,
+			);
 			buildRules = (
 			);
 			dependencies = (
@@ -1313,10 +1341,10 @@
 		9010D9F55325C4894C32EBBA /* LifeOSComplications */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 552E8CB063ED044C659E4907 /* Build configuration list for PBXNativeTarget "LifeOSComplications" */;
-				buildPhases = (
-					C9A52F09815C6C99D7EB8C27 /* Sources */,
-					D0A000000000000000000023 /* Resources */,
-				);
+			buildPhases = (
+				C9A52F09815C6C99D7EB8C27 /* Sources */,
+				75F432B598F70A666F15D808 /* Resources */,
+			);
 			buildRules = (
 			);
 			dependencies = (
@@ -1327,6 +1355,25 @@
 			productName = LifeOSComplications;
 			productReference = D28170980048CB49F472F285 /* LifeOSComplications.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		91AFAB11EA9B5CB8451DE658 /* LifeOSWatchTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F7E5D6626C797CE1B18687F2 /* Build configuration list for PBXNativeTarget "LifeOSWatchTests" */;
+			buildPhases = (
+				1F220CAEE67A76609643B7C4 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD4E38B6FD68FB3C64E0D697 /* PBXTargetDependency */,
+				386D29E8C62DD287847AD553 /* PBXTargetDependency */,
+			);
+			name = LifeOSWatchTests;
+			packageProductDependencies = (
+			);
+			productName = LifeOSWatchTests;
+			productReference = E4D31CE7E11F0814C0BB13AB /* LifeOSWatchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		AD5DB9344CDCD6867ABB9D4E /* LifeOS */ = {
 			isa = PBXNativeTarget;
@@ -1372,32 +1419,13 @@
 			productReference = A7B67B4E5EECE53252F9B882 /* LifeOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-			A1B2C3D4E5F6012345678906 /* LifeOSWidgetsTests */ = {
-				isa = PBXNativeTarget;
-				buildConfigurationList = A1B2C3D4E5F6012345678910 /* Build configuration list for PBXNativeTarget "LifeOSWidgetsTests" */;
-			buildPhases = (
-				A1B2C3D4E5F6012345678909 /* Sources */,
-			);
-			buildRules = (
-			);
-				dependencies = (
-					A1B2C3D4E5F6012345678904 /* PBXTargetDependency */,
-					A1B2C3D4E5F6012345678914 /* PBXTargetDependency */,
-				);
-			name = LifeOSWidgetsTests;
-			packageProductDependencies = (
-			);
-			productName = LifeOSWidgetsTests;
-			productReference = A1B2C3D4E5F6012345678905 /* LifeOSWidgetsTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		E54F6496A7F9ACE7F709125C /* GuardianMonitorExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 58B267198C1F14121BE16A69 /* Build configuration list for PBXNativeTarget "GuardianMonitorExtension" */;
-				buildPhases = (
-					3770F300DC0D696BE0F223A3 /* Sources */,
-					D0A000000000000000000022 /* Resources */,
-				);
+			buildPhases = (
+				3770F300DC0D696BE0F223A3 /* Sources */,
+				D50AD7E79DBA1BE1731B9B14 /* Resources */,
+			);
 			buildRules = (
 			);
 			dependencies = (
@@ -1408,6 +1436,25 @@
 			productName = GuardianMonitorExtension;
 			productReference = D6EF2606AA9AE6D57AB0B167 /* GuardianMonitorExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		EADA77B0250FDA31076A1A46 /* LifeOSWidgetsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C743BEA206FB5AF2343AD757 /* Build configuration list for PBXNativeTarget "LifeOSWidgetsTests" */;
+			buildPhases = (
+				14215844AF18D98AB580DED3 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				11799EF4CDD6003870F49FCB /* PBXTargetDependency */,
+				8C86C4962844A90A2AFD9BCB /* PBXTargetDependency */,
+			);
+			name = LifeOSWidgetsTests;
+			packageProductDependencies = (
+			);
+			productName = LifeOSWidgetsTests;
+			productReference = 4BC6CDB8180B3E9579418722 /* LifeOSWidgetsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		F416C705B05A08F9488EEA6E /* LifeOSUITests */ = {
 			isa = PBXNativeTarget;
@@ -1427,25 +1474,6 @@
 			productReference = A6A2AF638A2E362709559D07 /* LifeOSUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		B1C2D3E4F5A6012345678906 /* LifeOSWatchTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B1C2D3E4F5A6012345678913 /* Build configuration list for PBXNativeTarget "LifeOSWatchTests" */;
-			buildPhases = (
-				B1C2D3E4F5A6012345678905 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				B1C2D3E4F5A6012345678909 /* PBXTargetDependency */,
-				B1C2D3E4F5A6012345678910 /* PBXTargetDependency */,
-			);
-			name = LifeOSWatchTests;
-			packageProductDependencies = (
-			);
-			productName = LifeOSWatchTests;
-			productReference = B1C2D3E4F5A6012345678904 /* LifeOSWatchTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -1455,13 +1483,18 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					91AFAB11EA9B5CB8451DE658 = {
+						TestTargetID = 238DE0A7A746E0273AAFBB97;
+					};
+					EADA77B0250FDA31076A1A46 = {
+						TestTargetID = 20BB86C8C788F078806A43FE;
+					};
 					F416C705B05A08F9488EEA6E = {
 						TestTargetID = AD5DB9344CDCD6867ABB9D4E;
 					};
 				};
 			};
 			buildConfigurationList = 24DF66001BD257C948B118A1 /* Build configuration list for PBXProject "LifeOS" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -1477,56 +1510,33 @@
 				90734163274B98F620677EF9 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
+			productRefGroup = 6BBD885734BE07D038423D8A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				E54F6496A7F9ACE7F709125C /* GuardianMonitorExtension */,
 				AD5DB9344CDCD6867ABB9D4E /* LifeOS */,
-				9010D9F55325C4894C32EBBA /* LifeOSComplications */,
+				E54F6496A7F9ACE7F709125C /* GuardianMonitorExtension */,
+				20BB86C8C788F078806A43FE /* LifeOSWidgets */,
 				B6DC0030DCD7D810745068F6 /* LifeOSTests */,
 				F416C705B05A08F9488EEA6E /* LifeOSUITests */,
+				EADA77B0250FDA31076A1A46 /* LifeOSWidgetsTests */,
 				238DE0A7A746E0273AAFBB97 /* LifeOSWatch */,
-				B1C2D3E4F5A6012345678906 /* LifeOSWatchTests */,
-				20BB86C8C788F078806A43FE /* LifeOSWidgets */,
-				A1B2C3D4E5F6012345678906 /* LifeOSWidgetsTests */,
+				9010D9F55325C4894C32EBBA /* LifeOSComplications */,
+				91AFAB11EA9B5CB8451DE658 /* LifeOSWatchTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-			386F3C7E1AB99D472EBAFF9A /* Resources */ = {
-				isa = PBXResourcesBuildPhase;
-				buildActionMask = 2147483647;
-				files = (
-					1D6785721716E8EB481051A9 /* Assets.xcassets in Resources */,
-					D0A000000000000000000014 /* PrivacyInfo.xcprivacy in Resources */,
-				);
-				runOnlyForDeploymentPostprocessing = 0;
-			};
-			D0A000000000000000000021 /* Resources */ = {
-				isa = PBXResourcesBuildPhase;
-				buildActionMask = 2147483647;
-				files = (
-					D0A000000000000000000012 /* PrivacyInfo.xcprivacy in Resources */,
-				);
-				runOnlyForDeploymentPostprocessing = 0;
-			};
-			D0A000000000000000000022 /* Resources */ = {
-				isa = PBXResourcesBuildPhase;
-				buildActionMask = 2147483647;
-				files = (
-					D0A000000000000000000013 /* PrivacyInfo.xcprivacy in Resources */,
-				);
-				runOnlyForDeploymentPostprocessing = 0;
-			};
-			D0A000000000000000000023 /* Resources */ = {
-				isa = PBXResourcesBuildPhase;
-				buildActionMask = 2147483647;
-				files = (
-					D0A000000000000000000015 /* PrivacyInfo.xcprivacy in Resources */,
-				);
-				runOnlyForDeploymentPostprocessing = 0;
-			};
+		386F3C7E1AB99D472EBAFF9A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D6785721716E8EB481051A9 /* Assets.xcassets in Resources */,
+				4BCE466540D94DE38BB8D975 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5170D8F0F29B1F7918C17DAD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1576,14 +1586,38 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		75F432B598F70A666F15D808 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC8753CCFC1B2CB164D848DE /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A5B7CA9DF3738241124E2135 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-				files = (
-					7B53B8B42D96EBC34D0780EF /* Assets.xcassets in Resources */,
-					42B052CB414B14D927A9A11D /* Localizable.xcstrings in Resources */,
-					D0A000000000000000000011 /* PrivacyInfo.xcprivacy in Resources */,
-				);
+			files = (
+				7B53B8B42D96EBC34D0780EF /* Assets.xcassets in Resources */,
+				42B052CB414B14D927A9A11D /* Localizable.xcstrings in Resources */,
+				FEC6E9F234260E1E692D7790 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D50AD7E79DBA1BE1731B9B14 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AFB63789F069DE21B3F68C09 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E9384D1F77C7B3EF1255E2C7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				096D85F04B1DD98B76B52CB9 /* PrivacyInfo.xcprivacy in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -1600,6 +1634,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		14215844AF18D98AB580DED3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D24D1E2A461B0798459779E6 /* LifeOSWidgetExtensionCoverageTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1F220CAEE67A76609643B7C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9484EA10856D653E8CE5CCD9 /* LifeOSWatchCoverageTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3770F300DC0D696BE0F223A3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1613,25 +1663,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C5A11A0D17571A0B00000001 /* AccessibilityAuditUITests.swift in Sources */,
+				6F8A30FA9A5DA51841C6F4D8 /* AccessibilityAuditUITests.swift in Sources */,
 				C5471D5A18D8DD37698CBC81 /* EndToEndScenariosUITests.swift in Sources */,
 				E35CF479BC638ED092978776 /* PerformanceHardGateUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A1B2C3D4E5F6012345678909 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D4E5F6012345678902 /* LifeOSWidgetExtensionCoverageTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B1C2D3E4F5A6012345678905 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B1C2D3E4F5A6012345678902 /* LifeOSWatchCoverageTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1666,7 +1700,7 @@
 				5ACEA642E2621CA802311742 /* KeychainHelperCoverageTests.swift in Sources */,
 				B348C2DB9D5A57C52C12BB96 /* LabScanDetailViewModelTests.swift in Sources */,
 				BDBD26BEAE6EEF97833CF6AB /* LabsPrivacySettingsTests.swift in Sources */,
-				A7F0C1D2E3B4456789ABCD02 /* LabsViewCoverageTests.swift in Sources */,
+				56549888CD1B16A8CD30B712 /* LabsViewCoverageTests.swift in Sources */,
 				85393F2FBCEA8412025B91E5 /* LocalPrivacyOperationsTests.swift in Sources */,
 				7CD3E8F4F605E8CE5EAC43E8 /* LocalSensitiveFieldEncryptionTests.swift in Sources */,
 				B695BB68BF5622B96ACCD0E3 /* LowCoverageUtilitiesTests.swift in Sources */,
@@ -1698,7 +1732,7 @@
 				A394FCD1FB143AE747BA1589 /* SyncEngineControlFlowTests.swift in Sources */,
 				E494A7424AAD53F7E1BF4449 /* SyncEngineLoadTests.swift in Sources */,
 				7ABDE6509224FB4E17CAAA82 /* SyncEngineP1Tests.swift in Sources */,
-				1C2A07B2A6EB4CE0869626DD /* TrainingCalendarSupportTests.swift in Sources */,
+				C5FFD232C28871B8E061F529 /* TrainingCalendarSupportTests.swift in Sources */,
 				7295658D71AB2EE6A4C1A136 /* TrainingServiceTests.swift in Sources */,
 				67E5EED5CB635CACB2FD5994 /* UserHealthFlagsCoverageTests.swift in Sources */,
 				65438B7612B3B1FEEC393979 /* UserIdentityReconcilerTests.swift in Sources */,
@@ -1782,12 +1816,19 @@
 				3110E79BB9F0A0A99E470BB5 /* Migrations.swift in Sources */,
 				0A9B8E878B82579118639FAC /* NotificationEngine.swift in Sources */,
 				28E9EB60ED75440B221864CD /* NotificationLog.swift in Sources */,
+				1CD2852B414C11FB18A3647C /* NutritionAIServices.swift in Sources */,
+				1A966EDA1B390CF0525836BD /* NutritionCalendarView.swift in Sources */,
+				CAA36CD010D26C4CCAB1E39F /* NutritionCaptureViews.swift in Sources */,
 				0B632EF743440EA2BB912596 /* NutritionCleanupService.swift in Sources */,
 				9BEE7BC15DD7F275C9EC7751 /* NutritionDayView.swift in Sources */,
 				821CC88734B23BCBCB0171C8 /* NutritionLogViewModel.swift in Sources */,
+				57C3DFB868BE0C591FAC2F00 /* NutritionMealTemplateViews.swift in Sources */,
 				1FD4F89181439BAE96A93B15 /* NutritionModels.swift in Sources */,
 				CDE2FFEA4CE483BD616C5DD7 /* NutritionReviewGate.swift in Sources */,
+				63D2EEF2E0C9B0F6BF8EC605 /* NutritionSearchView.swift in Sources */,
 				40C5D9F1B3B623E36C06135D /* NutritionService.swift in Sources */,
+				BC0EB6B79619C694E7F73968 /* NutritionSpeechRecognizer.swift in Sources */,
+				176DAD31A1DF4280D6065D74 /* NutritionSupportAndHarness.swift in Sources */,
 				16047C0663E2B512154FD30D /* NutritionSyncHandler.swift in Sources */,
 				B780B592B7A4EB53BCC82D4D /* NutritionTargetEngine.swift in Sources */,
 				30D16DE2B35D233F533E8AFE /* OnboardingFeature.swift in Sources */,
@@ -1848,6 +1889,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		11799EF4CDD6003870F49FCB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AD5DB9344CDCD6867ABB9D4E /* LifeOS */;
+			targetProxy = 38F633940A67AC5D80EE5554 /* PBXContainerItemProxy */;
+		};
+		386D29E8C62DD287847AD553 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9010D9F55325C4894C32EBBA /* LifeOSComplications */;
+			targetProxy = F8FC88232A0CA2DE4C87CAEB /* PBXContainerItemProxy */;
+		};
 		492B8DDC98566D0F90D633B4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9010D9F55325C4894C32EBBA /* LifeOSComplications */;
@@ -1858,25 +1909,10 @@
 			target = E54F6496A7F9ACE7F709125C /* GuardianMonitorExtension */;
 			targetProxy = 36CC40404C0BF9783FFF4BD5 /* PBXContainerItemProxy */;
 		};
-			A1B2C3D4E5F6012345678904 /* PBXTargetDependency */ = {
-				isa = PBXTargetDependency;
-				target = 20BB86C8C788F078806A43FE /* LifeOSWidgets */;
-				targetProxy = A1B2C3D4E5F6012345678903 /* PBXContainerItemProxy */;
-			};
-			A1B2C3D4E5F6012345678914 /* PBXTargetDependency */ = {
-				isa = PBXTargetDependency;
-				target = AD5DB9344CDCD6867ABB9D4E /* LifeOS */;
-				targetProxy = 38D33F6D654E0B15060B93FE /* PBXContainerItemProxy */;
-			};
-			B1C2D3E4F5A6012345678909 /* PBXTargetDependency */ = {
-				isa = PBXTargetDependency;
-				target = 238DE0A7A746E0273AAFBB97 /* LifeOSWatch */;
-				targetProxy = B1C2D3E4F5A6012345678907 /* PBXContainerItemProxy */;
-			};
-		B1C2D3E4F5A6012345678910 /* PBXTargetDependency */ = {
+		8C86C4962844A90A2AFD9BCB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9010D9F55325C4894C32EBBA /* LifeOSComplications */;
-			targetProxy = B1C2D3E4F5A6012345678908 /* PBXContainerItemProxy */;
+			target = 20BB86C8C788F078806A43FE /* LifeOSWidgets */;
+			targetProxy = 3BA38AB5638F3FA58CB725F8 /* PBXContainerItemProxy */;
 		};
 		CCEEA3F472B0DA6ACDEE6BB7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1887,6 +1923,11 @@
 			isa = PBXTargetDependency;
 			target = AD5DB9344CDCD6867ABB9D4E /* LifeOS */;
 			targetProxy = 38D33F6D654E0B15060B93FE /* PBXContainerItemProxy */;
+		};
+		DD4E38B6FD68FB3C64E0D697 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 238DE0A7A746E0273AAFBB97 /* LifeOSWatch */;
+			targetProxy = 00997ECB26CD939A2DC9AFC0 /* PBXContainerItemProxy */;
 		};
 		EABEE0441A46AA3DE0D2EAE9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1913,10 +1954,32 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app;
 				SDKROOT = iphoneos;
-					SUPABASE_ANON_KEY = "development-missing-anon-key";
-					SUPABASE_URL = "https://localhost.invalid";
+				SUPABASE_ANON_KEY = "development-missing-anon-key";
+				SUPABASE_URL = "https://localhost.invalid";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1383A902392F6074E3D0CCBF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@loader_path/../../PlugIns/LifeOSWidgets.appex",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/LifeOSWidgets.appex/LifeOSWidgets.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.widgettests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOS.app/LifeOS";
+				TEST_TARGET_NAME = LifeOSWidgets;
 			};
 			name = Debug;
 		};
@@ -2002,50 +2065,28 @@
 			};
 			name = Debug;
 		};
-			A1B2C3D4E5F6012345678911 /* Debug */ = {
-				isa = XCBuildConfiguration;
-				buildSettings = {
-					BUNDLE_LOADER = "$(TEST_HOST)";
-					LD_RUNPATH_SEARCH_PATHS = (
-						"$(inherited)",
-						"@executable_path/Frameworks",
-						"@loader_path/Frameworks",
-						"@loader_path/../../PlugIns/LifeOSWidgets.appex",
-					);
-					OTHER_LDFLAGS = (
-						"$(inherited)",
-						"$(BUILT_PRODUCTS_DIR)/LifeOSWidgets.appex/LifeOSWidgets.debug.dylib",
-					);
-					PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.widgettests;
-					SDKROOT = iphoneos;
-					TARGETED_DEVICE_FAMILY = "1,2";
-					TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOS.app/LifeOS";
-					TEST_TARGET_NAME = LifeOSWidgets;
-				};
-				name = Debug;
+		693A3326EAA69A30E62A22A7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@loader_path/../../PlugIns/LifeOSWidgets.appex",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/LifeOSWidgets.appex/LifeOSWidgets.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.widgettests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOS.app/LifeOS";
+				TEST_TARGET_NAME = LifeOSWidgets;
 			};
-			B1C2D3E4F5A6012345678911 /* Debug */ = {
-				isa = XCBuildConfiguration;
-				buildSettings = {
-					BUNDLE_LOADER = "$(TEST_HOST)";
-					LD_RUNPATH_SEARCH_PATHS = (
-						"$(inherited)",
-						"@executable_path/Frameworks",
-						"@loader_path/Frameworks",
-						"@loader_path/../../PlugIns/LifeOSComplications.appex",
-					);
-					OTHER_LDFLAGS = (
-						"$(inherited)",
-						"$(BUILT_PRODUCTS_DIR)/LifeOSComplications.appex/LifeOSComplications.debug.dylib",
-					);
-					PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.watchtests;
-					SDKROOT = watchos;
-					TARGETED_DEVICE_FAMILY = 4;
-					TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOSWatch.app/LifeOSWatch";
-					TEST_TARGET_NAME = LifeOSWatch;
-				};
-				name = Debug;
-			};
+			name = Release;
+		};
 		745D6E6D63413474B31EFED3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2265,6 +2306,29 @@
 			};
 			name = Debug;
 		};
+		EC4B34F5C1D5AF336E38B274 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@loader_path/../../PlugIns/LifeOSComplications.appex",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/LifeOSComplications.appex/LifeOSComplications.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.watchtests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOSWatch.app/LifeOSWatch";
+				TEST_TARGET_NAME = LifeOSWatch;
+			};
+			name = Release;
+		};
 		F04AE59505330E6A6EF74C68 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2305,50 +2369,29 @@
 			};
 			name = Release;
 		};
-			A1B2C3D4E5F6012345678912 /* Release */ = {
-				isa = XCBuildConfiguration;
-				buildSettings = {
-					BUNDLE_LOADER = "$(TEST_HOST)";
-					LD_RUNPATH_SEARCH_PATHS = (
-						"$(inherited)",
-						"@executable_path/Frameworks",
-						"@loader_path/Frameworks",
-						"@loader_path/../../PlugIns/LifeOSWidgets.appex",
-					);
-					OTHER_LDFLAGS = (
-						"$(inherited)",
-						"$(BUILT_PRODUCTS_DIR)/LifeOSWidgets.appex/LifeOSWidgets.debug.dylib",
-					);
-					PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.widgettests;
-					SDKROOT = iphoneos;
-					TARGETED_DEVICE_FAMILY = "1,2";
-					TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOS.app/LifeOS";
-					TEST_TARGET_NAME = LifeOSWidgets;
-				};
-				name = Release;
+		FCBE8C9DE95AD4D8D638ACBC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@loader_path/../../PlugIns/LifeOSComplications.appex",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/LifeOSComplications.appex/LifeOSComplications.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.watchtests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOSWatch.app/LifeOSWatch";
+				TEST_TARGET_NAME = LifeOSWatch;
 			};
-			B1C2D3E4F5A6012345678912 /* Release */ = {
-				isa = XCBuildConfiguration;
-				buildSettings = {
-					BUNDLE_LOADER = "$(TEST_HOST)";
-					LD_RUNPATH_SEARCH_PATHS = (
-						"$(inherited)",
-						"@executable_path/Frameworks",
-						"@loader_path/Frameworks",
-						"@loader_path/../../PlugIns/LifeOSComplications.appex",
-					);
-					OTHER_LDFLAGS = (
-						"$(inherited)",
-						"$(BUILT_PRODUCTS_DIR)/LifeOSComplications.appex/LifeOSComplications.debug.dylib",
-					);
-					PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.watchtests;
-					SDKROOT = watchos;
-					TARGETED_DEVICE_FAMILY = 4;
-					TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeOSWatch.app/LifeOSWatch";
-					TEST_TARGET_NAME = LifeOSWatch;
-				};
-				name = Release;
-			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -2357,15 +2400,6 @@
 			buildConfigurations = (
 				D6E8E15174899284744400BA /* Debug */,
 				7C1BF533F73B0CF607177F45 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		A1B2C3D4E5F6012345678910 /* Build configuration list for PBXNativeTarget "LifeOSWidgetsTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1B2C3D4E5F6012345678911 /* Debug */,
-				A1B2C3D4E5F6012345678912 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -2424,11 +2458,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		B1C2D3E4F5A6012345678913 /* Build configuration list for PBXNativeTarget "LifeOSWatchTests" */ = {
+		C743BEA206FB5AF2343AD757 /* Build configuration list for PBXNativeTarget "LifeOSWidgetsTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B1C2D3E4F5A6012345678911 /* Debug */,
-				B1C2D3E4F5A6012345678912 /* Release */,
+				1383A902392F6074E3D0CCBF /* Debug */,
+				693A3326EAA69A30E62A22A7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -2438,6 +2472,15 @@
 			buildConfigurations = (
 				092C4502900BF23E2898CB24 /* Debug */,
 				F04AE59505330E6A6EF74C68 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F7E5D6626C797CE1B18687F2 /* Build configuration list for PBXNativeTarget "LifeOSWatchTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FCBE8C9DE95AD4D8D638ACBC /* Debug */,
+				EC4B34F5C1D5AF336E38B274 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

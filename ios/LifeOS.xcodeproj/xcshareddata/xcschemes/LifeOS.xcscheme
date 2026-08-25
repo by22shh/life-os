@@ -79,20 +79,6 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A1B2C3D4E5F6012345678906"
-               BuildableName = "LifeOSWidgetsTests.xctest"
-               BlueprintName = "LifeOSWidgetsTests"
-               ReferencedContainer = "container:LifeOS.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
@@ -116,6 +102,20 @@
                BlueprintIdentifier = "20BB86C8C788F078806A43FE"
                BuildableName = "LifeOSWidgets.appex"
                BlueprintName = "LifeOSWidgets"
+               ReferencedContainer = "container:LifeOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "EADA77B0250FDA31076A1A46"
+               BuildableName = "LifeOSWidgetsTests.xctest"
+               BlueprintName = "LifeOSWidgetsTests"
                ReferencedContainer = "container:LifeOS.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -153,9 +153,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F416C705B05A08F9488EEA6E"
-               BuildableName = "LifeOSUITests.xctest"
-               BlueprintName = "LifeOSUITests"
+               BlueprintIdentifier = "EADA77B0250FDA31076A1A46"
+               BuildableName = "LifeOSWidgetsTests.xctest"
+               BlueprintName = "LifeOSWidgetsTests"
                ReferencedContainer = "container:LifeOS.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -164,9 +164,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A1B2C3D4E5F6012345678906"
-               BuildableName = "LifeOSWidgetsTests.xctest"
-               BlueprintName = "LifeOSWidgetsTests"
+               BlueprintIdentifier = "F416C705B05A08F9488EEA6E"
+               BuildableName = "LifeOSUITests.xctest"
+               BlueprintName = "LifeOSUITests"
                ReferencedContainer = "container:LifeOS.xcodeproj">
             </BuildableReference>
          </TestableReference>

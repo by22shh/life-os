@@ -229,6 +229,7 @@ final class DatabaseManager: Sendable {
                 path: resolvedLocations.databaseURL.path,
                 configuration: configuration
             )
+            applyDatabaseFileProtection(databaseURL: resolvedLocations.databaseURL)
             try runMigrations(on: queue)
 
             return .available(DatabaseManager(dbQueue: queue))
@@ -240,6 +241,36 @@ final class DatabaseManager: Sendable {
 
     private static func databaseURL() throws -> URL {
         try databaseLocations().databaseURL
+    }
+
+    /// Pins data-at-rest protection for the SQLite store and its WAL sidecar
+    /// files. `.completeUntilFirstUserAuthentication` keeps health data
+    /// encrypted on disk after reboot until first unlock while still allowing
+    /// the background sync engine to run once the device has been unlocked.
+    ///
+    /// This complements field-level AES encryption (FieldEncryption) for the
+    /// most sensitive columns; full-page SQLCipher was evaluated and deferred:
+    /// it requires a CocoaPods-based GRDB build that conflicts with the
+    /// XcodeGen + SPM release pipeline.
+    private static func applyDatabaseFileProtection(databaseURL: URL) {
+        let fileManager = FileManager.default
+        let protectedURLs = [
+            databaseURL,
+            URL(fileURLWithPath: databaseURL.path + "-wal"),
+            URL(fileURLWithPath: databaseURL.path + "-shm"),
+        ]
+        for url in protectedURLs where fileManager.fileExists(atPath: url.path) {
+            do {
+                try fileManager.setAttributes(
+                    [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                    ofItemAtPath: url.path
+                )
+            } catch {
+                #if DEBUG
+                fputs("Failed to apply database file protection: \(error)\n", stderr)
+                #endif
+            }
+        }
     }
 
     private static func databaseLocations() throws -> DatabaseLocations {

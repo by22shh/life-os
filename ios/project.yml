@@ -127,9 +127,9 @@ targets:
       TEST_TARGET_NAME: LifeOSWidgets
       LD_RUNPATH_SEARCH_PATHS:
         - $(inherited)
-        - @executable_path/Frameworks
-        - @loader_path/Frameworks
-        - @loader_path/../../PlugIns/LifeOSWidgets.appex
+        - "@executable_path/Frameworks"
+        - "@loader_path/Frameworks"
+        - "@loader_path/../../PlugIns/LifeOSWidgets.appex"
       OTHER_LDFLAGS:
         - $(inherited)
         - $(BUILT_PRODUCTS_DIR)/LifeOSWidgets.appex/LifeOSWidgets.debug.dylib
@@ -183,9 +183,9 @@ targets:
       TEST_TARGET_NAME: LifeOSWatch
       LD_RUNPATH_SEARCH_PATHS:
         - $(inherited)
-        - @executable_path/Frameworks
-        - @loader_path/Frameworks
-        - @loader_path/../../PlugIns/LifeOSComplications.appex
+        - "@executable_path/Frameworks"
+        - "@loader_path/Frameworks"
+        - "@loader_path/../../PlugIns/LifeOSComplications.appex"
       OTHER_LDFLAGS:
         - $(inherited)
         - $(BUILT_PRODUCTS_DIR)/LifeOSComplications.appex/LifeOSComplications.debug.dylib
