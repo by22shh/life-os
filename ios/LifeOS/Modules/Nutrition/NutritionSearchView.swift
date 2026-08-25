@@ -15,13 +15,13 @@ import Vision
 
 struct NutritionSearchView: View {
     @Environment(\.dismiss) private var dismiss
-    @State  var query = ""
-    @State  var results: [FoodSearchResult] = []
+    @State private var query = ""
+    @State private var results: [FoodSearchResult] = []
     @State private var favoriteResults: [FoodSearchResult] = []
     @State private var favoriteKeys: Set<String> = []
     @State private var favoriteMutationIds: Set<UUID> = []
-    @State  var isSearching = false
-    @State  var errorMessage: String?
+    @State private var isSearching = false
+    @State private var errorMessage: String?
     private let catalogService = NutritionCatalogService()
     let targetDay: String
     let loggedAt: Date
@@ -101,7 +101,7 @@ struct NutritionSearchView: View {
         .task(refreshFavorites)
     }
 
-     func search(
+    private func search(
         searcher: @escaping @Sendable (String) async throws -> [FoodSearchResult]
     ) {
         guard let normalizedQuery = NutritionSearchExecutionHelper.normalizedQuery(query) else { return }
@@ -112,7 +112,7 @@ struct NutritionSearchView: View {
         }
     }
 
-     func submitSearch() {
+    private func submitSearch() {
         search { query in
             try await catalogService.searchFoods(query: query)
         }
@@ -133,7 +133,7 @@ struct NutritionSearchView: View {
         isSearching = false
     }
 
-     func searchResultButton(_ result: FoodSearchResult) -> some View {
+    private func searchResultButton(_ result: FoodSearchResult) -> some View {
         HStack(spacing: Spacing.s) {
             Button {
                 selectSearchResult(result)
@@ -197,7 +197,7 @@ struct NutritionSearchView: View {
         }
     }
 
-     func selectSearchResult(_ result: FoodSearchResult) {
+    private func selectSearchResult(_ result: FoodSearchResult) {
         errorMessage = nil
         onSelectResult(result.makeManualLogDraft(targetDay: targetDay, loggedAt: loggedAt))
     }
@@ -1503,4 +1503,199 @@ private enum NutritionSearchScoreSource {
     case cache
     case provider
     case custom
+}
+
+// MARK: - Test support extensions (co-located with their types)
+extension NutritionSearchView {
+    init(
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testQuery: String = "",
+        testResults: [FoodSearchResult] = [],
+        testIsSearching: Bool = false,
+        testErrorMessage: String? = nil,
+        onSelectResult: @escaping (NutritionLogDraft) -> Void = { _ in }
+    ) {
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onSelectResult = onSelectResult
+        _query = State(initialValue: testQuery)
+        _results = State(initialValue: testResults)
+        _isSearching = State(initialValue: testIsSearching)
+        _errorMessage = State(initialValue: testErrorMessage)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    func _testState() -> (
+        results: [FoodSearchResult],
+        isSearching: Bool,
+        errorMessage: String?
+    ) {
+        (results, isSearching, errorMessage)
+    }
+
+    @MainActor
+    func _testRenderSearchResultButton(_ result: FoodSearchResult) {
+        let host = UIHostingController(rootView: searchResultButton(result))
+        _ = host.view
+    }
+
+    func _testSelectSearchResult(_ result: FoodSearchResult) {
+        selectSearchResult(result)
+    }
+
+    func _testSubmitSearchUsingDefaultService() {
+        submitSearch()
+    }
+
+    func _testTriggerSearch(
+        searcher: @escaping @Sendable (String) async throws -> [FoodSearchResult]
+    ) async -> (
+        results: [FoodSearchResult],
+        isSearching: Bool,
+        errorMessage: String?
+    ) {
+        search(searcher: searcher)
+        for _ in 0..<50 {
+            await Task.yield()
+        }
+        return _testState()
+    }
+
+    static func _testSearchExecution(
+        query: String,
+        searcher: @Sendable (String) async throws -> [FoodSearchResult]
+    ) async -> Result<[FoodSearchResult], Error>? {
+        guard let normalizedQuery = NutritionSearchExecutionHelper.normalizedQuery(query) else {
+            return nil
+        }
+        return await NutritionSearchExecutionHelper.run(query: normalizedQuery, searcher: searcher)
+    }
+}
+
+extension NutritionCatalogService {
+    private static func _testRow(
+        requiredColumns: [String],
+        values: [String: (any DatabaseValueConvertible)?]
+    ) -> Row {
+        var completeValues: [String: (any DatabaseValueConvertible)?] = [:]
+        for column in requiredColumns {
+            completeValues[column] = nil
+        }
+        for (key, value) in values {
+            completeValues[key] = value
+        }
+        return Row(completeValues)
+    }
+
+    static func _testFavoriteKeys(
+        values: [[String: (any DatabaseValueConvertible)?]]
+    ) -> Set<String> {
+        favoriteKeys(from: values.map {
+            _testRow(requiredColumns: ["ref_type", "ref_id"], values: $0)
+        })
+    }
+
+    static func _testRecentKeys(
+        values: [[String: (any DatabaseValueConvertible)?]]
+    ) -> Set<String> {
+        recentKeys(from: values.map {
+            _testRow(requiredColumns: ["user_food_id", "catalog_item_id"], values: $0)
+        })
+    }
+
+    static func _testLoadFavoriteKeys(userId: UUID?, db: Database) throws -> Set<String> {
+        try loadFavoriteKeys(userId: userId, db: db)
+    }
+
+    static func _testLoadRecentKeys(userId: UUID?, db: Database) throws -> Set<String> {
+        try loadRecentKeys(userId: userId, db: db)
+    }
+
+    static func _testTags(
+        favorites: Set<String>,
+        recent: Set<String>,
+        refType: FoodRefType,
+        id: UUID?
+    ) -> [String] {
+        tags(favorites: favorites, recent: recent, refType: refType, id: id)
+    }
+
+    static func _testScore(
+        result: FoodSearchResult,
+        query: String,
+        sourceIsProvider: Bool,
+        favorites: Set<String>,
+        recent: Set<String>
+    ) -> Int {
+        score(
+            result: result,
+            query: query,
+            source: sourceIsProvider ? .provider : .cache,
+            favorites: favorites,
+            recent: recent
+        )
+    }
+
+    static func _testUniqueSortedResults(
+        resultsWithScores: [(result: FoodSearchResult, score: Int)],
+        limit: Int
+    ) -> [FoodSearchResult] {
+        uniqueSortedResults(
+            candidates: resultsWithScores.map { NutritionLocalSearchCandidate(result: $0.result, score: $0.score) },
+            limit: limit
+        )
+    }
+
+    static func _testMakeCustomResult(
+        values: [String: (any DatabaseValueConvertible)?],
+        tags: [String] = []
+    ) -> FoodSearchResult? {
+        makeCustomResult(
+            from: _testRow(
+                requiredColumns: [
+                    "id",
+                    "name",
+                    "brand",
+                    "barcode",
+                    "default_serving_g",
+                    "calories_per_100g",
+                    "protein_per_100g",
+                    "fat_per_100g",
+                    "carbs_per_100g",
+                    "fiber_per_100g"
+                ],
+                values: values
+            ),
+            tags: tags
+        )
+    }
+
+    static func _testMakeCatalogResult(
+        values: [String: (any DatabaseValueConvertible)?],
+        tags: [String] = []
+    ) -> FoodSearchResult? {
+        makeCatalogResult(
+            from: _testRow(
+                requiredColumns: [
+                    "id",
+                    "name",
+                    "provider",
+                    "brand",
+                    "barcode",
+                    "serving_size_g",
+                    "calories_per_100g",
+                    "protein_per_100g",
+                    "fat_per_100g",
+                    "carbs_per_100g",
+                    "fiber_per_100g"
+                ],
+                values: values
+            ),
+            tags: tags
+        )
+    }
 }

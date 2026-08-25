@@ -16,10 +16,10 @@ import Vision
 struct NutritionCalendarView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedDate: Date
-    @State  var displayedMonth = Date()
+    @State private var displayedMonth = Date()
     @State private var daysWithLogs: Set<String> = []
 
-     let calendar = Calendar.current
+    private let calendar = Calendar.current
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
@@ -52,7 +52,7 @@ struct NutritionCalendarView: View {
         }
     }
 
-     func daysInMonth() -> [Date?] {
+    private func daysInMonth() -> [Date?] {
         guard let range = calendar.range(of: .day, in: .month, for: displayedMonth),
               let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))
         else { return [] }
@@ -104,13 +104,13 @@ struct NutritionCalendarView: View {
         .padding(.horizontal, LayoutConstants.contentPadding)
     }
 
-     func weekdayHeader(_ day: String) -> some View {
+    private func weekdayHeader(_ day: String) -> some View {
         Text(day)
             .font(LifeOSTypography.caption)
             .foregroundStyle(.secondary)
     }
 
-     func dayCell(for date: Date?) -> some View {
+    private func dayCell(for date: Date?) -> some View {
         Group {
             if let date {
                 selectableDayCell(date)
@@ -165,7 +165,7 @@ struct NutritionCalendarView: View {
             .frame(height: 44)
     }
 
-     func shiftedMonth(
+    private func shiftedMonth(
         by value: Int,
         calendar overrideCalendar: Calendar? = nil,
         baseDate: Date? = nil
@@ -191,7 +191,7 @@ struct NutritionCalendarView: View {
         (dismissAction ?? { dismiss() })()
     }
 
-     func selectDate(
+    private func selectDate(
         _ date: Date,
         dismissAction: (() -> Void)? = nil
     ) {
@@ -199,7 +199,7 @@ struct NutritionCalendarView: View {
         dismissCalendar(dismissAction: dismissAction)
     }
 
-     func selectToday(
+    private func selectToday(
         today: Date = Date(),
         dismissAction: (() -> Void)? = nil
     ) {
@@ -234,7 +234,7 @@ struct NutritionCalendarView: View {
         }
     }
 
-     func loadLoggedDays(
+    private func loadLoggedDays(
         calendar overrideCalendar: Calendar? = nil,
         dbQueue overrideDBQueue: DatabaseQueue? = nil
     ) async {
@@ -258,7 +258,7 @@ struct SystemImagePicker: UIViewControllerRepresentable {
         configuredPicker(delegate: context.coordinator)
     }
 
-     func configuredPicker(
+    private func configuredPicker(
         delegate: (UIImagePickerControllerDelegate & UINavigationControllerDelegate)?
     ) -> UIImagePickerController {
         let picker = UIImagePickerController()
@@ -448,4 +448,80 @@ struct FoodPhotoAnalysisService: Sendable {
 
 enum FoodPhotoAnalysisServiceError: Error {
     case transport(Error)
+}
+
+// MARK: - Test support extensions (co-located with their types)
+extension NutritionCalendarView {
+    init(
+        selectedDate: Binding<Date>,
+        testDisplayedMonth: Date,
+        testDaysWithLogs: Set<String>
+    ) {
+        _selectedDate = selectedDate
+        _displayedMonth = State(initialValue: testDisplayedMonth)
+        _daysWithLogs = State(initialValue: testDaysWithLogs)
+    }
+
+    func _testDaysInMonth() -> [Date?] {
+        daysInMonth()
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderDayCell(_ date: Date?) {
+        let host = UIHostingController(rootView: dayCell(for: date))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderWeekdayHeader(_ day: String) {
+        let host = UIHostingController(rootView: weekdayHeader(day))
+        _ = host.view
+    }
+
+    func _testShiftDisplayedMonth(by value: Int, calendar: Calendar = .current) -> Date {
+        shiftedMonth(by: value, calendar: calendar)
+    }
+
+    func _testSelectDate(_ date: Date) -> (selectedDate: Date, dismissCalls: Int) {
+        var dismissCalls = 0
+        selectDate(date) { dismissCalls += 1 }
+        return (selectedDate, dismissCalls)
+    }
+
+    func _testSelectToday(_ today: Date) -> (selectedDate: Date, dismissCalls: Int) {
+        var dismissCalls = 0
+        selectToday(today: today) { dismissCalls += 1 }
+        return (selectedDate, dismissCalls)
+    }
+
+    func _testTriggerLoadLoggedDays(
+        calendar: Calendar = .current,
+        dbQueue: DatabaseQueue
+    ) async {
+        await loadLoggedDays(calendar: calendar, dbQueue: dbQueue)
+    }
+
+    static func _testLoadLoggedDaysResult(
+        displayedMonth: Date,
+        calendar: Calendar = .current,
+        dbQueue: DatabaseQueue
+    ) async -> Set<String> {
+        await loadLoggedDaysResult(
+            displayedMonth: displayedMonth,
+            calendar: calendar,
+            dbQueue: dbQueue
+        )
+    }
+}
+
+extension SystemImagePicker {
+    func _testConfiguredPicker(
+        delegate: (UIImagePickerControllerDelegate & UINavigationControllerDelegate)? = nil
+    ) -> UIImagePickerController {
+        configuredPicker(delegate: delegate ?? makeCoordinator())
+    }
 }

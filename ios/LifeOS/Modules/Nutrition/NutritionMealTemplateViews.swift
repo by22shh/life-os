@@ -19,8 +19,8 @@ struct MealTemplatesView: View {
     let refreshTrigger: Int
     let onTemplatesChanged: () -> Void
     let onTemplateLogged: () -> Void
-    @State  var isLoading = true
-    @State  var templates: [NutritionMealTemplateSummary] = []
+    @State private var isLoading = true
+    @State private var templates: [NutritionMealTemplateSummary] = []
     let onSelectTemplate: (UUID) -> Void
 
     var body: some View {
@@ -79,13 +79,13 @@ struct MealTemplatesView: View {
         }
     }
 
-     func loadTemplates(manager: any NutritionMealTemplateManaging) async {
+    private func loadTemplates(manager: any NutritionMealTemplateManaging) async {
         isLoading = true
         defer { isLoading = false }
         templates = await Self.loadTemplatesResult(manager: manager)
     }
 
-     func templateCard(_ template: NutritionMealTemplateSummary) -> some View {
+    private func templateCard(_ template: NutritionMealTemplateSummary) -> some View {
         Button {
             onSelectTemplate(template.id)
         } label: {
@@ -130,12 +130,12 @@ struct MealTemplateLibraryView: View {
     let onTemplatesChanged: () -> Void
     let onTemplateLogged: () -> Void
 
-    @State  var templates: [NutritionMealTemplateSummary] = []
-    @State  var isLoading = true
-    @State  var showingArchived = false
+    @State private var templates: [NutritionMealTemplateSummary] = []
+    @State private var isLoading = true
+    @State private var showingArchived = false
     @State private var showingComposer = false
     @State private var selectedTemplate: MealTemplateLibraryDestination?
-    @State  var statusMessage: TemplateStatusMessage?
+    @State private var statusMessage: TemplateStatusMessage?
 
     var body: some View {
         VStack(spacing: Spacing.s) {
@@ -243,7 +243,7 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func loadTemplates(manager: any NutritionMealTemplateManaging) async {
+    private func loadTemplates(manager: any NutritionMealTemplateManaging) async {
         isLoading = true
         defer { isLoading = false }
         let result = await Self.loadTemplatesResult(
@@ -254,7 +254,7 @@ struct MealTemplateLibraryView: View {
         statusMessage = result.statusMessage
     }
 
-     func toggleArchive(
+    private func toggleArchive(
         for template: NutritionMealTemplateSummary,
         manager: any NutritionMealTemplateManaging
     ) async {
@@ -270,7 +270,7 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func templateRow(_ template: NutritionMealTemplateSummary) -> some View {
+    private func templateRow(_ template: NutritionMealTemplateSummary) -> some View {
         Button {
             selectedTemplate = MealTemplateLibraryDestination(templateId: template.id, startsEditing: false)
         } label: {
@@ -315,7 +315,7 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func templateDetailDestination(_ destination: MealTemplateLibraryDestination) -> some View {
+    private func templateDetailDestination(_ destination: MealTemplateLibraryDestination) -> some View {
         MealTemplateDetailView(
             templateId: destination.templateId,
             startsEditing: destination.startsEditing,
@@ -327,11 +327,11 @@ struct MealTemplateLibraryView: View {
         )
     }
 
-     func handleTemplateDetailTemplatesChanged() {
+    private func handleTemplateDetailTemplatesChanged() {
         handleTemplateDetailTemplatesChanged(reloadAction: nil)
     }
 
-     func handleTemplateDetailTemplatesChanged(reloadAction: (() async -> Void)? = nil) {
+    private func handleTemplateDetailTemplatesChanged(reloadAction: (() async -> Void)? = nil) {
         statusMessage = nil
         onTemplatesChanged()
         Task { @MainActor in
@@ -343,11 +343,11 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func handleTemplateDetailStatusMessage(_ message: TemplateStatusMessage?) {
+    private func handleTemplateDetailStatusMessage(_ message: TemplateStatusMessage?) {
         statusMessage = message
     }
 
-     func composerSheet() -> some View {
+    private func composerSheet() -> some View {
         NavigationStack {
             MealTemplateComposerView(
                 onSaved: handleComposerSheetSaved
@@ -355,11 +355,11 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
+    private func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
         handleComposerSaved(message, reloadAction: nil)
     }
 
-     func handleComposerSaved(
+    private func handleComposerSaved(
         _ message: TemplateStatusMessage,
         reloadAction: (() async -> Void)?
     ) {
@@ -375,7 +375,7 @@ struct MealTemplateLibraryView: View {
         }
     }
 
-     func templateRowSubtitle(_ template: NutritionMealTemplateSummary) -> String {
+    private func templateRowSubtitle(_ template: NutritionMealTemplateSummary) -> String {
         String(
             format: String(localized: "nutrition_template_row_subtitle_format"),
             localizedNutritionMealType(template.mealType, emptyKey: "nutrition_any_meal"),
@@ -580,7 +580,7 @@ final class MealTemplateDetailViewModel {
 
     private var didLoad = false
     private var persistedDetail: NutritionMealTemplateDetail?
-     let templateManager: any NutritionMealTemplateManaging
+    private let templateManager: any NutritionMealTemplateManaging
 
     init(
         templateId: UUID,
@@ -741,7 +741,7 @@ final class MealTemplateDetailViewModel {
         }
     }
 
-     func apply(detail: NutritionMealTemplateDetail) {
+    private func apply(detail: NutritionMealTemplateDetail) {
         persistedDetail = detail
         name = detail.template.name
         mealType = detail.template.mealType
@@ -755,7 +755,7 @@ final class MealTemplateDetailViewModel {
 
 struct MealTemplateDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @State  var viewModel: MealTemplateDetailViewModel
+    @State private var viewModel: MealTemplateDetailViewModel
 
     let targetDay: String
     let loggedAt: Date
@@ -839,7 +839,7 @@ struct MealTemplateDetailView: View {
         .task { await viewModel.loadIfNeeded() }
     }
 
-     func templateHeaderSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
+    private func templateHeaderSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
         let totals = viewModel.totals
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(alignment: .top) {
@@ -882,7 +882,7 @@ struct MealTemplateDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func editorDetailsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
+    private func editorDetailsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
         @Bindable var viewModel = viewModel
 
         return VStack(alignment: .leading, spacing: Spacing.s) {
@@ -906,7 +906,7 @@ struct MealTemplateDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func editorItemsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
+    private func editorItemsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack {
                 Text(String(localized: "nutrition_items"))
@@ -927,7 +927,7 @@ struct MealTemplateDetailView: View {
         }
     }
 
-     func previewItemsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
+    private func previewItemsSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_items"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -938,7 +938,7 @@ struct MealTemplateDetailView: View {
         }
     }
 
-     func previewItemRow(_ item: NutritionEditableMealItem) -> some View {
+    private func previewItemRow(_ item: NutritionEditableMealItem) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xxs) {
             Text(item.name)
                 .font(LifeOSTypography.body.weight(.semibold))
@@ -957,7 +957,7 @@ struct MealTemplateDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func actionSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
+    private func actionSection(_ viewModel: MealTemplateDetailViewModel) -> some View {
         VStack(spacing: Spacing.s) {
             if viewModel.isEditing {
                 Button(action: saveTemplate) {
@@ -1006,7 +1006,7 @@ struct MealTemplateDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
-     func templateItemEditor(index: Int, viewModel: MealTemplateDetailViewModel) -> some View {
+    private func templateItemEditor(index: Int, viewModel: MealTemplateDetailViewModel) -> some View {
         @Bindable var viewModel = viewModel
 
         return VStack(alignment: .leading, spacing: Spacing.s) {
@@ -1047,7 +1047,7 @@ struct MealTemplateDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func templateNumericField(_ title: String, value: Binding<Double>) -> some View {
+    private func templateNumericField(_ title: String, value: Binding<Double>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
@@ -1082,7 +1082,7 @@ struct MealTemplateDetailView: View {
         )
     }
 
-     func saveTemplate() {
+    private func saveTemplate() {
         Task { @MainActor in
             let didSave = await viewModel.save()
             if didSave {
@@ -1095,7 +1095,7 @@ struct MealTemplateDetailView: View {
         }
     }
 
-     func toggleArchived() {
+    private func toggleArchived() {
         Task { @MainActor in
             let didToggle = await viewModel.toggleArchived()
             if didToggle {
@@ -1109,7 +1109,7 @@ struct MealTemplateDetailView: View {
         }
     }
 
-     func logTemplateNow() {
+    private func logTemplateNow() {
         Task { @MainActor in
             let didLog = await viewModel.logNow(targetDay: targetDay, loggedAt: loggedAt)
             if didLog {
@@ -1130,13 +1130,13 @@ struct MealTemplateComposerView: View {
 
     let onSaved: (TemplateStatusMessage) -> Void
 
-    @State  var name = ""
-    @State  var mealType: MealType?
-    @State  var items: [NutritionEditableMealItem] = []
-    @State  var isSaving = false
-    @State  var errorMessage: String?
+    @State private var name = ""
+    @State private var mealType: MealType?
+    @State private var items: [NutritionEditableMealItem] = []
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
-     var totals: (calories: Double, protein: Double, fat: Double, carbs: Double, fiber: Double?) {
+    private var totals: (calories: Double, protein: Double, fat: Double, carbs: Double, fiber: Double?) {
         let fiber = items.reduce(0) { $0 + $1.fiberG }
         return (
             calories: items.reduce(0) { $0 + $1.calories },
@@ -1147,7 +1147,7 @@ struct MealTemplateComposerView: View {
         )
     }
 
-     var canSave: Bool {
+    private var canSave: Bool {
         !isSaving &&
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !items.isEmpty
@@ -1189,7 +1189,7 @@ struct MealTemplateComposerView: View {
         }
     }
 
-     var detailsSection: some View {
+    private var detailsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_template_details"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -1211,7 +1211,7 @@ struct MealTemplateComposerView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     var previewSection: some View {
+    private var previewSection: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(String(localized: "nutrition_preview"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -1227,7 +1227,7 @@ struct MealTemplateComposerView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     var itemsSection: some View {
+    private var itemsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack {
                 Text(String(localized: "nutrition_items"))
@@ -1261,7 +1261,7 @@ struct MealTemplateComposerView: View {
         }
     }
 
-     func itemEditor(index: Int) -> some View {
+    private func itemEditor(index: Int) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .top) {
                 TextField(String(localized: "nutrition_item_name"), text: $items[index].name)
@@ -1316,7 +1316,7 @@ struct MealTemplateComposerView: View {
         )
     }
 
-     func templateNumericField(_ title: String, value: Binding<Double>) -> some View {
+    private func templateNumericField(_ title: String, value: Binding<Double>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
@@ -1368,7 +1368,7 @@ struct MealTemplateComposerView: View {
         }
     }
 
-     func save(
+    private func save(
         manager: any NutritionMealTemplateManaging,
         dismissAction: @escaping () -> Void
     ) {
@@ -1394,7 +1394,7 @@ struct MealTemplateComposerView: View {
         }
     }
 
-     func save() {
+    private func save() {
         save(manager: NutritionService(), dismissAction: { dismiss() })
     }
 }
@@ -1589,13 +1589,13 @@ struct BatchRecipeLibraryView: View {
     let onBatchesChanged: () -> Void
     let onBatchLogged: () -> Void
 
-    @State  var recipes: [NutritionBatchRecipeSummary] = []
-    @State  var isLoading = true
-    @State  var showingArchived = false
+    @State private var recipes: [NutritionBatchRecipeSummary] = []
+    @State private var isLoading = true
+    @State private var showingArchived = false
     @State private var showingComposer = false
     @State private var selectedBatch: BatchRecipeLibraryDestination?
     @State private var quickLogBatch: NutritionBatchRecipeSummary?
-    @State  var statusMessage: TemplateStatusMessage?
+    @State private var statusMessage: TemplateStatusMessage?
 
     var body: some View {
         VStack(spacing: Spacing.s) {
@@ -1672,7 +1672,7 @@ struct BatchRecipeLibraryView: View {
         .task(id: showingArchived) { await loadRecipes() }
     }
 
-     func batchRow(_ recipe: NutritionBatchRecipeSummary) -> some View {
+    private func batchRow(_ recipe: NutritionBatchRecipeSummary) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Button {
                 selectedBatch = BatchRecipeLibraryDestination(batchId: recipe.id)
@@ -1742,7 +1742,7 @@ struct BatchRecipeLibraryView: View {
         localizedNutritionRemainingLine(weightG: recipe.weightRemainingG, portionsRemaining: recipe.portionsRemaining)
     }
 
-     func detailDestination(_ destination: BatchRecipeLibraryDestination) -> some View {
+    private func detailDestination(_ destination: BatchRecipeLibraryDestination) -> some View {
         BatchRecipeDetailView(
             batchId: destination.batchId,
             targetDay: targetDay,
@@ -1753,17 +1753,17 @@ struct BatchRecipeLibraryView: View {
         )
     }
 
-     func styledBatchRow(_ recipe: NutritionBatchRecipeSummary) -> some View {
+    private func styledBatchRow(_ recipe: NutritionBatchRecipeSummary) -> some View {
         batchRow(recipe)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
     }
 
-     func handleDetailBatchesChanged() {
+    private func handleDetailBatchesChanged() {
         handleDetailBatchesChanged(reloadAction: nil)
     }
 
-     func handleDetailBatchesChanged(reloadAction: (() async -> Void)? = nil) {
+    private func handleDetailBatchesChanged(reloadAction: (() async -> Void)? = nil) {
         onBatchesChanged()
         Task { @MainActor in
             if let reloadAction {
@@ -1774,11 +1774,11 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func handleDetailBatchLogged() {
+    private func handleDetailBatchLogged() {
         handleDetailBatchLogged(reloadAction: nil)
     }
 
-     func handleDetailBatchLogged(reloadAction: (() async -> Void)? = nil) {
+    private func handleDetailBatchLogged(reloadAction: (() async -> Void)? = nil) {
         onBatchLogged()
         Task { @MainActor in
             if let reloadAction {
@@ -1789,11 +1789,11 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func handleDetailStatusMessage(_ message: TemplateStatusMessage?) {
+    private func handleDetailStatusMessage(_ message: TemplateStatusMessage?) {
         statusMessage = message
     }
 
-     func composerSheet() -> some View {
+    private func composerSheet() -> some View {
         NavigationStack {
             BatchRecipeComposerView(
                 existingDetail: nil,
@@ -1802,7 +1802,7 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func quickLogSheet(_ recipe: NutritionBatchRecipeSummary) -> some View {
+    private func quickLogSheet(_ recipe: NutritionBatchRecipeSummary) -> some View {
         NavigationStack {
             BatchPortionLogView(
                 batchId: recipe.id,
@@ -1817,15 +1817,15 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
+    private func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
         handleComposerSaved(message, reloadAction: nil)
     }
 
-     func handleQuickLogSheetSaved(_ message: TemplateStatusMessage) {
+    private func handleQuickLogSheetSaved(_ message: TemplateStatusMessage) {
         handleQuickLogSaved(message, reloadAction: nil)
     }
 
-     func handleComposerSaved(
+    private func handleComposerSaved(
         _ message: TemplateStatusMessage,
         reloadAction: (() async -> Void)?
     ) {
@@ -1840,7 +1840,7 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func handleQuickLogSaved(
+    private func handleQuickLogSaved(
         _ message: TemplateStatusMessage,
         reloadAction: (() async -> Void)?
     ) {
@@ -1880,7 +1880,7 @@ struct BatchRecipeLibraryView: View {
         }
     }
 
-     func loadRecipes(
+    private func loadRecipes(
         manager overrideManager: (any NutritionBatchRecipeManaging)? = nil
     ) async {
         isLoading = true
@@ -1904,14 +1904,14 @@ struct BatchRecipeDetailView: View {
     let onBatchLogged: () -> Void
     let onStatusMessage: (TemplateStatusMessage?) -> Void
 
-    @State  var detail: NutritionBatchRecipeDetail?
-    @State  var isLoading = true
-    @State  var isArchiving = false
-    @State  var isDuplicating = false
+    @State private var detail: NutritionBatchRecipeDetail?
+    @State private var isLoading = true
+    @State private var isArchiving = false
+    @State private var isDuplicating = false
     @State private var showingComposer = false
     @State private var showingLogSheet = false
-    @State  var errorMessage: String?
-    @State  var statusMessage: TemplateStatusMessage?
+    @State private var errorMessage: String?
+    @State private var statusMessage: TemplateStatusMessage?
 
     var body: some View {
         ScrollView {
@@ -2012,7 +2012,7 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func detailHeader(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func detailHeader(_ detail: NutritionBatchRecipeDetail) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -2065,7 +2065,7 @@ struct BatchRecipeDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func detailMacros(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func detailMacros(_ detail: NutritionBatchRecipeDetail) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_macros"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -2094,7 +2094,7 @@ struct BatchRecipeDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func detailIngredients(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func detailIngredients(_ detail: NutritionBatchRecipeDetail) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_ingredients"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -2105,7 +2105,7 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func detailIngredientRow(_ ingredient: BatchRecipeIngredient) -> some View {
+    private func detailIngredientRow(_ ingredient: BatchRecipeIngredient) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xxs) {
             Text(ingredient.name)
                 .font(LifeOSTypography.body.weight(.semibold))
@@ -2124,7 +2124,7 @@ struct BatchRecipeDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func detailActions(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func detailActions(_ detail: NutritionBatchRecipeDetail) -> some View {
         VStack(spacing: Spacing.s) {
             Button {
                 showingLogSheet = true
@@ -2160,7 +2160,7 @@ struct BatchRecipeDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
-     func composerSheet(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func composerSheet(_ detail: NutritionBatchRecipeDetail) -> some View {
         NavigationStack {
             BatchRecipeComposerView(
                 existingDetail: detail,
@@ -2170,13 +2170,13 @@ struct BatchRecipeDetailView: View {
     }
 
     @ViewBuilder
-     func composerSheetContent() -> some View {
+    private func composerSheetContent() -> some View {
         if let detail {
             composerSheet(detail)
         }
     }
 
-     func logSheet(_ detail: NutritionBatchRecipeDetail) -> some View {
+    private func logSheet(_ detail: NutritionBatchRecipeDetail) -> some View {
         NavigationStack {
             BatchPortionLogView(
                 batchId: detail.recipe.id,
@@ -2192,13 +2192,13 @@ struct BatchRecipeDetailView: View {
     }
 
     @ViewBuilder
-     func logSheetContent() -> some View {
+    private func logSheetContent() -> some View {
         if let detail {
             logSheet(detail)
         }
     }
 
-     func handleComposerSaved(
+    private func handleComposerSaved(
         _ message: TemplateStatusMessage,
         reloadAction: (() async -> Void)?
     ) {
@@ -2214,11 +2214,11 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
+    private func handleComposerSheetSaved(_ message: TemplateStatusMessage) {
         handleComposerSaved(message, reloadAction: nil)
     }
 
-     func handleLogSaved(
+    private func handleLogSaved(
         _ message: TemplateStatusMessage,
         reloadAction: (() async -> Void)?
     ) {
@@ -2235,11 +2235,11 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func handleLogSheetSaved(_ message: TemplateStatusMessage) {
+    private func handleLogSheetSaved(_ message: TemplateStatusMessage) {
         handleLogSaved(message, reloadAction: nil)
     }
 
-     func loadDetail(
+    private func loadDetail(
         preferRemote: Bool,
         manager: any NutritionBatchRecipeManaging
     ) async {
@@ -2254,11 +2254,11 @@ struct BatchRecipeDetailView: View {
         errorMessage = result.errorMessage
     }
 
-     func loadDetail(preferRemote: Bool) async {
+    private func loadDetail(preferRemote: Bool) async {
         await loadDetail(preferRemote: preferRemote, manager: NutritionService())
     }
 
-     func toggleArchived(
+    private func toggleArchived(
         manager: any NutritionBatchRecipeManaging,
         dismissAction: @escaping () -> Void
     ) {
@@ -2280,11 +2280,11 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func toggleArchived() {
+    private func toggleArchived() {
         toggleArchived(manager: NutritionService(), dismissAction: { dismiss() })
     }
 
-     func cookAgain(
+    private func cookAgain(
         manager: any NutritionBatchRecipeManaging,
         dismissAction: @escaping () -> Void
     ) {
@@ -2306,7 +2306,7 @@ struct BatchRecipeDetailView: View {
         }
     }
 
-     func cookAgain() {
+    private func cookAgain() {
         cookAgain(manager: NutritionService(), dismissAction: { dismiss() })
     }
 }
@@ -2317,19 +2317,19 @@ struct BatchRecipeComposerView: View {
     let existingDetail: NutritionBatchRecipeDetail?
     let onSaved: (TemplateStatusMessage) -> Void
 
-    @State  var name: String
-    @State  var description: String
-    @State  var cookedAt: Date
-    @State  var totalWeightG: Double
-    @State  var totalPortions: Int
-    @State  var ingredients: [BatchRecipeEditableIngredient]
-    @State  var isSaving = false
-    @State  var errorMessage: String?
-    @State  var importMessage: String?
-    @State  var isAnalyzingPhoto = false
-    @State  var showingIngredientSearch = false
-    @State  var showCameraPicker = false
-    @State  var showPhotoLibrary = false
+    @State private var name: String
+    @State private var description: String
+    @State private var cookedAt: Date
+    @State private var totalWeightG: Double
+    @State private var totalPortions: Int
+    @State private var ingredients: [BatchRecipeEditableIngredient]
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var importMessage: String?
+    @State private var isAnalyzingPhoto = false
+    @State private var showingIngredientSearch = false
+    @State private var showCameraPicker = false
+    @State private var showPhotoLibrary = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     init(
@@ -2350,7 +2350,7 @@ struct BatchRecipeComposerView: View {
         DiaryDateFormatter.parseDate(value) ?? Date()
     }
 
-     var totals: NutritionBatchMacroSnapshot {
+    private var totals: NutritionBatchMacroSnapshot {
         let calories = ingredients.reduce(0) { $0 + $1.calories }
         let protein = ingredients.reduce(0) { $0 + $1.proteinG }
         let fat = ingredients.reduce(0) { $0 + $1.fatG }
@@ -2366,7 +2366,7 @@ struct BatchRecipeComposerView: View {
         )
     }
 
-     var per100g: NutritionBatchMacroSnapshot {
+    private var per100g: NutritionBatchMacroSnapshot {
         guard totalWeightG > 0 else {
             return NutritionBatchMacroSnapshot(weightG: 100, calories: 0, proteinG: 0, fatG: 0, carbsG: 0, fiberG: nil)
         }
@@ -2380,7 +2380,7 @@ struct BatchRecipeComposerView: View {
         )
     }
 
-     var perPortion: NutritionBatchMacroSnapshot {
+    private var perPortion: NutritionBatchMacroSnapshot {
         let portions = max(totalPortions, 1)
         return NutritionBatchMacroSnapshot(
             weightG: totalWeightG / Double(portions),
@@ -2392,7 +2392,7 @@ struct BatchRecipeComposerView: View {
         )
     }
 
-     var canSave: Bool {
+    private var canSave: Bool {
         !isSaving &&
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         totalWeightG > 0 &&
@@ -2498,17 +2498,17 @@ struct BatchRecipeComposerView: View {
         return (showCameraPicker: false, showPhotoLibrary: true)
     }
 
-     func ingredientSearchSheet() -> some View {
+    private func ingredientSearchSheet() -> some View {
         NavigationStack {
             BatchRecipeIngredientPickerView(onSelect: handleIngredientSearchSelection)
         }
     }
 
-     func cameraPickerSheet() -> some View {
+    private func cameraPickerSheet() -> some View {
         SystemImagePicker(sourceType: .camera, onImagePicked: handlePickedCameraImage)
     }
 
-     var detailsSection: some View {
+    private var detailsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_batch_details"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -2531,7 +2531,7 @@ struct BatchRecipeComposerView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     var totalsSection: some View {
+    private var totalsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             Text(String(localized: "nutrition_preview"))
                 .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -2551,7 +2551,7 @@ struct BatchRecipeComposerView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     var ingredientsSection: some View {
+    private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack {
                 Text(String(localized: "nutrition_ingredients"))
@@ -2574,7 +2574,7 @@ struct BatchRecipeComposerView: View {
         }
     }
 
-     func ingredientEditor(index: Int) -> some View {
+    private func ingredientEditor(index: Int) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .top) {
                 TextField(String(localized: "nutrition_ingredient_name"), text: $ingredients[index].name)
@@ -2609,7 +2609,7 @@ struct BatchRecipeComposerView: View {
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
 
-     func batchNumericField(_ title: String, value: Binding<Double>) -> some View {
+    private func batchNumericField(_ title: String, value: Binding<Double>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
@@ -2624,7 +2624,7 @@ struct BatchRecipeComposerView: View {
         }
     }
 
-     func batchIntegerField(_ title: String, value: Binding<Int>) -> some View {
+    private func batchIntegerField(_ title: String, value: Binding<Int>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
@@ -2635,7 +2635,7 @@ struct BatchRecipeComposerView: View {
         }
     }
 
-     func save(
+    private func save(
         manager: any NutritionBatchRecipeManaging,
         dismissAction: @escaping () -> Void
     ) {
@@ -2665,33 +2665,33 @@ struct BatchRecipeComposerView: View {
         }
     }
 
-     func save() {
+    private func save() {
         save(manager: NutritionService(), dismissAction: { dismiss() })
     }
 
-     func presentIngredientSearch() {
+    private func presentIngredientSearch() {
         showingIngredientSearch = true
     }
 
-     func addManualIngredient() {
+    private func addManualIngredient() {
         ingredients.append(.manual())
     }
 
-     func handleIngredientSearchSelection(_ result: FoodSearchResult) {
+    private func handleIngredientSearchSelection(_ result: FoodSearchResult) {
         ingredients.append(BatchRecipeEditableIngredient(searchResult: result))
     }
 
-     func beginCameraCapture() {
+    private func beginCameraCapture() {
         openCameraOrLibrary()
     }
 
-     func beginCameraCapture(
+    private func beginCameraCapture(
         cameraAvailableProvider: @escaping () -> Bool
     ) {
         openCameraOrLibrary(cameraAvailableProvider: cameraAvailableProvider)
     }
 
-     func openCameraOrLibrary(
+    private func openCameraOrLibrary(
         cameraAvailableProvider: (() -> Bool)? = nil
     ) {
         let cameraAvailable = cameraAvailableProvider?()
@@ -2701,14 +2701,14 @@ struct BatchRecipeComposerView: View {
         showPhotoLibrary = state.showPhotoLibrary
     }
 
-     func handlePickedCameraImage(_ image: UIImage) {
+    private func handlePickedCameraImage(_ image: UIImage) {
         Task { @MainActor in
             await processBatchPhoto(image)
         }
     }
 
     @MainActor
-     func handleSelectedPhotoItemChange() async {
+    private func handleSelectedPhotoItemChange() async {
         await loadSelectedPhotoItemIfNeeded(
             item: selectedPhotoItem,
             shouldLoad: selectedPhotoItem != nil
@@ -2716,7 +2716,7 @@ struct BatchRecipeComposerView: View {
     }
 
     @MainActor
-     func loadSelectedPhotoItemIfNeeded(
+    private func loadSelectedPhotoItemIfNeeded(
         item: PhotosPickerItem?,
         shouldLoad: Bool,
         loadPhotoItemAction: ((PhotosPickerItem?) async -> Void)? = nil
@@ -2732,7 +2732,7 @@ struct BatchRecipeComposerView: View {
     }
 
     @MainActor
-     func loadPhotoItem(
+    private func loadPhotoItem(
         using loader: @escaping @Sendable () async throws -> Data?
     ) async {
         defer { selectedPhotoItem = nil }
@@ -2771,7 +2771,7 @@ struct BatchRecipeComposerView: View {
     }
 
     @MainActor
-     func apply(photoDraft: BatchRecipePhotoDraft) {
+    private func apply(photoDraft: BatchRecipePhotoDraft) {
         let resolvedState = Self.resolvePhotoImportState(
             name: name,
             description: description,
@@ -2892,8 +2892,8 @@ struct BatchPortionLogView: View {
     @State private var portionWeightG: Double
     @State private var mealType: MealType?
     @State private var context: MealContext? = .home
-    @State  var isSaving = false
-    @State  var errorMessage: String?
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
     init(
         batchId: UUID,
@@ -2931,7 +2931,7 @@ struct BatchPortionLogView: View {
         }
     }
 
-     var preview: NutritionBatchMacroSnapshot {
+    private var preview: NutritionBatchMacroSnapshot {
         let factor = portionWeightG / 100
         return NutritionBatchMacroSnapshot(
             weightG: portionWeightG,
@@ -2943,7 +2943,7 @@ struct BatchPortionLogView: View {
         )
     }
 
-     var canSave: Bool {
+    private var canSave: Bool {
         !isSaving && portionWeightG > 0 && portionWeightG <= remainingWeightG + 0.001
     }
 
@@ -3045,7 +3045,7 @@ struct BatchPortionLogView: View {
         }
     }
 
-     func save(
+    private func save(
         manager: any NutritionBatchRecipeManaging,
         dismissAction: @escaping () -> Void
     ) {
@@ -3075,7 +3075,7 @@ struct BatchPortionLogView: View {
         }
     }
 
-     func save() {
+    private func save() {
         save(manager: NutritionService(), dismissAction: { dismiss() })
     }
 }
@@ -3142,7 +3142,7 @@ struct BatchRecipeIngredientPickerView: View {
         }
     }
 
-     func search(
+    private func search(
         searcher: @escaping @Sendable (String) async throws -> [FoodSearchResult]
     ) {
         guard let normalizedQuery = NutritionSearchExecutionHelper.normalizedQuery(query) else { return }
@@ -3153,7 +3153,7 @@ struct BatchRecipeIngredientPickerView: View {
         }
     }
 
-     func submitSearch() {
+    private func submitSearch() {
         search { query in
             try await catalogService.searchFoods(query: query)
         }
@@ -3174,7 +3174,7 @@ struct BatchRecipeIngredientPickerView: View {
         isSearching = false
     }
 
-     func searchResultButton(_ result: FoodSearchResult) -> some View {
+    private func searchResultButton(_ result: FoodSearchResult) -> some View {
         Button {
             handleSelection(of: result, dismissAction: { dismiss() })
         } label: {
@@ -3199,7 +3199,7 @@ struct BatchRecipeIngredientPickerView: View {
         }
     }
 
-     func handleSelection(
+    private func handleSelection(
         of result: FoodSearchResult,
         dismissAction: @escaping () -> Void
     ) {
@@ -3239,4 +3239,1353 @@ private func batchIngredientLine(_ ingredient: BatchRecipeIngredient) -> String 
         carbs: ingredient.carbsG,
         fiber: ingredient.fiberG
     )
+}
+
+// MARK: - Test support extensions (co-located with their types)
+extension MealTemplateDetailViewModel {
+    @MainActor
+    static func _testConfigured(
+        detail: NutritionMealTemplateDetail = NutritionCoverageFixtures.mealTemplateDetail(),
+        isLoading: Bool = false,
+        isSaving: Bool = false,
+        isApplying: Bool = false,
+        isArchiving: Bool = false,
+        isEditing: Bool = false,
+        errorMessage: String? = nil,
+        statusMessage: TemplateStatusMessage? = nil
+    ) -> MealTemplateDetailViewModel {
+        let viewModel = MealTemplateDetailViewModel(
+            templateId: detail.template.id,
+            startsEditing: isEditing,
+            templateManager: NutritionCoverageMealTemplateManager(detail: detail)
+        )
+        viewModel.apply(detail: detail)
+        viewModel.isLoading = isLoading
+        viewModel.isSaving = isSaving
+        viewModel.isApplying = isApplying
+        viewModel.isArchiving = isArchiving
+        viewModel.isEditing = isEditing
+        viewModel.errorMessage = errorMessage
+        viewModel.statusMessage = statusMessage
+        return viewModel
+    }
+}
+
+extension MealTemplateLibraryView {
+    init(
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testTemplates: [NutritionMealTemplateSummary] = [],
+        testIsLoading: Bool = true,
+        testShowingArchived: Bool = false,
+        testStatusMessage: TemplateStatusMessage? = nil,
+        onTemplatesChanged: @escaping () -> Void = {},
+        onTemplateLogged: @escaping () -> Void = {}
+    ) {
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onTemplatesChanged = onTemplatesChanged
+        self.onTemplateLogged = onTemplateLogged
+        _templates = State(initialValue: testTemplates)
+        _isLoading = State(initialValue: testIsLoading)
+        _showingArchived = State(initialValue: testShowingArchived)
+        _statusMessage = State(initialValue: testStatusMessage)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    func _testTemplateRowSubtitle(_ template: NutritionMealTemplateSummary) -> String {
+        templateRowSubtitle(template)
+    }
+
+    @MainActor
+    func _testRenderTemplateRow(_ template: NutritionMealTemplateSummary) {
+        let host = UIHostingController(rootView: templateRow(template))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderTemplateDestination(templateId: UUID, startsEditing: Bool) {
+        let host = UIHostingController(
+            rootView: templateDetailDestination(
+                MealTemplateLibraryDestination(templateId: templateId, startsEditing: startsEditing)
+            )
+        )
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderComposerSheet() {
+        _ = composerSheet()
+        let host = UIHostingController(rootView: composerSheet())
+        _ = host.view
+    }
+
+    @MainActor
+    func _testHandleComposerSaved(
+        _ message: TemplateStatusMessage,
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> (
+        statusMessage: TemplateStatusMessage?,
+        showingArchived: Bool
+    ) {
+        handleComposerSaved(message, reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return (statusMessage, showingArchived)
+    }
+
+    @MainActor
+    func _testHandleComposerSheetSaved(
+        _ message: TemplateStatusMessage
+    ) async -> (
+        statusMessage: TemplateStatusMessage?,
+        showingArchived: Bool
+    ) {
+        handleComposerSheetSaved(message)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return (statusMessage, showingArchived)
+    }
+
+    @MainActor
+    func _testHandleTemplateDetailTemplatesChanged(
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleTemplateDetailTemplatesChanged(reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    func _testHandleTemplateDetailStatusMessage(_ message: TemplateStatusMessage) -> TemplateStatusMessage? {
+        handleTemplateDetailStatusMessage(message)
+        return statusMessage
+    }
+
+    func _testState() -> (
+        templates: [NutritionMealTemplateSummary],
+        isLoading: Bool,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        (templates, isLoading, statusMessage)
+    }
+
+    func _testTriggerLoadTemplates(manager: any NutritionMealTemplateManaging) async -> (
+        templates: [NutritionMealTemplateSummary],
+        isLoading: Bool,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await loadTemplates(manager: manager)
+        return (templates, isLoading, statusMessage)
+    }
+
+    func _testTriggerToggleArchive(
+        for template: NutritionMealTemplateSummary,
+        manager: any NutritionMealTemplateManaging
+    ) async -> (
+        templates: [NutritionMealTemplateSummary],
+        isLoading: Bool,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await toggleArchive(for: template, manager: manager)
+        return (templates, isLoading, statusMessage)
+    }
+
+    static func _testLoadTemplatesResult(
+        showingArchived: Bool,
+        manager: any NutritionMealTemplateManaging
+    ) async -> (
+        templates: [NutritionMealTemplateSummary],
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await loadTemplatesResult(showingArchived: showingArchived, manager: manager)
+    }
+
+    static func _testToggleArchiveResult(
+        for template: NutritionMealTemplateSummary,
+        manager: any NutritionMealTemplateManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await toggleArchiveResult(for: template, manager: manager)
+    }
+}
+
+extension MealTemplatesView {
+    init(
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        refreshTrigger: Int = 0,
+        testIsLoading: Bool,
+        testTemplates: [NutritionMealTemplateSummary] = [],
+        onTemplatesChanged: @escaping () -> Void = {},
+        onTemplateLogged: @escaping () -> Void = {},
+        onSelectTemplate: @escaping (UUID) -> Void = { _ in }
+    ) {
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.refreshTrigger = refreshTrigger
+        self.onTemplatesChanged = onTemplatesChanged
+        self.onTemplateLogged = onTemplateLogged
+        self.onSelectTemplate = onSelectTemplate
+        _isLoading = State(initialValue: testIsLoading)
+        _templates = State(initialValue: testTemplates)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderTemplateCard(_ template: NutritionMealTemplateSummary) {
+        let host = UIHostingController(rootView: templateCard(template))
+        _ = host.view
+    }
+
+    static func _testLoadTemplatesResult(
+        manager: any NutritionMealTemplateManaging
+    ) async -> [NutritionMealTemplateSummary] {
+        await loadTemplatesResult(manager: manager)
+    }
+
+    func _testState() -> (
+        templates: [NutritionMealTemplateSummary],
+        isLoading: Bool
+    ) {
+        (templates, isLoading)
+    }
+
+    func _testTriggerLoadTemplates(manager: any NutritionMealTemplateManaging) async -> (
+        templates: [NutritionMealTemplateSummary],
+        isLoading: Bool
+    ) {
+        await loadTemplates(manager: manager)
+        return (templates, isLoading)
+    }
+}
+
+extension MealTemplateDetailView {
+    init(
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testViewModel: MealTemplateDetailViewModel,
+        onTemplatesChanged: @escaping () -> Void = {},
+        onTemplateLogged: @escaping () -> Void = {},
+        onStatusMessage: @escaping (TemplateStatusMessage?) -> Void = { _ in }
+    ) {
+        _viewModel = State(initialValue: testViewModel)
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onTemplatesChanged = onTemplatesChanged
+        self.onTemplateLogged = onTemplateLogged
+        self.onStatusMessage = onStatusMessage
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderTemplateHeaderSection() {
+        let host = UIHostingController(rootView: templateHeaderSection(viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderEditorDetailsSection() {
+        let host = UIHostingController(rootView: editorDetailsSection(viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderEditorItemsSection() {
+        let host = UIHostingController(rootView: editorItemsSection(viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderPreviewItemsSection() {
+        let host = UIHostingController(rootView: previewItemsSection(viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderPreviewItemRow(_ item: NutritionEditableMealItem) {
+        let host = UIHostingController(rootView: previewItemRow(item))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderActionSection() {
+        let host = UIHostingController(rootView: actionSection(viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderTemplateItemEditor(index: Int) {
+        let host = UIHostingController(rootView: templateItemEditor(index: index, viewModel: viewModel))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderTemplateNumericField() {
+        var value = 125.0
+        let host = UIHostingController(
+            rootView: templateNumericField(
+                "Coverage",
+                value: Binding(
+                    get: { value },
+                    set: { value = $0 }
+                )
+            )
+        )
+        _ = host.view
+    }
+
+    func _testTriggerSaveTemplate() async {
+        saveTemplate()
+        await Task.yield()
+        await Task.yield()
+    }
+
+    func _testTriggerToggleArchived() async {
+        toggleArchived()
+        await Task.yield()
+        await Task.yield()
+    }
+
+    func _testTriggerLogTemplateNow() async {
+        logTemplateNow()
+        await Task.yield()
+        await Task.yield()
+    }
+}
+
+extension MealTemplateComposerView {
+    init(
+        testName: String = "",
+        testMealType: MealType? = nil,
+        testItems: [NutritionEditableMealItem] = [],
+        testIsSaving: Bool = false,
+        testErrorMessage: String? = nil,
+        onSaved: @escaping (TemplateStatusMessage) -> Void = { _ in }
+    ) {
+        self.onSaved = onSaved
+        _name = State(initialValue: testName)
+        _mealType = State(initialValue: testMealType)
+        _items = State(initialValue: testItems)
+        _isSaving = State(initialValue: testIsSaving)
+        _errorMessage = State(initialValue: testErrorMessage)
+    }
+
+    func _testTotals() -> (calories: Double, protein: Double, fat: Double, carbs: Double, fiber: Double?) {
+        totals
+    }
+
+    func _testCanSave() -> Bool {
+        canSave
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderDetailsSection() {
+        let host = UIHostingController(rootView: detailsSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderPreviewSection() {
+        let host = UIHostingController(rootView: previewSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderItemsSection() {
+        let host = UIHostingController(rootView: itemsSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderItemEditor(index: Int) {
+        let host = UIHostingController(rootView: itemEditor(index: index))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderTemplateNumericField() {
+        var value = 80.0
+        let host = UIHostingController(
+            rootView: templateNumericField(
+                "Coverage",
+                value: Binding(
+                    get: { value },
+                    set: { value = $0 }
+                )
+            )
+        )
+        _ = host.view
+    }
+
+    @MainActor
+    static func _testAddedItems(
+        mealType: MealType?
+    ) -> [NutritionEditableMealItem] {
+        [defaultEditableMealItem(for: mealType)]
+    }
+
+    static func _testSaveDraft(
+        name: String,
+        mealType: MealType?,
+        items: [NutritionEditableMealItem]
+    ) -> NutritionMealTemplateCreateDraft {
+        NutritionMealTemplateCreateDraft(
+            name: name,
+            mealType: mealType,
+            items: items.map(NutritionMealTemplateItem.init(editableItem:))
+        )
+    }
+
+    static func _testSaveResult(
+        draft: NutritionMealTemplateCreateDraft,
+        manager: any NutritionMealTemplateManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await saveResult(draft: draft, manager: manager)
+    }
+
+    func _testState() -> (
+        isSaving: Bool,
+        errorMessage: String?
+    ) {
+        (isSaving, errorMessage)
+    }
+
+    func _testTriggerSave(
+        manager: any NutritionMealTemplateManaging,
+        dismissAction: @escaping () -> Void = {}
+    ) async -> (
+        isSaving: Bool,
+        errorMessage: String?
+    ) {
+        save(manager: manager, dismissAction: dismissAction)
+        for _ in 0..<50 where isSaving {
+            await Task.yield()
+        }
+        return (isSaving, errorMessage)
+    }
+}
+
+extension BatchRecipeLibraryView {
+    init(
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testRecipes: [NutritionBatchRecipeSummary] = [],
+        testIsLoading: Bool = true,
+        testShowingArchived: Bool = false,
+        testStatusMessage: TemplateStatusMessage? = nil,
+        onBatchesChanged: @escaping () -> Void = {},
+        onBatchLogged: @escaping () -> Void = {}
+    ) {
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onBatchesChanged = onBatchesChanged
+        self.onBatchLogged = onBatchLogged
+        _recipes = State(initialValue: testRecipes)
+        _isLoading = State(initialValue: testIsLoading)
+        _showingArchived = State(initialValue: testShowingArchived)
+        _statusMessage = State(initialValue: testStatusMessage)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderBatchRow(_ recipe: NutritionBatchRecipeSummary) {
+        let host = UIHostingController(rootView: batchRow(recipe))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderStyledBatchRow(_ recipe: NutritionBatchRecipeSummary) {
+        let host = UIHostingController(rootView: styledBatchRow(recipe))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderDetailDestination(batchId: UUID) {
+        let host = UIHostingController(
+            rootView: detailDestination(BatchRecipeLibraryDestination(batchId: batchId))
+        )
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderComposerSheet() {
+        _ = composerSheet()
+        let host = UIHostingController(rootView: composerSheet())
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderQuickLogSheet(_ recipe: NutritionBatchRecipeSummary) {
+        _ = quickLogSheet(recipe)
+        let host = UIHostingController(rootView: quickLogSheet(recipe))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testHandleComposerSaved(
+        _ message: TemplateStatusMessage,
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleComposerSaved(message, reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleComposerSheetSaved(
+        _ message: TemplateStatusMessage
+    ) async -> TemplateStatusMessage? {
+        handleComposerSheetSaved(message)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleQuickLogSaved(
+        _ message: TemplateStatusMessage,
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleQuickLogSaved(message, reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleQuickLogSheetSaved(
+        _ message: TemplateStatusMessage
+    ) async -> TemplateStatusMessage? {
+        handleQuickLogSheetSaved(message)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleDetailBatchesChanged(
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleDetailBatchesChanged(reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleDetailBatchLogged(
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleDetailBatchLogged(reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    func _testHandleDetailStatusMessage(_ message: TemplateStatusMessage) -> TemplateStatusMessage? {
+        handleDetailStatusMessage(message)
+        return statusMessage
+    }
+
+    func _testTriggerLoadRecipes(
+        manager: any NutritionBatchRecipeManaging
+    ) async -> (
+        recipes: [NutritionBatchRecipeSummary],
+        isLoading: Bool,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await loadRecipes(manager: manager)
+        return (recipes, isLoading, statusMessage)
+    }
+
+    static func _testLoadRecipesResult(
+        showingArchived: Bool,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> (
+        recipes: [NutritionBatchRecipeSummary],
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await loadRecipesResult(showingArchived: showingArchived, manager: manager)
+    }
+}
+
+extension BatchRecipeDetailView {
+    init(
+        batchId: UUID = UUID(),
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testDetail: NutritionBatchRecipeDetail? = nil,
+        testIsLoading: Bool = true,
+        testIsArchiving: Bool = false,
+        testIsDuplicating: Bool = false,
+        testShowingComposer: Bool = false,
+        testShowingLogSheet: Bool = false,
+        testErrorMessage: String? = nil,
+        testStatusMessage: TemplateStatusMessage? = nil,
+        onBatchesChanged: @escaping () -> Void = {},
+        onBatchLogged: @escaping () -> Void = {},
+        onStatusMessage: @escaping (TemplateStatusMessage?) -> Void = { _ in }
+    ) {
+        self.batchId = batchId
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onBatchesChanged = onBatchesChanged
+        self.onBatchLogged = onBatchLogged
+        self.onStatusMessage = onStatusMessage
+        _detail = State(initialValue: testDetail)
+        _isLoading = State(initialValue: testIsLoading)
+        _isArchiving = State(initialValue: testIsArchiving)
+        _isDuplicating = State(initialValue: testIsDuplicating)
+        _showingComposer = State(initialValue: testShowingComposer)
+        _showingLogSheet = State(initialValue: testShowingLogSheet)
+        _errorMessage = State(initialValue: testErrorMessage)
+        _statusMessage = State(initialValue: testStatusMessage)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    @MainActor
+    func _testRenderDetailHeader(_ detail: NutritionBatchRecipeDetail) {
+        let host = UIHostingController(rootView: detailHeader(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderDetailMacros(_ detail: NutritionBatchRecipeDetail) {
+        let host = UIHostingController(rootView: detailMacros(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderDetailIngredients(_ detail: NutritionBatchRecipeDetail) {
+        let host = UIHostingController(rootView: detailIngredients(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderDetailIngredientRow(_ ingredient: BatchRecipeIngredient) {
+        let host = UIHostingController(rootView: detailIngredientRow(ingredient))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderDetailActions(_ detail: NutritionBatchRecipeDetail) {
+        let host = UIHostingController(rootView: detailActions(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderComposerSheet(_ detail: NutritionBatchRecipeDetail) {
+        _ = composerSheet(detail)
+        let host = UIHostingController(rootView: composerSheet(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderComposerSheetContent() {
+        _ = composerSheetContent()
+        let host = UIHostingController(rootView: composerSheetContent())
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderLogSheet(_ detail: NutritionBatchRecipeDetail) {
+        _ = logSheet(detail)
+        let host = UIHostingController(rootView: logSheet(detail))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderLogSheetContent() {
+        _ = logSheetContent()
+        let host = UIHostingController(rootView: logSheetContent())
+        _ = host.view
+    }
+
+    @MainActor
+    func _testHandleComposerSaved(
+        _ message: TemplateStatusMessage,
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleComposerSaved(message, reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleComposerSheetSaved(
+        _ message: TemplateStatusMessage
+    ) async -> TemplateStatusMessage? {
+        handleComposerSheetSaved(message)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleLogSaved(
+        _ message: TemplateStatusMessage,
+        reloadAction: @escaping () async -> Void = {}
+    ) async -> TemplateStatusMessage? {
+        handleLogSaved(message, reloadAction: reloadAction)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    @MainActor
+    func _testHandleLogSheetSaved(
+        _ message: TemplateStatusMessage
+    ) async -> TemplateStatusMessage? {
+        handleLogSheetSaved(message)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        return statusMessage
+    }
+
+    func _testState() -> (
+        detail: NutritionBatchRecipeDetail?,
+        isLoading: Bool,
+        isArchiving: Bool,
+        isDuplicating: Bool,
+        errorMessage: String?,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        (detail, isLoading, isArchiving, isDuplicating, errorMessage, statusMessage)
+    }
+
+    func _testTriggerLoadDetail(
+        preferRemote: Bool,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> (
+        detail: NutritionBatchRecipeDetail?,
+        isLoading: Bool,
+        isArchiving: Bool,
+        isDuplicating: Bool,
+        errorMessage: String?,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        await loadDetail(preferRemote: preferRemote, manager: manager)
+        return (detail, isLoading, isArchiving, isDuplicating, errorMessage, statusMessage)
+    }
+
+    func _testTriggerToggleArchived(
+        manager: any NutritionBatchRecipeManaging,
+        dismissAction: @escaping () -> Void = {}
+    ) async -> (
+        detail: NutritionBatchRecipeDetail?,
+        isLoading: Bool,
+        isArchiving: Bool,
+        isDuplicating: Bool,
+        errorMessage: String?,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        toggleArchived(manager: manager, dismissAction: dismissAction)
+        for _ in 0..<50 where isArchiving {
+            await Task.yield()
+        }
+        return (detail, isLoading, isArchiving, isDuplicating, errorMessage, statusMessage)
+    }
+
+    func _testTriggerCookAgain(
+        manager: any NutritionBatchRecipeManaging,
+        dismissAction: @escaping () -> Void = {}
+    ) async -> (
+        detail: NutritionBatchRecipeDetail?,
+        isLoading: Bool,
+        isArchiving: Bool,
+        isDuplicating: Bool,
+        errorMessage: String?,
+        statusMessage: TemplateStatusMessage?
+    ) {
+        cookAgain(manager: manager, dismissAction: dismissAction)
+        for _ in 0..<50 where isDuplicating {
+            await Task.yield()
+        }
+        return (detail, isLoading, isArchiving, isDuplicating, errorMessage, statusMessage)
+    }
+
+    static func _testLoadDetailResult(
+        batchId: UUID,
+        preferRemote: Bool,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> (
+        detail: NutritionBatchRecipeDetail?,
+        errorMessage: String?
+    ) {
+        await loadDetailResult(batchId: batchId, preferRemote: preferRemote, manager: manager)
+    }
+
+    static func _testToggleArchivedResult(
+        detail: NutritionBatchRecipeDetail,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await toggleArchivedResult(detail: detail, manager: manager)
+    }
+
+    static func _testCookAgainResult(
+        detail: NutritionBatchRecipeDetail,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await cookAgainResult(detail: detail, manager: manager)
+    }
+}
+
+extension BatchRecipeComposerView {
+    init(
+        existingDetail: NutritionBatchRecipeDetail? = nil,
+        testName: String,
+        testDescription: String = "",
+        testCookedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testTotalWeightG: Double = 1000,
+        testTotalPortions: Int = 1,
+        testIngredients: [BatchRecipeEditableIngredient] = [],
+        testIsSaving: Bool = false,
+        testErrorMessage: String? = nil,
+        testImportMessage: String? = nil,
+        testIsAnalyzingPhoto: Bool = false,
+        onSaved: @escaping (TemplateStatusMessage) -> Void = { _ in }
+    ) {
+        self.existingDetail = existingDetail
+        self.onSaved = onSaved
+        _name = State(initialValue: testName)
+        _description = State(initialValue: testDescription)
+        _cookedAt = State(initialValue: testCookedAt)
+        _totalWeightG = State(initialValue: testTotalWeightG)
+        _totalPortions = State(initialValue: testTotalPortions)
+        _ingredients = State(initialValue: testIngredients)
+        _isSaving = State(initialValue: testIsSaving)
+        _errorMessage = State(initialValue: testErrorMessage)
+        _importMessage = State(initialValue: testImportMessage)
+        _isAnalyzingPhoto = State(initialValue: testIsAnalyzingPhoto)
+        _showingIngredientSearch = State(initialValue: false)
+        _showCameraPicker = State(initialValue: false)
+        _showPhotoLibrary = State(initialValue: false)
+        _selectedPhotoItem = State(initialValue: nil)
+    }
+
+    func _testTotals() -> NutritionBatchMacroSnapshot {
+        totals
+    }
+
+    func _testPer100g() -> NutritionBatchMacroSnapshot {
+        per100g
+    }
+
+    func _testPerPortion() -> NutritionBatchMacroSnapshot {
+        perPortion
+    }
+
+    func _testCanSave() -> Bool {
+        canSave
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    func _testEvaluateIngredientSearchSheet() {
+        _ = ingredientSearchSheet()
+    }
+
+    func _testEvaluateCameraPickerSheet() {
+        _ = cameraPickerSheet()
+    }
+
+    @MainActor
+    func _testRenderDetailsSection() {
+        let host = UIHostingController(rootView: detailsSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderTotalsSection() {
+        let host = UIHostingController(rootView: totalsSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderIngredientsSection() {
+        let host = UIHostingController(rootView: ingredientsSection)
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderIngredientEditor(index: Int) {
+        let host = UIHostingController(rootView: ingredientEditor(index: index))
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderBatchNumericField() {
+        var value = 250.0
+        let host = UIHostingController(
+            rootView: batchNumericField(
+                "Coverage",
+                value: Binding(
+                    get: { value },
+                    set: { value = $0 }
+                )
+            )
+        )
+        _ = host.view
+    }
+
+    @MainActor
+    func _testRenderBatchIntegerField() {
+        var value = 3
+        let host = UIHostingController(
+            rootView: batchIntegerField(
+                "Coverage",
+                value: Binding(
+                    get: { value },
+                    set: { value = $0 }
+                )
+            )
+        )
+        _ = host.view
+    }
+
+    @MainActor
+    func _testPresentIngredientSearch() -> Bool {
+        presentIngredientSearch()
+        return showingIngredientSearch
+    }
+
+    @MainActor
+    func _testOpenCameraOrLibrary(cameraAvailable: Bool) -> (
+        showCameraPicker: Bool,
+        showPhotoLibrary: Bool
+    ) {
+        openCameraOrLibrary(cameraAvailableProvider: { cameraAvailable })
+        let pickerState = Self.capturePickerState(cameraAvailable: cameraAvailable)
+        return (pickerState.showCameraPicker, pickerState.showPhotoLibrary)
+    }
+
+    @MainActor
+    func _testBeginCameraCapture(cameraAvailable: Bool) -> (
+        showCameraPicker: Bool,
+        showPhotoLibrary: Bool
+    ) {
+        beginCameraCapture(cameraAvailableProvider: { cameraAvailable })
+        let pickerState = Self.capturePickerState(cameraAvailable: cameraAvailable)
+        return (pickerState.showCameraPicker, pickerState.showPhotoLibrary)
+    }
+
+    @MainActor
+    func _testAddManualIngredient() -> Int {
+        addManualIngredient()
+        return ingredients.count
+    }
+
+    @MainActor
+    func _testHandleIngredientSearchSelection(_ result: FoodSearchResult) -> [String] {
+        handleIngredientSearchSelection(result)
+        return ingredients.map(\.name)
+    }
+
+    @MainActor
+    func _testHandlePickedCameraImageUsingOverride(
+        response: BatchRecipePhotoAnalysisResponse,
+        image: UIImage = NutritionCoverageFixtures.image()
+    ) async -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        MediaRecognitionService._testSetCloudAnalysisEnabledOverride { true }
+        MediaRecognitionService._testSetBatchRecipePhotoAnalysisOverride { _, _, _, _, _ in response }
+        defer { MediaRecognitionService._testResetOverrides() }
+        handlePickedCameraImage(image)
+        for _ in 0..<25 {
+            await Task.yield()
+        }
+        return _testPhotoImportState()
+    }
+
+    @MainActor
+    func _testHandleSelectedPhotoItemChange() async -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        await handleSelectedPhotoItemChange()
+        return _testPhotoImportState()
+    }
+
+    static func _testSaveDraft(
+        existingDetail: NutritionBatchRecipeDetail?,
+        name: String,
+        description: String,
+        cookedAt: Date,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredients: [BatchRecipeEditableIngredient]
+    ) -> NutritionBatchRecipeDraft {
+        saveDraft(
+            existingDetail: existingDetail,
+            name: name,
+            description: description,
+            cookedAt: cookedAt,
+            totalWeightG: totalWeightG,
+            totalPortions: totalPortions,
+            ingredients: ingredients
+        )
+    }
+
+    static func _testSaveResult(
+        draft: NutritionBatchRecipeDraft,
+        existingDetail: NutritionBatchRecipeDetail?,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await saveResult(draft: draft, existingDetail: existingDetail, manager: manager)
+    }
+
+    static func _testCapturePickerState(cameraAvailable: Bool) -> (
+        showCameraPicker: Bool,
+        showPhotoLibrary: Bool
+    ) {
+        capturePickerState(cameraAvailable: cameraAvailable)
+    }
+
+    func _testMergedIngredients(
+        imported: [BatchRecipeEditableIngredient]
+    ) -> [BatchRecipeEditableIngredient] {
+        Self.mergeIngredients(existing: ingredients, imported: imported)
+    }
+
+    @MainActor
+    static func _testAppliedPhotoDraftResult(
+        testName: String,
+        testDescription: String,
+        testTotalWeightG: Double,
+        testTotalPortions: Int,
+        testIngredients: [BatchRecipeEditableIngredient],
+        photoDraft: BatchRecipePhotoDraft
+    ) -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        importMessage: String?,
+        errorMessage: String?
+    ) {
+        let resolvedState = BatchRecipeComposerView.resolvePhotoImportState(
+            name: testName,
+            description: testDescription,
+            totalWeightG: testTotalWeightG,
+            totalPortions: testTotalPortions,
+            ingredients: testIngredients,
+            photoDraft: photoDraft
+        )
+        return (
+            name: resolvedState.name,
+            description: resolvedState.description,
+            totalWeightG: resolvedState.totalWeightG,
+            totalPortions: resolvedState.totalPortions,
+            ingredientNames: resolvedState.ingredients.map(\.name).sorted(),
+            importMessage: resolvedState.importMessage,
+            errorMessage: resolvedState.errorMessage
+        )
+    }
+
+    func _testState() -> (
+        isSaving: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        (isSaving, errorMessage, importMessage)
+    }
+
+    func _testPhotoImportState() -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        (
+            name,
+            description,
+            totalWeightG,
+            totalPortions,
+            ingredients.map(\.name).sorted(),
+            isAnalyzingPhoto,
+            errorMessage,
+            importMessage
+        )
+    }
+
+    @MainActor
+    func _testApplyPhotoDraft(_ photoDraft: BatchRecipePhotoDraft) -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        apply(photoDraft: photoDraft)
+        return _testPhotoImportState()
+    }
+
+    @MainActor
+    func _testLoadPhotoItemUsingOverride(
+        response: BatchRecipePhotoAnalysisResponse,
+        dataLoader: @escaping @Sendable () async throws -> Data?
+    ) async -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        MediaRecognitionService._testSetCloudAnalysisEnabledOverride { true }
+        MediaRecognitionService._testSetBatchRecipePhotoAnalysisOverride { _, _, _, _, _ in response }
+        defer { MediaRecognitionService._testResetOverrides() }
+        await loadPhotoItem(using: dataLoader)
+        return _testPhotoImportState()
+    }
+
+    @MainActor
+    func _testLoadSelectedPhotoItemIfNeeded(shouldLoad: Bool) async -> Bool {
+        var didLoad = false
+        await loadSelectedPhotoItemIfNeeded(
+            item: nil,
+            shouldLoad: shouldLoad,
+            loadPhotoItemAction: { _ in didLoad = true }
+        )
+        return didLoad
+    }
+
+    @MainActor
+    func _testLoadSelectedPhotoItemIfNeededWithoutCustomLoader() async -> (
+        name: String,
+        description: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        ingredientNames: [String],
+        isAnalyzingPhoto: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        await loadSelectedPhotoItemIfNeeded(item: nil, shouldLoad: true)
+        return _testPhotoImportState()
+    }
+
+    func _testTriggerSave(
+        manager: any NutritionBatchRecipeManaging,
+        dismissAction: @escaping () -> Void = {}
+    ) async -> (
+        isSaving: Bool,
+        errorMessage: String?,
+        importMessage: String?
+    ) {
+        save(manager: manager, dismissAction: dismissAction)
+        for _ in 0..<50 where isSaving {
+            await Task.yield()
+        }
+        return (isSaving, errorMessage, importMessage)
+    }
+}
+
+extension BatchPortionLogView {
+    init(
+        batchId: UUID = UUID(),
+        batchName: String = "Coverage Chili",
+        remainingWeightG: Double = 320,
+        per100g: NutritionBatchMacroSnapshot = NutritionCoverageFixtures.batchSnapshot(),
+        suggestedPortionWeightG: Double? = 120,
+        targetDay: String = NutritionCoverageFixtures.targetDay,
+        loggedAt: Date = NutritionCoverageFixtures.loggedAt,
+        testPortionWeightG: Double? = nil,
+        testMealType: MealType? = nil,
+        testContext: MealContext? = .home,
+        testIsSaving: Bool = false,
+        testErrorMessage: String? = nil,
+        onLogged: @escaping (TemplateStatusMessage) -> Void = { _ in }
+    ) {
+        self.batchId = batchId
+        self.batchName = batchName
+        self.remainingWeightG = remainingWeightG
+        self.per100g = per100g
+        self.suggestedPortionWeightG = suggestedPortionWeightG
+        self.targetDay = targetDay
+        self.loggedAt = loggedAt
+        self.onLogged = onLogged
+        _portionWeightG = State(
+            initialValue: testPortionWeightG
+                ?? min(suggestedPortionWeightG ?? 100, max(remainingWeightG, 1))
+        )
+        _mealType = State(initialValue: testMealType ?? Self.defaultMealType(for: loggedAt))
+        _context = State(initialValue: testContext)
+        _isSaving = State(initialValue: testIsSaving)
+        _errorMessage = State(initialValue: testErrorMessage)
+    }
+
+    static func _testDefaultMealType(for date: Date) -> MealType {
+        defaultMealType(for: date)
+    }
+
+    func _testPreview() -> NutritionBatchMacroSnapshot {
+        preview
+    }
+
+    func _testCanSave() -> Bool {
+        canSave
+    }
+
+    static func _testSaveResult(
+        draft: NutritionBatchPortionLogDraft,
+        batchName: String,
+        manager: any NutritionBatchRecipeManaging
+    ) async -> Result<TemplateStatusMessage, Error> {
+        await saveResult(draft: draft, batchName: batchName, manager: manager)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    func _testState() -> (
+        isSaving: Bool,
+        errorMessage: String?
+    ) {
+        (isSaving, errorMessage)
+    }
+
+    func _testTriggerSave(
+        manager: any NutritionBatchRecipeManaging,
+        dismissAction: @escaping () -> Void = {}
+    ) async -> (
+        isSaving: Bool,
+        errorMessage: String?
+    ) {
+        save(manager: manager, dismissAction: dismissAction)
+        for _ in 0..<50 where isSaving {
+            await Task.yield()
+        }
+        return (isSaving, errorMessage)
+    }
+}
+
+extension BatchRecipeIngredientPickerView {
+    init(
+        testQuery: String = "",
+        testResults: [FoodSearchResult] = [],
+        testIsSearching: Bool = false,
+        testErrorMessage: String? = nil,
+        onSelect: @escaping (FoodSearchResult) -> Void = { _ in }
+    ) {
+        self.onSelect = onSelect
+        _query = State(initialValue: testQuery)
+        _results = State(initialValue: testResults)
+        _isSearching = State(initialValue: testIsSearching)
+        _errorMessage = State(initialValue: testErrorMessage)
+    }
+
+    func _testEvaluateBody() {
+        _ = body
+    }
+
+    func _testState() -> (
+        results: [FoodSearchResult],
+        isSearching: Bool,
+        errorMessage: String?
+    ) {
+        (results, isSearching, errorMessage)
+    }
+
+    @MainActor
+    func _testRenderSearchResultButton(_ result: FoodSearchResult) {
+        let host = UIHostingController(rootView: searchResultButton(result))
+        _ = host.view
+    }
+
+    func _testSelectResult(
+        _ result: FoodSearchResult,
+        dismissAction: @escaping () -> Void = {}
+    ) {
+        handleSelection(of: result, dismissAction: dismissAction)
+    }
+
+    func _testSubmitSearchUsingDefaultService() {
+        submitSearch()
+    }
+
+    func _testTriggerSearch(
+        searcher: @escaping @Sendable (String) async throws -> [FoodSearchResult]
+    ) async -> (
+        results: [FoodSearchResult],
+        isSearching: Bool,
+        errorMessage: String?
+    ) {
+        search(searcher: searcher)
+        for _ in 0..<50 {
+            await Task.yield()
+        }
+        return _testState()
+    }
+
+    static func _testSearchExecution(
+        query: String,
+        searcher: @Sendable (String) async throws -> [FoodSearchResult]
+    ) async -> Result<[FoodSearchResult], Error>? {
+        guard let normalizedQuery = NutritionSearchExecutionHelper.normalizedQuery(query) else {
+            return nil
+        }
+        return await NutritionSearchExecutionHelper.run(query: normalizedQuery, searcher: searcher)
+    }
 }

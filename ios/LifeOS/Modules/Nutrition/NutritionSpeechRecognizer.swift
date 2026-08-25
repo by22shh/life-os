@@ -22,10 +22,10 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var confidence: Double?
 
-     let audioEngine = AVAudioEngine()
+    private let audioEngine = AVAudioEngine()
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale.autoupdatingCurrent)
         ?? SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
-     var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
 #if DEBUG
     private static let testSpeechAuthorizationRequestOverride = LockedTestOverride<
@@ -148,7 +148,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func installAudioTap(
+    private func installAudioTap(
         _ request: SFSpeechAudioBufferRecognitionRequest,
         explicitAction: ((SFSpeechAudioBufferRecognitionRequest) -> Void)? = nil,
         defaultAction: ((SFSpeechAudioBufferRecognitionRequest) -> Void)? = nil
@@ -169,7 +169,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         resolvedDefaultAction(request)
     }
 
-     func prepareAudio(explicitAction: (() -> Void)? = nil) {
+    private func prepareAudio(explicitAction: (() -> Void)? = nil) {
         if let explicitAction {
             explicitAction()
             return
@@ -183,7 +183,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         audioEngine.prepare()
     }
 
-     func startAudio(
+    private func startAudio(
         explicitAction: (() throws -> Void)? = nil,
         defaultAction: (() throws -> Void)? = nil
     ) throws {
@@ -203,7 +203,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         try resolvedDefaultAction()
     }
 
-     func startRecognitionTask(
+    private func startRecognitionTask(
         with request: SFSpeechAudioBufferRecognitionRequest,
         explicitAction: ((@escaping @MainActor (String?, Bool, Error?) -> Void) async -> Void)? = nil,
         defaultAction: ((@escaping @MainActor (String?, Bool, Error?) -> Void) async -> Void)? = nil,
@@ -233,7 +233,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func endAudio(explicitAction: (() -> Void)? = nil) {
+    private func endAudio(explicitAction: (() -> Void)? = nil) {
         if let explicitAction {
             explicitAction()
             return
@@ -247,7 +247,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         recognitionRequest?.endAudio()
     }
 
-     func completeAudioPipeline(explicitAction: (() -> Void)? = nil) {
+    private func completeAudioPipeline(explicitAction: (() -> Void)? = nil) {
         if let explicitAction {
             explicitAction()
             return
@@ -261,7 +261,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         finishAudioPipeline()
     }
 
-     func installDefaultAudioTap(
+    private func installDefaultAudioTap(
         _ request: SFSpeechAudioBufferRecognitionRequest,
         removeTapAction: ((AVAudioInputNode) -> Void)? = nil,
         outputFormatAction: ((AVAudioInputNode) -> AVAudioFormat)? = nil,
@@ -295,7 +295,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         resolvedInstallTapAction(inputNode, recordingFormat, appendBuffer)
     }
 
-     func defaultInstallTap(
+    private func defaultInstallTap(
         _ inputNode: AVAudioInputNode,
         _ recordingFormat: AVAudioFormat,
         _ appendBuffer: @escaping (AVAudioPCMBuffer, AVAudioTime) -> Void,
@@ -320,7 +320,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         resolvedInstallTapAction(inputNode, recordingFormat, appendBuffer)
     }
 
-     func startDefaultRecognitionTask(
+    private func startDefaultRecognitionTask(
         with request: SFSpeechAudioBufferRecognitionRequest,
         handleRecognitionUpdate: @escaping @MainActor (String?, Bool, Error?) -> Void,
         recognitionTaskAction: ((SFSpeechAudioBufferRecognitionRequest, @escaping (String?, Bool, Error?) -> Void) -> SFSpeechRecognitionTask?)? = nil
@@ -340,7 +340,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func defaultRecognitionTaskAction(
+    private func defaultRecognitionTaskAction(
         _ request: SFSpeechAudioBufferRecognitionRequest,
         _ update: @escaping (String?, Bool, Error?) -> Void,
         recognitionTaskAction: ((SFSpeechAudioBufferRecognitionRequest, @escaping (SFSpeechRecognitionResult?, Error?) -> Void) -> SFSpeechRecognitionTask?)?
@@ -365,7 +365,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func requestPermissions(
+    private func requestPermissions(
         speechAuthorizationRequest: ((@escaping SpeechAuthorizationCompletion) -> Void)? = nil,
         microphonePermissionRequest: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil,
         defaultSpeechAuthorizationRequest: ((@escaping SpeechAuthorizationCompletion) -> Void)? = nil,
@@ -416,7 +416,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func defaultSpeechAuthorizationRequest(
+    private func defaultSpeechAuthorizationRequest(
         completion: @escaping SpeechAuthorizationCompletion,
         requestAction: ((@escaping SpeechAuthorizationCompletion) -> Void)? = nil
     ) {
@@ -439,7 +439,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func defaultMicrophonePermissionRequest(
+    private func defaultMicrophonePermissionRequest(
         completion: @escaping MicrophonePermissionCompletion,
         useAudioApplicationRequest: Bool? = nil,
         audioApplicationRequest: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil,
@@ -467,7 +467,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func requestAudioApplicationPermission(
+    private func requestAudioApplicationPermission(
         completion: @escaping MicrophonePermissionCompletion,
         requestAction: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil,
         systemRequestAction: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil
@@ -491,7 +491,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         resolvedRequestAction(completion)
     }
 
-     func requestAudioSessionPermission(
+    private func requestAudioSessionPermission(
         completion: @escaping MicrophonePermissionCompletion,
         requestAction: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil,
         systemRequestAction: ((@escaping MicrophonePermissionCompletion) -> Void)? = nil
@@ -515,7 +515,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         resolvedRequestAction(completion)
     }
 
-     func configureSession(
+    private func configureSession(
         setCategoryAction: (() throws -> Void)? = nil,
         setActiveAction: (() throws -> Void)? = nil
     ) throws {
@@ -543,7 +543,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         }
     }
 
-     func finishRecording(
+    private func finishRecording(
         finishAudioPipelineAction: (() -> Void)? = nil
     ) {
         if let finishAudioPipelineAction {
@@ -555,7 +555,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
         isRecording = false
     }
 
-     func finishAudioPipeline(
+    private func finishAudioPipeline(
         stopAudioAction: (() -> Void)? = nil,
         removeTapAction: (() -> Void)? = nil,
         cancelRecognitionTaskAction: (() -> Void)? = nil,
@@ -601,5 +601,656 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
                 return String(localized: "error.speech.microphone_permission")
             }
         }
+    }
+}
+
+// MARK: - Test support extensions (co-located with their types)
+extension NutritionSpeechRecognizer {
+    static func _testResetOverrides() {
+        testSpeechAuthorizationRequestOverride.value = nil
+        testAudioApplicationPermissionOverride.value = nil
+        testAudioSessionPermissionOverride.value = nil
+        testInstallAudioTapOverride.value = nil
+        testPrepareAudioOverride.value = nil
+        testStartAudioOverride.value = nil
+        testStartRecognitionTaskOverride.value = nil
+        testEndAudioOverride.value = nil
+        testFinishAudioPipelineOverride.value = nil
+        testConfigureSessionCategoryOverride.value = nil
+        testConfigureSessionActiveOverride.value = nil
+    }
+
+    func _testState() -> NutritionSpeechRecognizerTestState {
+        NutritionSpeechRecognizerTestState(
+            isRecording: isRecording,
+            isProcessing: isProcessing,
+            transcription: transcription,
+            errorMessage: errorMessage,
+            confidence: confidence
+        )
+    }
+
+    func _testOverrideState(
+        isRecording: Bool,
+        isProcessing: Bool,
+        transcription: String,
+        errorMessage: String?,
+        confidence: Double?
+    ) {
+        self.isRecording = isRecording
+        self.isProcessing = isProcessing
+        self.transcription = transcription
+        self.errorMessage = errorMessage
+        self.confidence = confidence
+    }
+
+    func _testRequestPermissions(
+        speechAuthorized: Bool,
+        microphoneAuthorized: Bool
+    ) async -> String? {
+        do {
+            try await requestPermissions(
+                speechAuthorizationRequest: { completion in
+                    completion(speechAuthorized ? .authorized : .denied)
+                },
+                microphonePermissionRequest: { completion in
+                    completion(microphoneAuthorized)
+                }
+            )
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func _testRequestPermissionsUsingDefaultBranches(
+        speechAuthorized: Bool,
+        microphoneAuthorized: Bool
+    ) async -> String? {
+        do {
+            try await requestPermissions(
+                defaultSpeechAuthorizationRequest: { completion in
+                    completion(speechAuthorized ? .authorized : .denied)
+                },
+                defaultMicrophonePermissionRequest: { completion in
+                    completion(microphoneAuthorized)
+                }
+            )
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func _testDefaultSpeechAuthorizationRequest(
+        status: SFSpeechRecognizerAuthorizationStatus
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            defaultSpeechAuthorizationRequest(
+                completion: { result in
+                    continuation.resume(returning: result == .authorized)
+                },
+                requestAction: { completion in
+                    completion(status)
+                }
+            )
+        }
+    }
+
+    func _testDefaultMicrophonePermissionRequest(
+        allowed: Bool,
+        useAudioApplicationRequest: Bool?
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            defaultMicrophonePermissionRequest(
+                completion: { result in
+                    continuation.resume(returning: result)
+                },
+                useAudioApplicationRequest: useAudioApplicationRequest,
+                audioApplicationRequest: { completion in
+                    completion(allowed)
+                },
+                audioSessionRequest: { completion in
+                    completion(allowed)
+                }
+            )
+        }
+    }
+
+    func _testDefaultMicrophonePermissionRequestUsingDefaultOverrides(
+        allowed: Bool,
+        useAudioApplicationRequest: Bool
+    ) async -> Bool {
+        Self._testResetOverrides()
+        defer { Self._testResetOverrides() }
+
+        if useAudioApplicationRequest {
+            Self.testAudioApplicationPermissionOverride.value = { completion in
+                completion(allowed)
+            }
+        } else {
+            Self.testAudioSessionPermissionOverride.value = { completion in
+                completion(allowed)
+            }
+        }
+
+        return await withCheckedContinuation { continuation in
+            defaultMicrophonePermissionRequest(
+                completion: { result in
+                    continuation.resume(returning: result)
+                },
+                useAudioApplicationRequest: useAudioApplicationRequest
+            )
+        }
+    }
+
+    func _testConfigureSession(categoryError: Error? = nil, activeError: Error? = nil) -> String? {
+        do {
+            try configureSession(
+                setCategoryAction: {
+                    if let categoryError { throw categoryError }
+                },
+                setActiveAction: {
+                    if let activeError { throw activeError }
+                }
+            )
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func _testConfigureSessionUsingDefaultOverrides(
+        categoryError: Error? = nil,
+        activeError: Error? = nil
+    ) -> String? {
+        Self._testResetOverrides()
+        defer { Self._testResetOverrides() }
+
+        Self.testConfigureSessionCategoryOverride.value = {
+            if let categoryError { throw categoryError }
+        }
+        Self.testConfigureSessionActiveOverride.value = {
+            if let activeError { throw activeError }
+        }
+
+        do {
+            try configureSession()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func _testInstallDefaultAudioTap() -> (
+        removeTapCalls: Int,
+        installTapCalls: Int,
+        appendBufferCalls: Int
+    ) {
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        let format = AVAudioFormat(
+            standardFormatWithSampleRate: 44_100,
+            channels: 1
+        )!
+
+        var removeTapCalls = 0
+        var installTapCalls = 0
+        var appendBufferCalls = 0
+
+        installDefaultAudioTap(
+            request,
+            defaultRemoveTapAction: { _ in removeTapCalls += 1 },
+            defaultOutputFormatAction: { _ in format },
+            defaultInstallTapAction: { _, recordingFormat, appendBuffer in
+                installTapCalls += 1
+                guard let buffer = AVAudioPCMBuffer(
+                    pcmFormat: recordingFormat,
+                    frameCapacity: 1
+                ) else { return }
+                buffer.frameLength = 1
+                appendBuffer(
+                    buffer,
+                    AVAudioTime(sampleTime: 0, atRate: recordingFormat.sampleRate)
+                )
+                appendBufferCalls += 1
+            }
+        )
+
+        return (removeTapCalls, installTapCalls, appendBufferCalls)
+    }
+
+    func _testInstallAudioTapDefaultPath() -> Int {
+        var defaultCalls = 0
+        installAudioTap(
+            SFSpeechAudioBufferRecognitionRequest(),
+            defaultAction: { _ in defaultCalls += 1 }
+        )
+        return defaultCalls
+    }
+
+    func _testPrepareAudioDefaultPath() {
+        prepareAudio()
+    }
+
+    func _testStartAudioDefaultPath(error: Error? = nil) -> String? {
+        do {
+            try startAudio(defaultAction: {
+                if let error { throw error }
+            })
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func _testEndAudioDefaultPath() -> Bool {
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        endAudio()
+        return recognitionRequest != nil
+    }
+
+    func _testCompleteAudioPipelineDefaultPath() -> NutritionSpeechRecognizerTestState {
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        completeAudioPipeline()
+        return _testState()
+    }
+
+    func _testDefaultInstallTap() -> (
+        installTapCalls: Int,
+        appendBufferCalls: Int
+    ) {
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        let format = AVAudioFormat(
+            standardFormatWithSampleRate: 44_100,
+            channels: 1
+        )!
+
+        var installTapCalls = 0
+        var appendBufferCalls = 0
+
+        defaultInstallTap(
+            audioEngine.inputNode,
+            format,
+            { buffer, time in
+                self.recognitionRequest?.append(buffer)
+                appendBufferCalls += 1
+                _ = time
+            },
+            installTapAction: { _, recordingFormat, appendBuffer in
+                installTapCalls += 1
+                guard let buffer = AVAudioPCMBuffer(
+                    pcmFormat: recordingFormat,
+                    frameCapacity: 1
+                ) else { return }
+                buffer.frameLength = 1
+                appendBuffer(
+                    buffer,
+                    AVAudioTime(sampleTime: 0, atRate: recordingFormat.sampleRate)
+                )
+            }
+        )
+
+        return (installTapCalls, appendBufferCalls)
+    }
+
+    func _testDefaultInstallTapUsingSystemAction() -> (
+        installTapCalls: Int,
+        appendBufferCalls: Int
+    ) {
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        let format = AVAudioFormat(
+            standardFormatWithSampleRate: 44_100,
+            channels: 1
+        )!
+
+        var installTapCalls = 0
+        var appendBufferCalls = 0
+
+        defaultInstallTap(
+            audioEngine.inputNode,
+            format,
+            { buffer, time in
+                self.recognitionRequest?.append(buffer)
+                appendBufferCalls += 1
+                _ = time
+            },
+            systemInstallTapAction: { _, recordingFormat, appendBuffer in
+                installTapCalls += 1
+                guard let buffer = AVAudioPCMBuffer(
+                    pcmFormat: recordingFormat,
+                    frameCapacity: 1
+                ) else { return }
+                buffer.frameLength = 1
+                appendBuffer(
+                    buffer,
+                    AVAudioTime(sampleTime: 0, atRate: recordingFormat.sampleRate)
+                )
+            }
+        )
+
+        return (installTapCalls, appendBufferCalls)
+    }
+
+    func _testStartRecordingUsingDefaultOverrides(
+        recognitionTranscript: String? = nil,
+        recognitionIsFinal: Bool = false,
+        recognitionError: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        Self._testResetOverrides()
+        defer { Self._testResetOverrides() }
+
+        Self.testSpeechAuthorizationRequestOverride.value = { completion in
+            completion(.authorized)
+        }
+        Self.testAudioApplicationPermissionOverride.value = { completion in
+            completion(true)
+        }
+        Self.testConfigureSessionCategoryOverride.value = {}
+        Self.testConfigureSessionActiveOverride.value = {}
+        Self.testInstallAudioTapOverride.value = { _, _ in }
+        Self.testPrepareAudioOverride.value = { _ in }
+        Self.testStartAudioOverride.value = { _ in }
+        Self.testStartRecognitionTaskOverride.value = { handleRecognitionUpdate in
+            await handleRecognitionUpdate(
+                recognitionTranscript,
+                recognitionIsFinal,
+                recognitionError
+            )
+        }
+
+        await startRecording()
+        return _testState()
+    }
+
+    func _testFinishRecording() -> NutritionSpeechRecognizerTestState {
+        finishRecording(finishAudioPipelineAction: {})
+        return _testState()
+    }
+
+    func _testFinishAudioPipeline() -> (
+        state: NutritionSpeechRecognizerTestState,
+        stopCalls: Int,
+        removeTapCalls: Int,
+        cancelCalls: Int,
+        deactivateCalls: Int
+    ) {
+        var stopCalls = 0
+        var removeTapCalls = 0
+        var cancelCalls = 0
+        var deactivateCalls = 0
+        finishAudioPipeline(
+            stopAudioAction: { stopCalls += 1 },
+            removeTapAction: { removeTapCalls += 1 },
+            cancelRecognitionTaskAction: { cancelCalls += 1 },
+            deactivateSessionAction: { deactivateCalls += 1 }
+        )
+        return (_testState(), stopCalls, removeTapCalls, cancelCalls, deactivateCalls)
+    }
+
+    func _testStartRecording(
+        permissionError: Error? = nil,
+        configureError: Error? = nil,
+        recognitionTranscript: String? = nil,
+        recognitionIsFinal: Bool = false,
+        recognitionError: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        await startRecording(
+            permissionAction: {
+                if let permissionError { throw permissionError }
+            },
+            configureSessionAction: {
+                if let configureError { throw configureError }
+            },
+            installAudioTapAction: { _ in },
+            prepareAudioAction: {},
+            startAudioAction: {},
+            startRecognitionTaskAction: { handleRecognitionUpdate in
+                handleRecognitionUpdate(
+                    recognitionTranscript,
+                    recognitionIsFinal,
+                    recognitionError
+                )
+            }
+        )
+        return _testState()
+    }
+
+    func _testStartDefaultRecognitionTask(
+        useDefaultTaskAction: Bool = false,
+        transcript: String? = nil,
+        isFinal: Bool = false,
+        error: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        _testOverrideState(
+            isRecording: true,
+            isProcessing: true,
+            transcription: "",
+            errorMessage: nil,
+            confidence: nil
+        )
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        if useDefaultTaskAction {
+            startDefaultRecognitionTask(
+                with: request,
+                handleRecognitionUpdate: { [weak self] transcript, isFinal, error in
+                    self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+                },
+                recognitionTaskAction: nil
+            )
+        } else {
+            startDefaultRecognitionTask(
+                with: request,
+                handleRecognitionUpdate: { [weak self] transcript, isFinal, error in
+                    self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+                },
+                recognitionTaskAction: { _, update in
+                    update(transcript, isFinal, error)
+                    return nil
+                }
+            )
+        }
+
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        return _testState()
+    }
+
+    func _testStartRecognitionTaskUsingFallbackAction(
+        transcript: String? = nil,
+        isFinal: Bool = false,
+        error: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        _testOverrideState(
+            isRecording: true,
+            isProcessing: true,
+            transcription: "",
+            errorMessage: nil,
+            confidence: nil
+        )
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        await startRecognitionTask(
+            with: request,
+            fallbackAction: { handleRecognitionUpdate in
+                handleRecognitionUpdate(transcript, isFinal, error)
+            },
+            handleRecognitionUpdate: { [weak self] transcript, isFinal, error in
+                self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+            }
+        )
+
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        return _testState()
+    }
+
+    func _testStartRecognitionTaskUsingDefaultAction(
+        transcript: String? = nil,
+        isFinal: Bool = false,
+        error: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        _testOverrideState(
+            isRecording: true,
+            isProcessing: true,
+            transcription: "",
+            errorMessage: nil,
+            confidence: nil
+        )
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        await startRecognitionTask(
+            with: request,
+            defaultAction: { handleRecognitionUpdate in
+                handleRecognitionUpdate(transcript, isFinal, error)
+            },
+            handleRecognitionUpdate: { [weak self] transcript, isFinal, error in
+                self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+            }
+        )
+
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        return _testState()
+    }
+
+    func _testRequestAudioApplicationPermissionUsingSystemAction(
+        allowed: Bool
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            requestAudioApplicationPermission(
+                completion: { result in
+                    continuation.resume(returning: result)
+                },
+                systemRequestAction: { completion in
+                    completion(allowed)
+                }
+            )
+        }
+    }
+
+    func _testRequestAudioSessionPermissionUsingSystemAction(
+        allowed: Bool
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            requestAudioSessionPermission(
+                completion: { result in
+                    continuation.resume(returning: result)
+                },
+                systemRequestAction: { completion in
+                    completion(allowed)
+                }
+            )
+        }
+    }
+
+    func _testDefaultRecognitionTaskAction(
+        useDefaultTaskAction: Bool = false,
+        error: Error? = nil
+    ) async -> NutritionSpeechRecognizerTestState {
+        _testOverrideState(
+            isRecording: true,
+            isProcessing: true,
+            transcription: "",
+            errorMessage: nil,
+            confidence: nil
+        )
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+
+        if useDefaultTaskAction {
+            _ = defaultRecognitionTaskAction(
+                request,
+                { [weak self] transcript, isFinal, error in
+                    self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+                },
+                recognitionTaskAction: nil
+            )
+        } else {
+            _ = defaultRecognitionTaskAction(
+                request,
+                { [weak self] transcript, isFinal, error in
+                    self?._testHandleRecognitionUpdate(transcript, isFinal: isFinal, error: error)
+                },
+                recognitionTaskAction: { _, handler in
+                    handler(nil, error)
+                    return nil
+                }
+            )
+        }
+
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        return _testState()
+    }
+
+    private func _testHandleRecognitionUpdate(
+        _ transcript: String?,
+        isFinal: Bool,
+        error: Error?
+    ) {
+        if let transcript {
+            self.transcription = transcript
+            confidence = isFinal ? 0.9 : 0.75
+            isProcessing = false
+        }
+
+        if let error {
+            errorMessage = error.localizedDescription
+            finishRecording(finishAudioPipelineAction: {})
+            return
+        }
+
+        if isFinal {
+            finishRecording(finishAudioPipelineAction: {})
+        }
+    }
+
+    func _testStopRecording() async -> NutritionSpeechRecognizerTestState {
+        await stopRecording(
+            endAudioAction: {},
+            finishAudioPipelineAction: {}
+        )
+        return _testState()
+    }
+
+    func _testStopRecordingUsingDefaultOverrides() async -> NutritionSpeechRecognizerTestState {
+        Self._testResetOverrides()
+        defer { Self._testResetOverrides() }
+
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        _testOverrideState(
+            isRecording: true,
+            isProcessing: false,
+            transcription: "",
+            errorMessage: nil,
+            confidence: nil
+        )
+        Self.testEndAudioOverride.value = { _ in }
+        Self.testFinishAudioPipelineOverride.value = { _ in }
+
+        await stopRecording()
+        return _testState()
     }
 }

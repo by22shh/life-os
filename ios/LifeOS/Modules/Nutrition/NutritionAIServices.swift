@@ -1342,3 +1342,229 @@ enum MediaRecognitionService {
         }
     }
 }
+
+// MARK: - Test support extensions (co-located with their types)
+extension MediaRecognitionService {
+    static func _testPreparedImageDataURL(for image: UIImage) throws -> String {
+        try preparedImageDataURL(for: image)
+    }
+
+    static func _testParseNutritionLabelText(_ text: String?) -> (
+        name: String,
+        brand: String?,
+        servingSizeG: Double,
+        caloriesPer100g: Double,
+        proteinPer100g: Double,
+        fatPer100g: Double,
+        carbsPer100g: Double,
+        fiberPer100g: Double,
+        confidence: Double?,
+        warnings: [String]
+    ) {
+        parseNutritionLabelText(text)
+    }
+
+    static func _testFallbackAnalysis(
+        recognizedText: String?,
+        barcodes: [String],
+        notice: String?
+    ) -> NutritionPhotoAnalysis {
+        fallbackAnalysis(recognizedText: recognizedText, barcodes: barcodes, notice: notice)
+    }
+
+    static func _testAIFoodLabelDraft(
+        from response: FoodLabelAnalysisResponse,
+        sourceText: String?,
+        barcodeHint: String?
+    ) -> NutritionLabelReviewDraft {
+        aiFoodLabelDraft(from: response, sourceText: sourceText, barcodeHint: barcodeHint)
+    }
+
+    static func _testFallbackFoodLabelDraft(
+        sourceText: String?,
+        barcode: String?,
+        notice: String
+    ) -> NutritionLabelReviewDraft {
+        fallbackFoodLabelDraft(sourceText: sourceText, barcode: barcode, notice: notice)
+    }
+
+    static func _testBatchRecipePhotoDraft(
+        from response: BatchRecipePhotoAnalysisResponse,
+        fallbackRecipeName: String,
+        fallbackWeightG: Double,
+        fallbackPortions: Int
+    ) -> BatchRecipePhotoDraft {
+        batchRecipePhotoDraft(
+            from: response,
+            fallbackRecipeName: fallbackRecipeName,
+            fallbackWeightG: fallbackWeightG,
+            fallbackPortions: fallbackPortions
+        )
+    }
+
+    static func _testFallbackBatchRecipePhotoDraft(
+        from analysis: NutritionPhotoAnalysis,
+        recipeName: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        cloudAnalysisEnabled: Bool
+    ) -> BatchRecipePhotoDraft {
+        fallbackBatchRecipePhotoDraft(
+            from: analysis,
+            recipeName: recipeName,
+            totalWeightG: totalWeightG,
+            totalPortions: totalPortions,
+            cloudAnalysisEnabled: cloudAnalysisEnabled
+        )
+    }
+
+    static func _testAIAnalysis(
+        from response: FoodPhotoAnalysisResponse,
+        recognizedText: String?,
+        barcodes: [String]
+    ) -> NutritionPhotoAnalysis {
+        aiAnalysis(from: response, recognizedText: recognizedText, barcodes: barcodes)
+    }
+
+    static func _testAISummaryFallback(
+        detectedItems: [NutritionDraftCandidateItem],
+        totalMacros: NutritionDraftMacroSummary?
+    ) -> String {
+        aiSummaryFallback(detectedItems: detectedItems, totalMacros: totalMacros)
+    }
+
+    static func _testIsCloudAnalysisEnabled() async -> Bool {
+        await isCloudAnalysisEnabled()
+    }
+
+    static func _testSetRecognizeTextOverride(
+        _ runner: (@Sendable (UIImage) async throws -> String)?
+    ) {
+        testRecognizeTextOverride.value = runner
+    }
+
+    static func _testSetSyncRecognizeTextOverride(
+        _ runner: (@Sendable (UIImage) throws -> String)?
+    ) {
+        testSyncRecognizeTextOverride.value = runner
+    }
+
+    static func _testSetSyncDetectBarcodesOverride(
+        _ runner: (@Sendable (Data) throws -> [String])?
+    ) {
+        testSyncDetectBarcodesOverride.value = runner
+    }
+
+    static func _testSetDetectBarcodesOverride(
+        _ runner: (@Sendable (UIImage) async throws -> [String])?
+    ) {
+        testDetectBarcodesOverride.value = runner
+    }
+
+    static func _testSetFoodPhotoAnalysisOverride(
+        _ runner: (@Sendable (String, Date, String?, [String]) async throws -> FoodPhotoAnalysisResponse)?
+    ) {
+        testFoodPhotoAnalysisOverride.value = runner
+    }
+
+    static func _testSetFoodPhotoServiceRunnerOverride(
+        _ runner: (@Sendable (String, Date, String?, [String]) async throws -> FoodPhotoAnalysisResponse)?
+    ) {
+        testFoodPhotoServiceRunnerOverride.value = runner
+    }
+
+    static func _testSetFoodLabelAnalysisOverride(
+        _ runner: (@Sendable ([String], String?) async throws -> FoodLabelAnalysisResponse)?
+    ) {
+        testFoodLabelAnalysisOverride.value = runner
+    }
+
+    static func _testSetFoodLabelServiceRunnerOverride(
+        _ runner: (@Sendable ([String], String?) async throws -> FoodLabelAnalysisResponse)?
+    ) {
+        testFoodLabelServiceRunnerOverride.value = runner
+    }
+
+    static func _testSetBatchRecipePhotoAnalysisOverride(
+        _ runner: (@Sendable (String, String, Double, Int, [String]) async throws -> BatchRecipePhotoAnalysisResponse)?
+    ) {
+        testBatchRecipePhotoAnalysisOverride.value = runner
+    }
+
+    static func _testSetBatchRecipePhotoServiceRunnerOverride(
+        _ runner: (@Sendable (String, String, Double, Int, [String]) async throws -> BatchRecipePhotoAnalysisResponse)?
+    ) {
+        testBatchRecipePhotoServiceRunnerOverride.value = runner
+    }
+
+    static func _testFoodPhotoAnalysisResponse(
+        imageDataURL: String,
+        loggedAt: Date,
+        recognizedText: String?,
+        barcodes: [String],
+        service: FoodPhotoAnalysisService
+    ) async throws -> FoodPhotoAnalysisResponse {
+        try await foodPhotoAnalysisResponse(
+            imageDataURL: imageDataURL,
+            loggedAt: loggedAt,
+            recognizedText: recognizedText,
+            barcodes: barcodes,
+            service: service
+        )
+    }
+
+    static func _testFoodLabelAnalysisResponse(
+        imagesDataURL: [String],
+        barcode: String?,
+        service: FoodLabelAnalysisService
+    ) async throws -> FoodLabelAnalysisResponse {
+        try await foodLabelAnalysisResponse(
+            imagesDataURL: imagesDataURL,
+            barcode: barcode,
+            service: service
+        )
+    }
+
+    static func _testBatchRecipePhotoAnalysisResponse(
+        imageDataURL: String,
+        recipeName: String,
+        totalWeightG: Double,
+        totalPortions: Int,
+        knownIngredients: [String],
+        service: BatchRecipePhotoAnalysisService
+    ) async throws -> BatchRecipePhotoAnalysisResponse {
+        try await batchRecipePhotoAnalysisResponse(
+            imageDataURL: imageDataURL,
+            recipeName: recipeName,
+            totalWeightG: totalWeightG,
+            totalPortions: totalPortions,
+            knownIngredients: knownIngredients,
+            service: service
+        )
+    }
+
+    static func _testSetCloudAnalysisEnabledOverride(
+        _ runner: (@Sendable () async -> Bool)?
+    ) {
+        testCloudAnalysisEnabledOverride.value = runner
+    }
+
+    static func _testSetPhotoCloudAnalysisAvailableOverride(_ isAvailable: Bool?) {
+        testPhotoCloudAnalysisAvailableOverride.value = isAvailable
+    }
+
+    static func _testResetOverrides() {
+        testRecognizeTextOverride.value = nil
+        testSyncRecognizeTextOverride.value = nil
+        testSyncDetectBarcodesOverride.value = nil
+        testDetectBarcodesOverride.value = nil
+        testFoodPhotoAnalysisOverride.value = nil
+        testFoodPhotoServiceRunnerOverride.value = nil
+        testFoodLabelAnalysisOverride.value = nil
+        testFoodLabelServiceRunnerOverride.value = nil
+        testBatchRecipePhotoAnalysisOverride.value = nil
+        testBatchRecipePhotoServiceRunnerOverride.value = nil
+        testCloudAnalysisEnabledOverride.value = nil
+        testPhotoCloudAnalysisAvailableOverride.value = nil
+    }
+}
