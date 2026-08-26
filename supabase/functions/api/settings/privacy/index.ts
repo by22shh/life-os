@@ -16,6 +16,7 @@ interface PrivacyPayload {
   medical_scan_local_only?: boolean;
   vector_opt_in?: boolean;
   analytics_consent?: boolean;
+  ai_processing_consent?: boolean;
   cloud_ocr_enabled?: boolean;
   cloud_backup_enabled?: boolean;
 }
@@ -27,6 +28,7 @@ interface PrivacyRow {
   medical_scan_local_only: boolean;
   vector_opt_in: boolean;
   analytics_consent: boolean;
+  ai_processing_consent: boolean;
   cloud_ocr_enabled: boolean;
   cloud_backup_enabled?: boolean;
   created_at: string;
@@ -34,7 +36,7 @@ interface PrivacyRow {
 }
 
 const PRIVACY_SELECT =
-  "id,user_id,menstrual_local_only,medical_scan_local_only,vector_opt_in,analytics_consent,cloud_ocr_enabled,cloud_backup_enabled,created_at,updated_at";
+  "id,user_id,menstrual_local_only,medical_scan_local_only,vector_opt_in,analytics_consent,ai_processing_consent,cloud_ocr_enabled,cloud_backup_enabled,created_at,updated_at";
 
 Deno.serve(async (request) => {
   const preflight = handleCors(request);
@@ -177,6 +179,7 @@ async function fetchOrCreateSettings(
       medical_scan_local_only: true,
       vector_opt_in: false,
       analytics_consent: false,
+      ai_processing_consent: false,
       cloud_ocr_enabled: true,
     })
     .select(PRIVACY_SELECT)
@@ -232,6 +235,9 @@ function normalizePayload(payload: PrivacyPayload): PrivacyPayload {
   if (typeof payload.analytics_consent === "boolean") {
     normalized.analytics_consent = payload.analytics_consent;
   }
+  if (typeof payload.ai_processing_consent === "boolean") {
+    normalized.ai_processing_consent = payload.ai_processing_consent;
+  }
   if (typeof payload.cloud_ocr_enabled === "boolean") {
     normalized.cloud_ocr_enabled = payload.cloud_ocr_enabled;
   }
@@ -274,6 +280,7 @@ function toPublicSettings(row: PrivacyRow) {
     medical_scan_local_only: row.medical_scan_local_only,
     vector_opt_in: row.vector_opt_in,
     analytics_consent: row.analytics_consent,
+    ai_processing_consent: row.ai_processing_consent ?? false,
     cloud_ocr_enabled: row.cloud_ocr_enabled,
     cloud_backup_enabled: row.cloud_backup_enabled ?? false,
   };

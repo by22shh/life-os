@@ -296,6 +296,7 @@ export const PrivacyPayloadSchema = v.object({
   medical_scan_local_only: v.optional(v.boolean()),
   vector_opt_in: v.optional(v.boolean()),
   analytics_consent: v.optional(v.boolean()),
+  ai_processing_consent: v.optional(v.boolean()),
   cloud_ocr_enabled: v.optional(v.boolean()),
   cloud_backup_enabled: v.optional(v.boolean()),
 });

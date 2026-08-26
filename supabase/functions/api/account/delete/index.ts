@@ -78,7 +78,11 @@ Deno.serve(async (request) => {
         issues: bodyParse.issues,
       }, 400);
     }
-    body = bodyParse.output;
+    // Normalize schema output (reason may be null) into DeletionBody.
+    body = {
+      immediate: bodyParse.output.immediate === true ? true : undefined,
+      reason: bodyParse.output.reason ?? undefined,
+    };
   } catch {
     // optional body
   }

@@ -84,10 +84,16 @@ Deno.serve(async (request) => {
       results,
     });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    // Log the full detail internally; the response stays opaque per the
+    // sanitized-error policy shared by all endpoints.
+    console.error(
+      JSON.stringify({
+        event: "scheduled_deletion_worker_failed",
+        detail: error instanceof Error ? error.message : String(error),
+      }),
+    );
     return jsonWithRequest(request, {
       error: "scheduled_deletion_worker_failed",
-      detail,
     }, 500);
   }
 });

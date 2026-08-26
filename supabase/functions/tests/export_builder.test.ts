@@ -1,7 +1,6 @@
 import {
   assertEquals,
   assertExists,
-  assertNotEquals,
   assertRejects,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
@@ -15,16 +14,6 @@ import {
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const JOB_ID = "22222222-2222-4222-8222-222222222222";
-
-function filterValue(
-  state: MockQueryState,
-  op: string,
-  column: string,
-): unknown {
-  return state.filters.find((filter) =>
-    filter.op === op && filter.column === column
-  )?.value;
-}
 
 async function withMockedDate(
   isoTimestamp: string,
@@ -59,9 +48,7 @@ async function withMockedDate(
   }
 }
 
-Deno.test("ensureExportReady reuses a non-expired artifact and refreshes the job URL", async () => {
-  const existingDownloadUrl =
-    "https://lifeos.app/functions/v1/api-user-export-download?export_id=22222222-2222-4222-8222-222222222222&token=token-123";
+Deno.test("ensureExportReady rotates tokens per poll and never persists a raw URL", async () => {
   const service = createMockSupabaseService((state) => {
     if (
       state.table === "export_artifacts" &&
@@ -76,78 +63,6 @@ Deno.test("ensureExportReady reuses a non-expired artifact and refreshes the job
           file_name: "lifeos_export.json",
           expires_at: "2099-01-01T00:00:00.000Z",
         },
-        error: null,
-      };
-    }
-
-    if (
-      state.table === "export_jobs" &&
-      state.action === "select" &&
-      state.terminal === "maybeSingle"
-    ) {
-      return {
-        data: { download_url: existingDownloadUrl },
-        error: null,
-      };
-    }
-
-    if (state.table === "export_jobs" && state.action === "update") {
-      return { data: null, error: null };
-    }
-
-    throw new Error(`Unhandled mock query: ${JSON.stringify(state)}`);
-  });
-
-  const result = await ensureExportReady(
-    service as never,
-    USER_ID,
-    JOB_ID,
-    "https://lifeos.app",
-  );
-
-  assertEquals(result.status, "ready");
-  assertEquals(result.downloadUrl, existingDownloadUrl);
-
-  const refreshCall = service.__calls.find((state) =>
-    state.table === "export_jobs" && state.action === "update"
-  );
-  assertExists(refreshCall);
-  assertEquals(filterValue(refreshCall, "eq", "id"), JOB_ID);
-  assertEquals(filterValue(refreshCall, "eq", "user_id"), USER_ID);
-  assertEquals(
-    (refreshCall.payload as Record<string, unknown>).status,
-    "ready",
-  );
-});
-
-Deno.test("ensureExportReady rotates tokens for artifacts migrated away from plaintext", async () => {
-  const staleUrl =
-    "https://lifeos.app/functions/v1/api-user-export-download?export_id=22222222-2222-4222-8222-222222222222&token=legacy";
-  const service = createMockSupabaseService((state) => {
-    if (
-      state.table === "export_artifacts" &&
-      state.action === "select" &&
-      state.terminal === "maybeSingle"
-    ) {
-      return {
-        data: {
-          job_id: JOB_ID,
-          user_id: USER_ID,
-          download_token: "invalidated-legacy-plaintext-deadbeef",
-          file_name: "lifeos_export.json",
-          expires_at: "2099-01-01T00:00:00.000Z",
-        },
-        error: null,
-      };
-    }
-
-    if (
-      state.table === "export_jobs" &&
-      state.action === "select" &&
-      state.terminal === "maybeSingle"
-    ) {
-      return {
-        data: { download_url: staleUrl },
         error: null,
       };
     }
@@ -176,7 +91,72 @@ Deno.test("ensureExportReady rotates tokens for artifacts migrated away from pla
 
   assertEquals(result.status, "ready");
   assertExists(result.downloadUrl);
-  assertNotEquals(result.downloadUrl, staleUrl);
+  // The issued URL carries a raw token but is response-only.
+  assertEquals(result.downloadUrl.includes("token="), true);
+
+  const rotation = service.__calls.find((state) =>
+    state.table === "export_artifacts" && state.action === "update"
+  );
+  assertExists(rotation);
+  const rotatedToken = (rotation.payload as Record<string, unknown>)
+    .download_token as string;
+  // Only the digest is persisted, never the raw rotating token.
+  assertEquals(/^[0-9a-f]{64}$/.test(rotatedToken), true);
+
+  const jobUpdate = service.__calls.find((state) =>
+    state.table === "export_jobs" && state.action === "update"
+  );
+  assertExists(jobUpdate);
+  // The raw download URL must never be written back into export_jobs.
+  assertEquals(
+    "download_url" in (jobUpdate.payload as Record<string, unknown>),
+    false,
+  );
+});
+
+Deno.test("ensureExportReady rotates tokens for artifacts migrated away from plaintext", async () => {
+  const service = createMockSupabaseService((state) => {
+    if (
+      state.table === "export_artifacts" &&
+      state.action === "select" &&
+      state.terminal === "maybeSingle"
+    ) {
+      return {
+        data: {
+          job_id: JOB_ID,
+          user_id: USER_ID,
+          download_token: "invalidated-legacy-plaintext-deadbeef",
+          file_name: "lifeos_export.json",
+          expires_at: "2099-01-01T00:00:00.000Z",
+        },
+        error: null,
+      };
+    }
+
+    if (
+      state.table === "export_artifacts" &&
+      state.action === "update" &&
+      state.terminal === "then"
+    ) {
+      return { data: null, error: null };
+    }
+
+    if (state.table === "export_jobs" && state.action === "update") {
+      return { data: null, error: null };
+    }
+
+    throw new Error(`Unhandled mock query: ${JSON.stringify(state)}`);
+  });
+
+  const result = await ensureExportReady(
+    service as never,
+    USER_ID,
+    JOB_ID,
+    "https://lifeos.app",
+  );
+
+  assertEquals(result.status, "ready");
+  assertExists(result.downloadUrl);
 
   const rotation = service.__calls.find((state) =>
     state.table === "export_artifacts" && state.action === "update"

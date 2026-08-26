@@ -198,6 +198,13 @@ export async function withMockedEdgeRuntime<T>(
       if (response) return response;
     }
 
+    // Default to consent granted so AI success-path tests exercise their
+    // real flows; the consent gate itself is covered by dedicated tests.
+    // Checked after custom responders so privacy-settings tests can stub it.
+    if (url.pathname === "/rest/v1/privacy_settings") {
+      return jsonResponse([{ ai_processing_consent: true }]);
+    }
+
     throw new Error(`Unexpected fetch URL in test harness: ${request.url}`);
   }) as typeof fetch;
 

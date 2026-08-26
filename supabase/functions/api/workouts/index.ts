@@ -708,6 +708,7 @@ async function handlePatchWorkout(
   }
 
   const planSyncError = await syncTrainingPlanSessionLinkage(
+    request,
     service,
     userId,
     sessionId,
@@ -781,6 +782,7 @@ async function handleDeleteWorkout(
   }
 
   const planSyncError = await unlinkTrainingPlanSessionCompletion(
+    request,
     service,
     userId,
     existing.training_plan_id,
@@ -878,6 +880,7 @@ async function handleUndoWorkout(
   }
 
   const planSyncError = await syncTrainingPlanSessionLinkage(
+    request,
     service,
     userId,
     sessionId,
@@ -1105,6 +1108,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 async function syncTrainingPlanSessionLinkage(
+  request: Request,
   service: ReturnType<
     typeof import("../../_shared/supabase.ts").serviceRoleClient
   >,
@@ -1128,6 +1132,7 @@ async function syncTrainingPlanSessionLinkage(
     )
   ) {
     const unlinkError = await unlinkTrainingPlanSessionCompletion(
+      request,
       service,
       userId,
       previousTrainingPlanId,
@@ -1144,6 +1149,7 @@ async function syncTrainingPlanSessionLinkage(
   }
 
   return await syncTrainingPlanSessionCompletion(
+    request,
     service,
     userId,
     nextTrainingPlanId,
@@ -1153,6 +1159,7 @@ async function syncTrainingPlanSessionLinkage(
 }
 
 async function syncTrainingPlanSessionCompletion(
+  request: Request,
   service: ReturnType<
     typeof import("../../_shared/supabase.ts").serviceRoleClient
   >,
@@ -1221,6 +1228,7 @@ async function syncTrainingPlanSessionCompletion(
 }
 
 async function unlinkTrainingPlanSessionCompletion(
+  request: Request,
   service: ReturnType<
     typeof import("../../_shared/supabase.ts").serviceRoleClient
   >,

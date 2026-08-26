@@ -591,3 +591,49 @@ Deno.test("fallback limiter evicts stale buckets after interval", async () => {
     __rateLimitTestHooks.resetBuckets();
   }
 });
+
+Deno.test("distributed limiter fallback emits throttled ops alert", async () => {
+  __rateLimitTestHooks.resetBuckets();
+  const insertedAlerts: Array<Record<string, unknown>> = [];
+  let rpcFailures = 0;
+  __rateLimitTestHooks.setServiceRoleClientFactory(() => ({
+    rpc: () => {
+      rpcFailures += 1;
+      return Promise.resolve({ data: null, error: { message: "db-down" } });
+    },
+    from: (table: string) => ({
+      insert: (values: Record<string, unknown>) => {
+        assertEquals(table, "ops_alert_events");
+        insertedAlerts.push(values);
+        return Promise.resolve({ data: null, error: null });
+      },
+    }),
+  }));
+
+  try {
+    // First fallback records an alert...
+    await enforceRateLimit(
+      requestWithHeaders({}),
+      `alarm-${crypto.randomUUID()}`,
+      "standard",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(insertedAlerts.length, 1);
+    assertEquals(insertedAlerts[0].source, "rate_limiter");
+    assertEquals(insertedAlerts[0].alert_key, "distributed_limiter_fallback");
+    assertEquals(insertedAlerts[0].severity, "warning");
+
+    // ...but the in-process throttle suppresses immediate repeats.
+    __rateLimitTestHooks.setLastFallbackAlertEpochMs(Date.now());
+    await enforceRateLimit(
+      requestWithHeaders({}),
+      `alarm2-${crypto.randomUUID()}`,
+      "standard",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(insertedAlerts.length, 1);
+    assertEquals(rpcFailures >= 2, true);
+  } finally {
+    __rateLimitTestHooks.resetBuckets();
+  }
+});

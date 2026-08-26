@@ -6,9 +6,11 @@ import {
   serviceRoleClient,
 } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rate_limit.ts";
+import { enforceAIProcessingConsent } from "../_shared/ai_consent.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { parseWithSchema } from "../_shared/runtime_schema.ts";
 import { AnalyzeFoodImageBodySchema } from "../_shared/payload_schemas.ts";
+import { readJsonBody } from "../_shared/request_limits.ts";
 import {
   type AnalyzeFoodImageRequestPayload,
   buildFoodImageSystemPrompt,
@@ -129,14 +131,26 @@ Deno.serve(async (request) => {
     return rateLimited;
   }
 
-  let bodyRaw: unknown;
-  try {
-    bodyRaw = await request.json();
-  } catch {
-    return jsonWithRequest(request, { error: "invalid_json" }, 400);
-  }
+  const consentBlocked = await enforceAIProcessingConsent(
+    service,
+    userRow.id,
+  );
+  if (consentBlocked) return consentBlocked;
 
-  const bodyParse = parseWithSchema(AnalyzeFoodImageBodySchema, bodyRaw);
+  // Hard byte ceiling: a single data URL is capped at 8MB, so anything above
+  // ~9.5MB of JSON cannot be valid and must be rejected before allocation.
+  const bodyResult = await readJsonBody(request, 9_500_000);
+  if (!bodyResult.ok) {
+    return jsonWithRequest(
+      request,
+      { error: bodyResult.reason },
+      bodyResult.reason === "body_too_large" ? 413 : 400,
+    );
+  }
+  const bodyParse = parseWithSchema(
+    AnalyzeFoodImageBodySchema,
+    bodyResult.body,
+  );
   if (!bodyParse.ok) {
     return jsonWithRequest(request, {
       error: "invalid_payload",

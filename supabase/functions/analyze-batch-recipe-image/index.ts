@@ -6,6 +6,7 @@ import {
   serviceRoleClient,
 } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rate_limit.ts";
+import { enforceAIProcessingConsent } from "../_shared/ai_consent.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { parseWithSchema } from "../_shared/runtime_schema.ts";
 import { AnalyzeBatchRecipeImageBodySchema } from "../_shared/payload_schemas.ts";
@@ -516,6 +517,12 @@ Deno.serve(async (request) => {
 
   const rateLimited = await enforceRateLimit(request, userRow.id, "ai_vision");
   if (rateLimited) return rateLimited;
+
+  const consentBlocked = await enforceAIProcessingConsent(
+    service,
+    userRow.id,
+  );
+  if (consentBlocked) return consentBlocked;
 
   const bodyResult = await readJsonBody(request);
   if (!bodyResult.ok) {

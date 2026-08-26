@@ -46,47 +46,26 @@ export async function ensureExportReady(
       return { status: "expired", downloadUrl: null };
     }
 
-    // The raw token is never persisted (only its digest), so the previously
-    // issued download URL is reused. When it is unavailable the artifact
-    // token is rotated and a fresh URL is issued.
-    const jobRowResult = await service
-      .from("export_jobs")
-      .select("download_url")
-      .eq("id", jobId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    const jobError = jobRowResult.error;
-    if (jobError) throw jobError;
-    let downloadUrl =
-      (jobRowResult.data as { download_url: string | null } | null)
-        ?.download_url ?? null;
-
-    // Artifacts migrated away from plaintext tokens cannot honor previously
-    // issued URLs; rotate their token and issue a fresh one.
-    const tokenWasInvalidated = artifact.download_token.startsWith(
-      "invalidated-legacy-plaintext-",
+    // The raw token is never persisted (only its digest), so there is no
+    // stored URL to reuse: every status poll rotates the artifact token and
+    // issues a fresh short-lived download URL in the response only.
+    const rotated = await rotateExportArtifactToken(
+      service,
+      jobId,
+      userId,
+      origin,
     );
-    if (!downloadUrl || tokenWasInvalidated) {
-      const rotated = await rotateExportArtifactToken(
-        service,
-        jobId,
-        userId,
-        origin,
-      );
-      downloadUrl = rotated.downloadUrl;
-    }
 
     await service
       .from("export_jobs")
       .update({
         status: "ready",
-        download_url: downloadUrl,
         completed_at: new Date().toISOString(),
         failure_reason: null,
       })
       .eq("id", jobId)
       .eq("user_id", userId);
-    return { status: "ready", downloadUrl };
+    return { status: "ready", downloadUrl: rotated.downloadUrl };
   }
 
   const currentJobResult = await service
@@ -144,7 +123,6 @@ export async function ensureExportReady(
       .from("export_jobs")
       .update({
         status: "ready",
-        download_url: downloadUrl,
         completed_at: now.toISOString(),
         failure_reason: null,
       })

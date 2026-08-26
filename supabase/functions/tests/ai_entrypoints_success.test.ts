@@ -32,6 +32,7 @@ interface RuntimeConfig {
     request: Request,
     body: Record<string, unknown>,
   ) => Promise<Response> | Response;
+  privacySettingsResponse?: RequestResponder;
   publicUserId?: string;
   rateLimitResponse?: RequestResponder;
   userLookupResponse?: RequestResponder;
@@ -163,6 +164,14 @@ async function withMockedRuntime<T>(
         remaining: 999,
         reset_epoch_seconds: Math.floor(Date.now() / 1000) + 60,
       }]);
+    }
+
+    if (url.pathname === "/rest/v1/privacy_settings") {
+      if (config.privacySettingsResponse) {
+        return await config.privacySettingsResponse(request);
+      }
+      // Consent granted by default so success-path tests exercise real flows.
+      return jsonResponse([{ ai_processing_consent: true }]);
     }
 
     if (request.url === OPENROUTER_URL) {
@@ -2706,4 +2715,55 @@ Deno.test("AI entrypoint helper hooks reject unsafe payload shapes", async () =>
     ]),
     null,
   );
+});
+
+Deno.test("AI endpoints enforce ai_processing_consent server-side", async () => {
+  const handler = await captureEdgeHandler("../analyze-food-image/index.ts");
+
+  await withMockedRuntime({
+    privacySettingsResponse: () =>
+      jsonResponse([{ ai_processing_consent: false }]),
+  }, async () => {
+    const response = await handler(
+      new Request("http://localhost/functions/v1/analyze-food-image", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer image-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_base64: TINY_PNG_DATA_URL,
+          context: "home",
+        }),
+      }),
+    );
+
+    assertEquals(response.status, 403);
+    assertEquals(await response.json(), {
+      error: "ai_processing_consent_required",
+    });
+  });
+
+  await withMockedRuntime({
+    privacySettingsResponse: () =>
+      jsonResponse({ message: "consent lookup unavailable" }, 500),
+  }, async () => {
+    // Lookup failures fail closed so no health data can leave the platform.
+    const response = await handler(
+      new Request("http://localhost/functions/v1/analyze-food-image", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer image-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_base64: TINY_PNG_DATA_URL,
+          context: "home",
+        }),
+      }),
+    );
+
+    assertEquals(response.status, 503);
+    assertEquals(await response.json(), { error: "ai_consent_lookup_failed" });
+  });
 });

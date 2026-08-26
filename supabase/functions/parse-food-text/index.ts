@@ -3,6 +3,7 @@ import {
   handleCorsPreflight,
   resolveUserContext,
 } from "../_shared/user_context.ts";
+import { enforceAIProcessingConsent } from "../_shared/ai_consent.ts";
 import { parseWithSchema } from "../_shared/runtime_schema.ts";
 import { ParseFoodTextBodySchema } from "../_shared/payload_schemas.ts";
 import { readJsonBody } from "../_shared/request_limits.ts";
@@ -383,6 +384,12 @@ Deno.serve(async (request) => {
 
   const userResult = await resolveUserContext(request, "ai_parse");
   if (!userResult.ok) return userResult.response;
+
+  const consentBlocked = await enforceAIProcessingConsent(
+    userResult.context.service,
+    userResult.context.userId,
+  );
+  if (consentBlocked) return consentBlocked;
 
   const bodyResult = await readJsonBody(request);
   if (!bodyResult.ok) {

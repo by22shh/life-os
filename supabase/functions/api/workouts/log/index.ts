@@ -152,6 +152,7 @@ Deno.serve(async (request) => {
     );
     if (replayTrainingPlanId) {
       const syncError = await syncTrainingPlanSessionCompletion(
+        request,
         service,
         userId,
         replayTrainingPlanId,
@@ -353,6 +354,7 @@ Deno.serve(async (request) => {
 
   if (sessionRow.training_plan_id) {
     const syncError = await syncTrainingPlanSessionCompletion(
+      request,
       service,
       userId,
       sessionRow.training_plan_id,
@@ -568,6 +570,7 @@ async function createCustomExerciseCatalogEntry(
 }
 
 async function syncTrainingPlanSessionCompletion(
+  request: Request,
   service: ReturnType<
     typeof import("../../../_shared/supabase.ts").serviceRoleClient
   >,

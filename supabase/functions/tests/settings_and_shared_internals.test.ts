@@ -432,6 +432,7 @@ Deno.test("privacy settings internal hooks cover normalization and side-effect b
     medical_scan_local_only: false,
     vector_opt_in: false,
     analytics_consent: false,
+    ai_processing_consent: false,
     cloud_ocr_enabled: true,
     cloud_backup_enabled: true,
     created_at: "2026-06-01T00:00:00.000Z",

@@ -38,6 +38,13 @@ interface ServiceRoleClientLike {
     name: string,
     args: Record<string, unknown>,
   ): Promise<{ data: unknown; error: unknown }>;
+  // Optional so narrow test doubles stay valid; the real supabase client
+  // always provides it and it is used only for best-effort ops alerts.
+  from?(table: string): {
+    insert(
+      values: Record<string, unknown>,
+    ): Promise<{ data: unknown; error: unknown }>;
+  };
 }
 
 const buckets = new Map<string, Bucket>();
@@ -50,6 +57,63 @@ let serviceRoleClientFactory = defaultServiceRoleClientFactory;
 // TTL eviction interval (5 minutes) to prevent memory leaks in warm Edge Functions
 const EVICTION_INTERVAL_MS = 5 * 60 * 1000;
 let lastEvictionEpochMs = Date.now();
+
+// When the distributed limiter is unavailable the effective budget silently
+// multiplies by the number of warm isolates. That degradation must be
+// observable instead of silent: emit a structured log line plus a best-effort
+// ops_alert_events row (picked up by the ops-alert-dispatch cron). Both are
+// throttled in-process on top of the table's dedup index.
+const FALLBACK_ALERT_DEDUP_MS = 15 * 60 * 1000;
+const FALLBACK_ALERT_SOURCE = "rate_limiter";
+const FALLBACK_ALERT_KEY = "distributed_limiter_fallback";
+let lastFallbackAlertEpochMs = 0;
+
+function recordDistributedLimiterFallback(tierLabel: string): void {
+  const nowMs = nowEpochMs();
+  if (nowMs - lastFallbackAlertEpochMs < FALLBACK_ALERT_DEDUP_MS) return;
+  lastFallbackAlertEpochMs = nowMs;
+
+  console.error(
+    JSON.stringify({
+      event: "rate_limit_distributed_unavailable",
+      tier: tierLabel,
+      detail: "distributed limiter unavailable; using per-isolate fallback",
+    }),
+  );
+
+  void (async () => {
+    try {
+      const service = serviceRoleClientFactory();
+      if (!service.from) return;
+      const dedupWindowStart = new Date(
+        Math.floor(nowMs / FALLBACK_ALERT_DEDUP_MS) * FALLBACK_ALERT_DEDUP_MS,
+      ).toISOString();
+      const { error } = await service.from("ops_alert_events").insert({
+        source: FALLBACK_ALERT_SOURCE,
+        alert_key: FALLBACK_ALERT_KEY,
+        severity: "warning",
+        dedup_window_start: dedupWindowStart,
+        summary:
+          "Distributed rate limiter unavailable; requests degraded to per-isolate budgets.",
+        details: { tier: tierLabel },
+      });
+      if (error) {
+        throw new Error(
+          typeof error === "object" && error !== null && "message" in error
+            ? String((error as { message?: unknown }).message)
+            : String(error),
+        );
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "rate_limit_fallback_alert_failed",
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  })();
+}
 
 function evictStaleBuckets(nowMs: number): void {
   if (nowMs - lastEvictionEpochMs < EVICTION_INTERVAL_MS) return;
@@ -170,11 +234,13 @@ async function applyWindowDistributed(
     });
 
     if (error) {
+      recordDistributedLimiterFallback(rule.label);
       return null;
     }
 
     const row = Array.isArray(data) ? data[0] : data;
     if (!row || typeof row.ok !== "boolean") {
+      recordDistributedLimiterFallback(rule.label);
       return null;
     }
 
@@ -188,6 +254,7 @@ async function applyWindowDistributed(
       ),
     };
   } catch {
+    recordDistributedLimiterFallback(rule.label);
     return null;
   }
 }
@@ -246,7 +313,11 @@ export const __rateLimitTestHooks = {
   resetBuckets(): void {
     buckets.clear();
     lastEvictionEpochMs = Date.now();
+    lastFallbackAlertEpochMs = 0;
     serviceRoleClientFactory = defaultServiceRoleClientFactory;
+  },
+  setLastFallbackAlertEpochMs(epochMs: number): void {
+    lastFallbackAlertEpochMs = epochMs;
   },
   bucketCount(): number {
     return buckets.size;

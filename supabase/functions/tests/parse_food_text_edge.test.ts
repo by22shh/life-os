@@ -609,7 +609,12 @@ Deno.test("parse-food-text edge handler parses meals, falls back cleanly, and va
 
       await withMockedEdgeRuntime({
         responders: [
-          () => jsonResponse({ message: "favorites fetch failed" }, 500),
+          // Fail every downstream fetch except the AI consent lookup, which
+          // must stay reachable for the request to proceed.
+          (_request, { url }) =>
+            url.pathname === "/rest/v1/privacy_settings"
+              ? undefined
+              : jsonResponse({ message: "favorites fetch failed" }, 500),
         ],
       }, async () => {
         const response = await handler(

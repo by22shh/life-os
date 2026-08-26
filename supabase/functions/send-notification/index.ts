@@ -259,6 +259,7 @@ Deno.serve(async (request) => {
   switch (insertStatus) {
     case "accepted": {
       const dispatchSummary = await dispatchNotificationToDevices(
+        request,
         supabase,
         userId,
         payload,
@@ -295,6 +296,7 @@ Deno.serve(async (request) => {
 });
 
 async function dispatchNotificationToDevices(
+  request: Request,
   supabase: ReturnType<typeof serviceRoleClient>,
   userId: string,
   payload: NotificationPayload,

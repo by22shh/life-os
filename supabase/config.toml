@@ -10,11 +10,19 @@ enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 max_refresh_tokens = 20
 
+# Health-data accounts: raise the floor above Supabase's 6-char default.
+# Production deployments MUST also set site_url to the real app origin and
+# enable email confirmations once a mail provider is wired (see
+# supabase/DEPLOYMENT.md "Production auth checklist").
+[auth.password]
+min_length = 8
+
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
 # Email confirmations stay disabled until a production mail provider is wired
-# up; flipping this on requires onboarding + e2e updates in the same change.
+# up; flipping this on requires onboarding + e2e updates in the same change
+# (edge_local_e2e.ts expects a signup session without confirmation).
 enable_confirmations = false
 
 [functions.send-notification]

@@ -6,6 +6,7 @@ import {
   serviceRoleClient,
 } from "../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../_shared/rate_limit.ts";
+import { enforceAIProcessingConsent } from "../../_shared/ai_consent.ts";
 import { handleCors, withCorsHeaders } from "../../_shared/cors.ts";
 import { parseWithSchema } from "../../_shared/runtime_schema.ts";
 import { OpenRouterGatewayBodySchema } from "../../_shared/payload_schemas.ts";
@@ -75,6 +76,12 @@ Deno.serve(async (request) => {
   if (rateLimited) {
     return rateLimited;
   }
+
+  const consentBlocked = await enforceAIProcessingConsent(
+    service,
+    userRow.id,
+  );
+  if (consentBlocked) return consentBlocked;
 
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) {
@@ -200,7 +207,11 @@ function sanitizeMessages(input: unknown): OpenRouterMessage[] | null {
     if (!isJSONObject(raw)) return null;
     const role = raw.role;
     const content = raw.content;
-    if (role !== "system" && role !== "user" && role !== "assistant") {
+    // "system" is deliberately rejected: this gateway is a client-facing
+    // endpoint (internal functions call OpenRouter directly with their own
+    // prompts), so allowing a client-supplied system role would turn it into
+    // a generic LLM proxy within the rate-limit budget.
+    if (role !== "user" && role !== "assistant") {
       return null;
     }
     if (typeof content === "string") {

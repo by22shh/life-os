@@ -77,6 +77,7 @@ Deno.test("privacy settings edge handler creates defaults and runs real cleanup 
           medical_scan_local_only: true,
           vector_opt_in: false,
           analytics_consent: false,
+          ai_processing_consent: false,
           cloud_ocr_enabled: true,
           cloud_backup_enabled: false,
         });

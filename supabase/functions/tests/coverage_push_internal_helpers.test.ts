@@ -1012,10 +1012,9 @@ Deno.test("edge-module private hooks cover parser and AI request guardrail branc
   );
   const sanitizeMessages =
     openRouter.__openRouterGatewayTestHooks.sanitizeMessages;
-  assertEquals(sanitizeMessages([{ role: "system", content: " ok " }]), [{
-    role: "system",
-    content: "ok",
-  }]);
+  // Client-supplied system role is rejected: the gateway is client-facing
+  // only and must not act as a generic LLM proxy.
+  assertEquals(sanitizeMessages([{ role: "system", content: " ok " }]), null);
   assertEquals(sanitizeMessages([{ role: "invalid", content: "x" }]), null);
   assertEquals(sanitizeMessages([{ role: "user", content: [{ text: "x" }] }]), [
     { role: "user", content: [{ text: "x" }] },
