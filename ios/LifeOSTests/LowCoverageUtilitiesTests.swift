@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import CryptoKit
 import Foundation
 import GRDB
 import Supabase
@@ -5991,6 +5992,12 @@ final class RemainingCoverageBoostTests: XCTestCase {
 
     @MainActor
     func testMenstrualDayViewModelLoadSaveDeleteCoverage() async throws {
+        // menstrual_logs persist through FieldEncryption; use a fixed
+        // in-memory key so the test never depends on a real Keychain.
+        let fixedEncryptionKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedEncryptionKey }
+        defer { FieldEncryption._testResetOverrides() }
+
         let manager = try DatabaseManager.inMemory()
         let userId = UUID()
         let authId = UUID()

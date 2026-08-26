@@ -15,6 +15,11 @@ final class LocalSensitiveFieldEncryptionTests: XCTestCase {
     }
 
     func testV25MigrationEncryptsLegacyPlaintextRowsAndKeepsModelsReadable() throws {
+        // Deterministic key so the migration never depends on a real Keychain.
+        let fixedKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedKey }
+        defer { FieldEncryption._testResetOverrides() }
+
         let manager = try DatabaseManager.inMemory()
         let user = User(authId: UUID())
         let foodLogId = UUID()

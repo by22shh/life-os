@@ -948,13 +948,14 @@ actor HealthKitManager {
             let lhsKey = sleepSourceSelectionKey(for: lhs)
             let rhsKey = sleepSourceSelectionKey(for: rhs)
             return Self.shouldPreferSleepSource(rhsKey, over: lhsKey)
-        }!
-
+        } ?? []
         return selectedSamples.sorted(by: { $0.startDate < $1.startDate })
     }
 
     private func sleepSourceSelectionKey(for samples: [HKCategorySample]) -> SleepSourceSelectionKey {
-        let firstSample = samples.first!
+        guard let firstSample = samples.first else {
+            return SleepSourceSelectionKey(rank: 0, hasStages: false, durationSeconds: 0)
+        }
         return SleepSourceSelectionKey(
             rank: sourceRank(firstSample.sourceRevision, metadata: firstSample.metadata),
             hasStages: hasSleepStages(samples),
@@ -1022,7 +1023,7 @@ actor HealthKitManager {
         eightAM = Self.defaultEightAMDate(calendar: calendar, dayStart: dayStart)
 #endif
 
-        let firstBout = bouts.first!
+        guard let firstBout = bouts.first else { return [] }
 
         var selectedBout = firstBout
         var selectedKey = Self.sleepBoutSelectionKey(

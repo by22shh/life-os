@@ -363,7 +363,7 @@ actor NutritionCatalogService {
         let localKeys = (try? await dbQueue.read { db in
             let userId = try NutritionIdentity.resolveUserId(authId: authId, db: db)
             return try Self.loadFavoriteKeys(userId: userId, db: db)
-        }) ?? []
+        }) ?? Set<String>()
 
         do {
             let response: NutritionFavoriteListResponse = try await apiClient.callEdgeRoute(

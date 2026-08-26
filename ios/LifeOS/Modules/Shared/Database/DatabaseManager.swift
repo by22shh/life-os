@@ -231,6 +231,7 @@ final class DatabaseManager: Sendable {
             )
             applyDatabaseFileProtection(databaseURL: resolvedLocations.databaseURL)
             try runMigrations(on: queue)
+            scheduleDailyBackupIfNeeded()
 
             return .available(DatabaseManager(dbQueue: queue))
         } catch {
@@ -287,6 +288,17 @@ final class DatabaseManager: Sendable {
             databaseDirectoryURL: dbDirectory,
             databaseURL: dbDirectory.appendingPathComponent("lifeos.db")
         )
+    }
+
+    // MARK: - Daily Backup
+
+    /// Kicks off the daily local SQLite backup off the startup critical path.
+    /// Backup failures are logged and swallowed inside DatabaseBackupManager.
+    private static func scheduleDailyBackupIfNeeded() {
+        guard !UITestBootstrap.disableBackgroundWork else { return }
+        Task.detached {
+            await DatabaseBackupManager.shared.performBackupIfDue()
+        }
     }
 
     private static func startupFailure(

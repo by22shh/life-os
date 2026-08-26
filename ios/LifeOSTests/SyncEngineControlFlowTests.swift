@@ -867,8 +867,17 @@ final class SyncEngineControlFlowTests: XCTestCase {
 
             XCTAssertEqual(createStatus, OutboxStatus.failedPermanent.rawValue)
             XCTAssertEqual(logStatus, OutboxStatus.cancelled.rawValue)
-            XCTAssertEqual(experimentCount, 0)
-            XCTAssertEqual(measurementCount, 0)
+            // User-authored records are quarantined instead of destroyed:
+            // the rows survive with a quarantine marker and stay hidden from
+            // lists until bootstrap recovery replays the event.
+            XCTAssertEqual(experimentCount, 1)
+            XCTAssertEqual(measurementCount, 1)
+            let quarantineReason = try String.fetchOne(
+                db,
+                sql: "SELECT sync_quarantine_reason FROM experiments WHERE id = ? OR id = ?",
+                arguments: [experimentId, experimentId.uuidString]
+            )
+            XCTAssertEqual(quarantineReason, "permanent_create_failure:\(experimentId.uuidString)")
         }
     }
 

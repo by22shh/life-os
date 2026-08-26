@@ -127,14 +127,57 @@ function resolveServerManagedHeaders(): Record<string, string> {
  *   const preflight = handleCors(request);
  *   if (preflight) return preflight;
  */
+/**
+ * Optional browser-origin allowlist.
+ *
+ * Native iOS/watchOS clients do not implement CORS and are unaffected either
+ * way. When CORS_ALLOWED_ORIGINS is configured (comma-separated list of exact
+ * origins), preflight responses only succeed for origins on the list, which
+ * stops arbitrary web origins from scripting authenticated calls from a user's
+ * browser. When unset the historical wildcard behavior is preserved.
+ */
+function resolveCorsAllowedOrigins(): string[] | null {
+  const raw = readConfiguredValue(["CORS_ALLOWED_ORIGINS"]);
+  if (!raw) return null;
+  const origins = raw
+    .split(",")
+    .map((origin) => origin.trim().toLowerCase())
+    .filter((origin) => origin.length > 0);
+  return origins.length > 0 ? origins : null;
+}
+
 export function handleCors(request: Request): Response | null {
-  if (request.method === "OPTIONS") {
+  if (request.method !== "OPTIONS") return null;
+
+  const allowlist = resolveCorsAllowedOrigins();
+  if (!allowlist) {
     return new Response(null, {
       status: 204,
       headers: CORS_HEADERS,
     });
   }
-  return null;
+
+  const requestOrigin = request.headers.get("Origin")?.trim().toLowerCase() ??
+    "";
+  if (requestOrigin && allowlist.includes(requestOrigin)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...CORS_HEADERS,
+        "Access-Control-Allow-Origin": requestOrigin,
+        Vary: "Origin",
+      },
+    });
+  }
+
+  // No Access-Control-Allow-Origin: standards-compliant browsers reject the
+  // cross-origin call even though the preflight itself returns 204/403.
+  const headers = { ...CORS_HEADERS };
+  delete headers["Access-Control-Allow-Origin"];
+  return new Response(null, {
+    status: requestOrigin ? 403 : 204,
+    headers,
+  });
 }
 
 /**
@@ -159,5 +202,6 @@ export const __corsTestHooks = {
   normalizeAppStoreId,
   readConfiguredValue,
   resolveConfiguredAppStoreUrl,
+  resolveCorsAllowedOrigins,
   resolveServerManagedHeaders,
 };

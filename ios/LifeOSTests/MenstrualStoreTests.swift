@@ -1,9 +1,23 @@
 import Foundation
 import GRDB
+import CryptoKit
 import XCTest
 @testable import LifeOS
 
 final class MenstrualStoreTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        // menstrual_logs persist through FieldEncryption since v31; use a
+        // fixed in-memory key so tests never depend on a real Keychain.
+        let fixedKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedKey }
+    }
+
+    override func tearDown() {
+        FieldEncryption._testResetOverrides()
+        super.tearDown()
+    }
 
     private static func seedUser(
         db: Database,

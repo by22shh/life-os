@@ -8,7 +8,7 @@ import GRDB
 enum Migrations {
 
     /// Keep in sync with the latest registered migration version.
-    static let latestSchemaVersion = 29
+    static let latestSchemaVersion = 31
 
     static func registerAll(migrator: inout DatabaseMigrator) {
         registerV1(migrator: &migrator)
@@ -1805,6 +1805,29 @@ enum Migrations {
         migrator.registerMigration("v29_timezone_history_column_parity") { db in
             try applyV29TimezoneHistoryColumnParityMigration(db: db)
         }
+
+        // MARK: - V30 Migration: experiments sync quarantine marker
+
+        migrator.registerMigration("v30_experiments_sync_quarantine") { db in
+            let hasColumn = try Bool.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(*) > 0 FROM pragma_table_info('experiments')
+                    WHERE name = 'sync_quarantine_reason'
+                    """
+            ) ?? false
+            guard !hasColumn else { return }
+
+            try db.alter(table: "experiments") { t in
+                t.add(column: "sync_quarantine_reason", .text)
+            }
+        }
+
+        // MARK: - V31 Migration: menstrual_logs local field encryption
+
+        migrator.registerMigration("v31_menstrual_local_field_encryption") { db in
+            try applyV31MenstrualLocalFieldEncryptionMigration(db: db)
+        }
     }
 
     private static func applyV21MenstrualUserFkCascadeMigration(db: Database) throws {
@@ -2078,8 +2101,7 @@ enum Migrations {
             """)
     }
 
-    private static func applyV29TimezoneHistoryColumnParityMigration(db: Database) throws {
-        let columns = try columnNames(db: db, table: "timezone_history")
+    private static func applyV29TimezoneHistoryColumnParityMigration(db: Database) throws {        let columns = try columnNames(db: db, table: "timezone_history")
         guard !columns.isEmpty else { return }
 
         let hasCanonicalColumn = columns.contains("time_zone_identifier")
@@ -2103,6 +2125,45 @@ enum Migrations {
                 UPDATE timezone_history
                 SET time_zone_identifier = COALESCE(NULLIF(time_zone_identifier, ''), 'UTC')
                 """)
+        }
+    }
+
+    private static func applyV31MenstrualLocalFieldEncryptionMigration(db: Database) throws {
+        // Menstrual data is the most privacy-sensitive category in Life OS and
+        // is local-only by default; its fields must meet the same
+        // ciphertext-at-rest bar as health_measurements (v25).
+        let rows = try Row.fetchAll(
+            db,
+            sql: """
+                SELECT rowid AS local_rowid, id, flow, pain_level
+                FROM menstrual_logs
+                WHERE flow IS NOT NULL
+                   OR pain_level IS NOT NULL
+                """
+        )
+
+        for row in rows {
+            guard let localRowID = migrationSQLiteRowID(row) else {
+                throw localEncryptionMigrationError(
+                    column: "rowid",
+                    rowIdentifier: migrationRowIdentifier(row) ?? "menstrual_logs"
+                )
+            }
+            let rowIdentifier = migrationRowIdentifier(row) ?? "menstrual_logs"
+
+            try db.execute(
+                sql: """
+                    UPDATE menstrual_logs
+                    SET flow = ?,
+                        pain_level = ?
+                    WHERE rowid = ?
+                    """,
+                arguments: [
+                    try encryptedStorageString(from: row, column: "flow", rowIdentifier: rowIdentifier),
+                    try encryptedStorageDouble(from: row, column: "pain_level", rowIdentifier: rowIdentifier),
+                    localRowID
+                ]
+            )
         }
     }
 

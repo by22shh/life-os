@@ -576,9 +576,20 @@ actor APIClient: SyncAPIClient, PredictionAPIClient {
     ) async throws -> T {
         try Self.requireRuntimeConfiguration()
 
-        // §11: Client-side rate limit enforcement (sliding window)
-        let isReplay = RateLimitPolicy.isOutboxReplay(headers: headers)
-        if !isReplay {
+        // §11: Client-side rate limit enforcement (sliding window).
+        // Outbox replay swaps the interactive budget for the shared replay
+        // window only for exemptible tiers; cost-sensitive tiers always
+        // enforce their own limits, mirroring the server-side policy.
+        if RateLimitPolicy.isReplayExemptible(headers: headers, function: name) {
+            let replayAllowed = await RateLimitTracker.shared.checkAndRecord(
+                key: "outbox_replay_per5min",
+                limit: RateLimitPolicy.outboxReplayPerFiveMinutes,
+                windowSeconds: 300
+            )
+            guard replayAllowed else {
+                throw APIClientError.rateLimited(function: name)
+            }
+        } else {
             let allowed = await RateLimitTracker.shared.checkAllLimits(forFunction: name)
             guard allowed else {
                 throw APIClientError.rateLimited(function: name)
@@ -670,8 +681,16 @@ actor APIClient: SyncAPIClient, PredictionAPIClient {
     ) async throws -> T {
         try Self.requireRuntimeConfiguration()
 
-        let isReplay = RateLimitPolicy.isOutboxReplay(headers: headers)
-        if !isReplay {
+        if RateLimitPolicy.isReplayExemptible(headers: headers, function: name) {
+            let replayAllowed = await RateLimitTracker.shared.checkAndRecord(
+                key: "outbox_replay_per5min",
+                limit: RateLimitPolicy.outboxReplayPerFiveMinutes,
+                windowSeconds: 300
+            )
+            guard replayAllowed else {
+                throw APIClientError.rateLimited(function: name)
+            }
+        } else {
             let allowed = await RateLimitTracker.shared.checkAllLimits(forFunction: name)
             guard allowed else {
                 throw APIClientError.rateLimited(function: name)

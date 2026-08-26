@@ -3137,6 +3137,43 @@ await runFunctionScenario(
   },
 );
 
+await runFunctionScenario(
+  "ops-alert-dispatch",
+  "../ops-alert-dispatch/index.ts",
+  async () => {
+    const unauthorized = await requestJson(
+      LOCAL_FUNCTION_URL,
+      "/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ window_minutes: 1 }),
+      },
+    );
+    assertEquals(unauthorized.status, 401);
+
+    const dispatched = await requestJson(
+      LOCAL_FUNCTION_URL,
+      "/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: env.serviceRoleKey,
+          Authorization: `Bearer ${env.serviceRoleKey}`,
+          "X-Ops-Alert-Dispatcher": "scheduled",
+        },
+        body: JSON.stringify({ window_minutes: 1 }),
+      },
+    );
+    assertEquals(dispatched.status, 200);
+    assertEquals(
+      typeof objectValue(dispatched.body, "status"),
+      "string",
+    );
+  },
+);
+
 console.log(
   `Edge local e2e completed for primary auth user ${auth.authUserId} / public user ${publicUserId}; stress auth user ${stressAuth.authUserId} / public user ${stressPublicUserId}.`,
 );

@@ -19,6 +19,19 @@ enum RateLimitPolicy {
     // Outbox replay exemption: 300 requests per 5 minutes.
     static let outboxReplayPerFiveMinutes = 300
 
+    /// Tiers whose budgets the `X-Outbox-Replay` header may bypass, mirroring
+    /// `OUTBOX_REPLAY_EXEMPTABLE_TIERS` in supabase/functions/_shared/rate_limit.ts.
+    /// Cost-sensitive tiers (AI, search, auth, deletion, export) always enforce
+    /// their interactive budgets, even during outbox replay.
+    static let replayExemptibleTiers: Set<Tier> = [.standard, .writeHeavy, .analytics]
+
+    /// Returns true when a request carrying the replay header may substitute
+    /// its tier budget with the replay window.
+    static func isReplayExemptible(headers: [String: String], function name: String) -> Bool {
+        isOutboxReplay(headers: headers)
+            && replayExemptibleTiers.contains(tier(forFunction: name))
+    }
+
     static func isOutboxReplay(headers: [String: String]) -> Bool {
         guard let rawValue = headers.first(where: {
             $0.key.caseInsensitiveCompare("X-Outbox-Replay") == .orderedSame

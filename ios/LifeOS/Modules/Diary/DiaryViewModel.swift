@@ -793,8 +793,11 @@ final class DiaryViewModel {
             )
         }
 
-        let flow = (row["flow"] as String?).flatMap(MenstrualFlow.init(rawValue:))
-        let painLevel: Int? = row["pain_level"]
+        let flow = (row["flow"] as String?)
+            .flatMap(FieldEncryption.decryptStoredString)
+            .flatMap(MenstrualFlow.init(rawValue:))
+        let painLevel = GRDBRecordDecoder.encryptedDouble(row, column: "pain_level")
+            .map { Int($0.rounded()) }
         let summary = MenstrualDayViewModel.sharedSummary(flow: flow, painLevel: painLevel)
 
         return MenstrualData(

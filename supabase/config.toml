@@ -48,6 +48,10 @@ entrypoint = "./functions/api/account/delete_status/index.ts"
 verify_jwt = true
 entrypoint = "./functions/api/account/delete_cancel/index.ts"
 
+[functions.ops-alert-dispatch]
+verify_jwt = true
+entrypoint = "./functions/ops-alert-dispatch/index.ts"
+
 [functions.api-watch-snapshot]
 verify_jwt = true
 entrypoint = "./functions/api/watch/snapshot/index.ts"

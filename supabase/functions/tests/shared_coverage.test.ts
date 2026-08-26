@@ -84,6 +84,49 @@ Deno.test("cors helper returns preflight response and merges headers", () => {
   );
 });
 
+Deno.test("cors allowlist reflects configured origins and rejects others", () => {
+  withEnv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://app.lifeos.example, https://admin.lifeos.example",
+    () => {
+      const allowed = handleCors(
+        new Request("http://localhost", {
+          method: "OPTIONS",
+          headers: { Origin: "https://app.lifeos.example" },
+        }),
+      );
+      assertEquals(allowed?.status, 204);
+      assertEquals(
+        allowed?.headers.get("Access-Control-Allow-Origin"),
+        "https://app.lifeos.example",
+      );
+      assertEquals(allowed?.headers.get("Vary"), "Origin");
+
+      const denied = handleCors(
+        new Request("http://localhost", {
+          method: "OPTIONS",
+          headers: { Origin: "https://evil.example" },
+        }),
+      );
+      assertEquals(denied?.status, 403);
+      assertEquals(denied?.headers.get("Access-Control-Allow-Origin"), null);
+    },
+  );
+});
+
+Deno.test("cors wildcard behavior is preserved when no allowlist is configured", () => {
+  withEnv("CORS_ALLOWED_ORIGINS", undefined, () => {
+    const preflight = handleCors(
+      new Request("http://localhost", { method: "OPTIONS" }),
+    );
+    assertEquals(preflight?.status, 204);
+    assertEquals(
+      preflight?.headers.get("Access-Control-Allow-Origin"),
+      "*",
+    );
+  });
+});
+
 Deno.test("json helpers include no-store and correlation id semantics", async () => {
   const response = json({ ok: true }, 201, { "X-Test": "value" });
   assertEquals(response.status, 201);

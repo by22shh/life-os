@@ -22,7 +22,7 @@ extension SnakeCaseGRDBRecord {
     }
 }
 
-private enum GRDBRecordDecoder {
+enum GRDBRecordDecoder {
     static func required<T: DatabaseValueConvertible>(
         _ row: Row,
         column: String,
@@ -106,6 +106,24 @@ private enum GRDBRecordDecoder {
         }
         assertionFailure("Failed to decode required encrypted numeric column \(column)")
         return defaultValue()
+    }
+
+    enum DecodingError: Error {
+        case unreadableRequiredNumeric(column: String)
+    }
+
+    /// Decodes a required encrypted numeric column, throwing instead of
+    /// substituting a silent zero. A failed decryption of a health biomarker
+    /// must surface as an error rather than display 0.0 to the user.
+    static func requiredEncryptedDoubleThrowing(
+        _ row: Row,
+        column: String
+    ) throws -> Double {
+        if let value = encryptedDouble(row, column: column) {
+            return value
+        }
+        assertionFailure("Failed to decode required encrypted numeric column \(column)")
+        throw DecodingError.unreadableRequiredNumeric(column: column)
     }
 }
 
@@ -491,7 +509,7 @@ extension MedicalScan: SnakeCaseGRDBRecord {
 extension HealthMeasurement: SnakeCaseGRDBRecord {
     static let databaseTableName = "health_measurements"
 
-    init(row: Row) {
+    init(row: Row) throws {
         func normalized(_ rawValue: String?) -> String? {
             guard let rawValue else { return nil }
             let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -524,7 +542,7 @@ extension HealthMeasurement: SnakeCaseGRDBRecord {
             markerId: decodedMarkerId
         )
 
-        value = GRDBRecordDecoder.requiredEncryptedDouble(row, column: "value")
+        value = try GRDBRecordDecoder.requiredEncryptedDoubleThrowing(row, column: "value")
         unit = normalized(GRDBRecordDecoder.optional(row, column: "unit")) ?? ""
         originalValue = GRDBRecordDecoder.encryptedDouble(row, column: "original_value")
         originalUnit = normalized(GRDBRecordDecoder.optional(row, column: "original_unit"))
@@ -704,6 +722,53 @@ extension MenstrualLog: SnakeCaseGRDBRecord {
 
     static var databaseColumnEncodingStrategy: DatabaseColumnEncodingStrategy {
         .useDefaultKeys
+    }
+
+    // Custom row mapping so `flow` and `pain_level` are ciphertext-at-rest.
+    // The Codable conformance (used for sync payloads) stays untouched; only
+    // the local SQLite representation is encrypted.
+    init(row: Row) throws {
+        let decodedId = GRDBRecordDecoder.requiredUUID(row, column: "id")
+        let decodedUserId = GRDBRecordDecoder.requiredUUID(row, column: "user_id")
+        let decodedDate: String = row["date"] ?? ""
+
+        let storedFlow: String? = row["flow"]
+        let decryptedFlow = FieldEncryption.decryptStoredString(storedFlow)
+        let decodedFlow = decryptedFlow.flatMap(MenstrualFlow.init(rawValue:))
+        let decodedPainLevel = GRDBRecordDecoder.encryptedDouble(row, column: "pain_level")
+            .map { Int($0.rounded()) }
+        let decodedDeletedAt: Date? = row["deleted_at"]
+        let decodedCreatedAt: Date = row["created_at"] ?? Date()
+        let decodedUpdatedAt: Date = row["updated_at"] ?? decodedCreatedAt
+
+        self.init(
+            id: decodedId,
+            userId: decodedUserId,
+            date: decodedDate,
+            flow: decodedFlow,
+            painLevel: decodedPainLevel
+        )
+        deletedAt = decodedDeletedAt
+        createdAt = decodedCreatedAt
+        updatedAt = decodedUpdatedAt
+    }
+
+    func encode(to container: inout PersistenceContainer) {
+        container["id"] = MixedUUIDStorage.encode(id)
+        container["user_id"] = MixedUUIDStorage.encode(userId)
+        container["date"] = date
+        container["flow"] = GRDBSensitiveEncoder.storageString(flow?.rawValue, column: "flow")
+        container["pain_level"] = GRDBSensitiveEncoder.storageDouble(
+            painLevel.map(Double.init),
+            column: "pain_level"
+        )
+        container["deleted_at"] = deletedAt
+        container["created_at"] = createdAt
+        container["updated_at"] = updatedAt
+    }
+
+    func aroundSave(_ db: Database, save: () throws -> PersistenceSuccess) throws {
+        _ = try FieldEncryption.withPreparedPersistenceContext(save)
     }
 }
 

@@ -3,6 +3,16 @@ import { serviceRoleClient } from "./supabase.ts";
 const PAGE_SIZE = 1_000;
 const EXPORT_TTL_MS = 24 * 60 * 60 * 1_000;
 
+// Download tokens are high-entropy UUIDs, but they are stored as SHA-256
+// digests so a database leak does not expose usable export URLs.
+export async function hashDownloadToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 type ServiceClient = ReturnType<typeof serviceRoleClient>;
 type ExportQuery = ReturnType<ReturnType<ServiceClient["from"]>["select"]>;
 
@@ -36,11 +46,36 @@ export async function ensureExportReady(
       return { status: "expired", downloadUrl: null };
     }
 
-    const downloadUrl = buildDownloadURL(
-      origin,
-      jobId,
-      artifact.download_token,
+    // The raw token is never persisted (only its digest), so the previously
+    // issued download URL is reused. When it is unavailable the artifact
+    // token is rotated and a fresh URL is issued.
+    const jobRowResult = await service
+      .from("export_jobs")
+      .select("download_url")
+      .eq("id", jobId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    const jobError = jobRowResult.error;
+    if (jobError) throw jobError;
+    let downloadUrl =
+      (jobRowResult.data as { download_url: string | null } | null)
+        ?.download_url ?? null;
+
+    // Artifacts migrated away from plaintext tokens cannot honor previously
+    // issued URLs; rotate their token and issue a fresh one.
+    const tokenWasInvalidated = artifact.download_token.startsWith(
+      "invalidated-legacy-plaintext-",
     );
+    if (!downloadUrl || tokenWasInvalidated) {
+      const rotated = await rotateExportArtifactToken(
+        service,
+        jobId,
+        userId,
+        origin,
+      );
+      downloadUrl = rotated.downloadUrl;
+    }
+
     await service
       .from("export_jobs")
       .update({
@@ -77,10 +112,15 @@ export async function ensureExportReady(
 
   try {
     const payload = await buildExportPayload(service, userId);
-    const downloadToken = crypto.randomUUID();
+    const { downloadToken, downloadUrl } = await rotateExportArtifactToken(
+      service,
+      jobId,
+      userId,
+      origin,
+      { skipUpsert: true },
+    );
     const now = new Date();
     const expiresAt = new Date(now.getTime() + EXPORT_TTL_MS);
-    const downloadUrl = buildDownloadURL(origin, jobId, downloadToken);
     const fileName = `lifeos_export_${userId.slice(0, 8)}_${
       isoDateStamp(now)
     }.json`;
@@ -90,7 +130,7 @@ export async function ensureExportReady(
       .upsert({
         job_id: jobId,
         user_id: userId,
-        download_token: downloadToken,
+        download_token: await hashDownloadToken(downloadToken),
         payload_json: payload,
         content_type: "application/json",
         file_name: fileName,
@@ -139,6 +179,7 @@ export async function fetchReadyExportArtifact(
     payload: unknown;
   } | null
 > {
+  const tokenDigest = await hashDownloadToken(token);
   const artifactResult = await service
     .from("export_artifacts")
     .select(
@@ -146,7 +187,7 @@ export async function fetchReadyExportArtifact(
     )
     .eq("job_id", jobId)
     .eq("user_id", userId)
-    .eq("download_token", token)
+    .eq("download_token", tokenDigest)
     .maybeSingle();
   const data = artifactResult.data as
     | (ExportArtifactRow & { payload_json: unknown })
@@ -186,6 +227,37 @@ async function fetchExportArtifact(
     return null;
   }
   return data;
+}
+
+// Generates a fresh download token, persists only its digest and returns the
+// raw token so the caller can build a one-time-issued URL. Used both when an
+// artifact is first created and when a legacy artifact has no reusable URL.
+async function rotateExportArtifactToken(
+  service: ServiceClient,
+  jobId: string,
+  userId: string,
+  origin: string,
+  options: { skipUpsert?: boolean } = {},
+): Promise<{ downloadToken: string; downloadUrl: string }> {
+  const downloadToken = crypto.randomUUID();
+  const downloadUrl = buildDownloadURL(origin, jobId, downloadToken);
+
+  if (options.skipUpsert) {
+    return { downloadToken, downloadUrl };
+  }
+
+  const now = new Date();
+  const { error } = await service
+    .from("export_artifacts")
+    .update({
+      download_token: await hashDownloadToken(downloadToken),
+      updated_at: now.toISOString(),
+    })
+    .eq("job_id", jobId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return { downloadToken, downloadUrl };
 }
 
 async function expireExport(service: ServiceClient, jobId: string) {
@@ -589,6 +661,7 @@ export const __exportBuilderTestHooks = {
   fetchCountByUserId,
   fetchExportArtifact,
   fetchMaybeSingle,
+  hashDownloadToken,
   isExpired,
   isMissingRelationError,
   isoDateStamp,

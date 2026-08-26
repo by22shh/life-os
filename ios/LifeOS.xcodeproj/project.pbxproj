@@ -211,6 +211,7 @@
 		BB1319D55142E9F3654DBF62 /* meal_template.json in Resources */ = {isa = PBXBuildFile; fileRef = 6009E9CEEB286986A5B60680 /* meal_template.json */; };
 		BC0EB6B79619C694E7F73968 /* NutritionSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E29C593CD789B060DA5DF55 /* NutritionSpeechRecognizer.swift */; };
 		BDBD26BEAE6EEF97833CF6AB /* LabsPrivacySettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F789E2491511A9C62AF01D4 /* LabsPrivacySettingsTests.swift */; };
+		BE38B8F22A31088C4842F20D /* DatabaseBackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508D66B1C40BC584404E069F /* DatabaseBackupManager.swift */; };
 		C04702509504777585D05050 /* hydration_log.json in Resources */ = {isa = PBXBuildFile; fileRef = EC7CA6648023B10EEB601C5D /* hydration_log.json */; };
 		C080A9F64483F0A4A6847227 /* recommendation.json in Resources */ = {isa = PBXBuildFile; fileRef = EC509D59EED3015A7EC8D510 /* recommendation.json */; };
 		C0AFC17C32D427B218404716 /* SyncModuleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74922277A3AFB9D21EE4C887 /* SyncModuleHandler.swift */; };
@@ -251,6 +252,7 @@
 		EC86B17A871F8BD9C0E43793 /* WatchSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FEF5D8B025CA555BD99034D /* WatchSyncManager.swift */; };
 		F2BBCA190E44083AC03C62BD /* WeeklyStrategyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C6C4C08673CD4707DF6C11 /* WeeklyStrategyServiceTests.swift */; };
 		F34B161642837BF932E94DED /* FieldEncryption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E209D6D76179699416D94ED /* FieldEncryption.swift */; };
+		F45E15BDBF92FE60491C0EAF /* DatabaseBackupManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631B964EFDDBD3E13A39BB85 /* DatabaseBackupManagerTests.swift */; };
 		F66786B57E98CE908683A9A0 /* user_baseline.json in Resources */ = {isa = PBXBuildFile; fileRef = 77D1C39B0BF560D19FA580C4 /* user_baseline.json */; };
 		F730BFE982AB37683694AD4E /* ACWRDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618B886BAE4A42EA749CFB02 /* ACWRDetailView.swift */; };
 		F87C534B94BE42AC05526BF5 /* LifeOSWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAAEC2BC46BEE90881D0406 /* LifeOSWidgetsBundle.swift */; };
@@ -448,6 +450,7 @@
 		4FEF5D8B025CA555BD99034D /* WatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncManager.swift; sourceTree = "<group>"; };
 		500C90FCC2165C2FA359786F /* AccessibilityAuditUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditUITests.swift; sourceTree = "<group>"; };
 		503C10495E9A2B7176576B00 /* SleepSyncHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSyncHandler.swift; sourceTree = "<group>"; };
+		508D66B1C40BC584404E069F /* DatabaseBackupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseBackupManager.swift; sourceTree = "<group>"; };
 		531B2C3B2E7BB9F84CF61D44 /* UITestBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestBootstrap.swift; sourceTree = "<group>"; };
 		53763637903345F3AA05B024 /* RateLimitPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateLimitPolicy.swift; sourceTree = "<group>"; };
 		544A997CAB044F1B8C72C496 /* ModelCoverageExpansionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCoverageExpansionTests.swift; sourceTree = "<group>"; };
@@ -467,6 +470,7 @@
 		60898D8106D2CDA8067D768F /* user_food.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = user_food.json; sourceTree = "<group>"; };
 		618B886BAE4A42EA749CFB02 /* ACWRDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ACWRDetailView.swift; sourceTree = "<group>"; };
 		630492B7A582FB9DF96BEC63 /* SecurityHardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityHardeningTests.swift; sourceTree = "<group>"; };
+		631B964EFDDBD3E13A39BB85 /* DatabaseBackupManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseBackupManagerTests.swift; sourceTree = "<group>"; };
 		633E17537A0946E7F2F26E1A /* RecoveryZoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryZoneTests.swift; sourceTree = "<group>"; };
 		63890DD1964875A8DCC3068E /* WidgetSnapshotShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotShared.swift; sourceTree = "<group>"; };
 		65D292DDD80290BCD72AE2C7 /* InsightDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightDetailView.swift; sourceTree = "<group>"; };
@@ -760,6 +764,7 @@
 				E42D337001B7854BD5C06E68 /* BiometricProtectionTests.swift */,
 				016F979BF5C78D22538DFC57 /* CoverageFinalPushTests.swift */,
 				AE4766CC6359DE68D6E1EF79 /* DailyInsightsServiceTests.swift */,
+				631B964EFDDBD3E13A39BB85 /* DatabaseBackupManagerTests.swift */,
 				6A90CA2357E4609E2632B90D /* DatabaseMigrationTests.swift */,
 				DED6B3B4F01CE1C617A64BD4 /* DateFormattingTests.swift */,
 				819E0B9C7363D796055611B7 /* DeepLinkRouterTests.swift */,
@@ -1121,6 +1126,7 @@
 		C189003B1DD2956564323C3E /* Database */ = {
 			isa = PBXGroup;
 			children = (
+				508D66B1C40BC584404E069F /* DatabaseBackupManager.swift */,
 				FB293680E7694D9DB4FE112D /* DatabaseDependencies.swift */,
 				F8F72F1BAF23A8E2C7401676 /* DatabaseManager.swift */,
 				3CB8A65849883D30BD64AC74 /* GRDBRecords.swift */,
@@ -1687,6 +1693,7 @@
 				9BB209F12B7D51E3F792A27B /* BiometricProtectionTests.swift in Sources */,
 				B89E2C57F24C5C36B12E09BA /* CoverageFinalPushTests.swift in Sources */,
 				06D3284D15438930F18B64DB /* DailyInsightsServiceTests.swift in Sources */,
+				F45E15BDBF92FE60491C0EAF /* DatabaseBackupManagerTests.swift in Sources */,
 				CC1E2EA0A41834066DEF0E76 /* DatabaseMigrationTests.swift in Sources */,
 				7F035C78E3D97305D66F1754 /* DateFormattingTests.swift in Sources */,
 				89EAB9C120F2814BCB40FD38 /* DeepLinkRouterTests.swift in Sources */,
@@ -1773,6 +1780,7 @@
 				FCADB8C05E9ACD2B431ECA5D /* CalendarRangeRoutes.swift in Sources */,
 				CB7EF0E0A202A3E42608835F /* CloudUserBootstrapper.swift in Sources */,
 				04BE15D06E9DE136151C43E0 /* DailyInsightsService.swift in Sources */,
+				BE38B8F22A31088C4842F20D /* DatabaseBackupManager.swift in Sources */,
 				84C404A0934A325D0615A5A3 /* DatabaseDependencies.swift in Sources */,
 				245D9A43CB61693E5E107C02 /* DatabaseManager.swift in Sources */,
 				AE053AA592FC42029A94056E /* DateFormatting.swift in Sources */,

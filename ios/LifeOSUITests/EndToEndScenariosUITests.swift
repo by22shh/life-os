@@ -48,7 +48,7 @@ final class EndToEndScenariosUITests: XCTestCase {
         let shell = app.tabBars.firstMatch
         let deadline = Date().addingTimeInterval(30)
         while Date() < deadline, !onboarding.exists, !shell.exists {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+            try await Task.sleep(nanoseconds: 250_000_000)
         }
         XCTAssertTrue(
             onboarding.exists || shell.exists,

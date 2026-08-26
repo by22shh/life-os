@@ -84,12 +84,22 @@ actor SyncEngine {
 
     // MARK: - Sync Loop (§6)
 
+    /// Coalesces overlapping sync cycles (foreground triggers, BGTask, view
+    /// refreshes). The actor serializes access but interleaves at suspension
+    /// points, so without this flag two cycles could process the same outbox
+    /// events concurrently.
+    private var isSyncCycleInFlight = false
+
     /// Runs the full sync cycle: Pull → Push → Reconcile → Cleanup.
     func runSyncLoop() async throws {
+        guard !isSyncCycleInFlight else { return }
         guard isRemoteOperationsEnabled else {
             try await cleanupOldOutboxEvents()
             return
         }
+
+        isSyncCycleInFlight = true
+        defer { isSyncCycleInFlight = false }
 
         // Phase 1: Pull server changes
         try await pullAll()
@@ -327,6 +337,9 @@ actor SyncEngine {
             try await dbQueue.write { db in
                 for row in rows {
                     let rowId = String(describing: row.id)
+                    // Entity tables store ids in either canonical UUID or
+                    // legacy string encoding; resolve both up front.
+                    let alternateRowId = UUID(uuidString: rowId)?.uuidString
                     let existingServerTimestamp = try Date.fetchOne(
                         db,
                         sql: """
@@ -339,6 +352,20 @@ actor SyncEngine {
 
                     // LWW: skip if local mirror has a strictly newer server timestamp.
                     if let existing = existingServerTimestamp, row.updatedAt < existing {
+                        continue
+                    }
+
+                    // LWW: never let a pull clobber an unpushed local edit.
+                    // Pull runs before push in the cycle, so a row modified
+                    // locally after the server's last write must survive this
+                    // phase; its outbox event will reconcile the conflict.
+                    if Self.hasNewerLocalEdit(
+                        db: db,
+                        tableName: tableName,
+                        rowId: rowId,
+                        alternateRowId: alternateRowId,
+                        incomingServerTimestamp: row.updatedAt
+                    ) {
                         continue
                     }
 
@@ -373,6 +400,33 @@ actor SyncEngine {
         if let maxUpdatedAtSeen {
             try await updateSyncWatermark(table: tableName, serverTimestamp: maxUpdatedAtSeen)
         }
+    }
+
+    /// Returns true when the local row was modified after the incoming server
+    /// write, meaning a pull must not overwrite the local edit.
+    private nonisolated static func hasNewerLocalEdit(
+        db: Database,
+        tableName: String,
+        rowId: String,
+        alternateRowId: String?,
+        incomingServerTimestamp: Date
+    ) -> Bool {
+        // Table names originate from internal call sites; validate before
+        // interpolating into SQL.
+        let validIdentifier = !tableName.isEmpty && tableName.allSatisfy { char in
+            (char.isLetter && char.isLowercase) || char == "_"
+        }
+        guard validIdentifier else { return false }
+
+        let arguments = StatementArguments(alternateRowId.map { [rowId, $0] } ?? [rowId, rowId])
+        guard let localUpdatedAt = try? Date.fetchOne(
+            db,
+            sql: "SELECT updated_at FROM \(tableName) WHERE id = ? OR id = ? LIMIT 1",
+            arguments: arguments
+        ) else {
+            return false
+        }
+        return localUpdatedAt > incomingServerTimestamp
     }
 
     private func pullUsersTable() async throws {
@@ -1730,6 +1784,11 @@ actor SyncEngine {
     }
 
     /// Mark an event as failed with error details.
+    ///
+    /// Reads `attempt_count`, computes the next attempt, and writes the final
+    /// status inside a single write transaction. A read-then-write split would
+    /// let an interleaved sync cycle double-increment attempts or clobber
+    /// backoff state.
     func markFailed(
         _ eventId: UUID,
         category: ErrorCategory,
@@ -1738,31 +1797,27 @@ actor SyncEngine {
         retryable: Bool,
         retryAfterOverride: TimeInterval? = nil
     ) async throws {
-        let status = retryable ? OutboxStatus.failedRetryable : OutboxStatus.failedPermanent
-        let attemptCount = try await dbQueue.read { db -> Int in
-            let fetched = try Int.fetchOne(
+        let permanentNotificationReconcileNeeded = try await dbQueue.write { db -> Bool in
+            // P3 #25: Honor server Retry-After if provided (rate limiting)
+            let attemptCount = try Int.fetchOne(
                 db,
                 sql: "SELECT attempt_count FROM outbox_events WHERE id = ? OR id = ? LIMIT 1",
                 arguments: [eventId, eventId.uuidString]
-            )
-            if let fetched {
-                return fetched
+            ) ?? 0
+
+            let nextAttempt: Date? = retryable
+                ? Date().addingTimeInterval(
+                    retryAfterOverride ?? RetryConfig.delay(forAttempt: max(0, attemptCount - 1))
+                )
+                : nil
+
+            var finalStatus: OutboxStatus = retryable
+                ? .failedRetryable
+                : .failedPermanent
+            if retryable && attemptCount >= RetryConfig.maxAttempts {
+                finalStatus = .failedPermanent
             }
-            return 0
-        }
 
-        // P3 #25: Honor server Retry-After if provided (rate limiting)
-        let nextAttempt: Date? = retryable
-            ? Date().addingTimeInterval(
-                retryAfterOverride ?? RetryConfig.delay(forAttempt: max(0, attemptCount - 1))
-            )
-            : nil
-
-        let finalStatus = (retryable && attemptCount >= RetryConfig.maxAttempts)
-            ? OutboxStatus.failedPermanent
-            : status
-
-        try await dbQueue.write { db in
             try db.execute(
                 sql: """
                     UPDATE outbox_events
@@ -1786,9 +1841,11 @@ actor SyncEngine {
                 try Self.cancelDependentEvents(of: eventId, in: db)
                 try Self.reconcilePermanentExperimentCreateFailure(eventId: eventId, in: db)
             }
+
+            return finalStatus == .failedPermanent
         }
 
-        if finalStatus == .failedPermanent {
+        if permanentNotificationReconcileNeeded {
             try await reconcilePermanentNotificationFailure(eventId: eventId)
         }
     }
@@ -1907,6 +1964,12 @@ actor SyncEngine {
         }
     }
 
+    /// Quarantines the local experiment row when its create event dead-letters.
+    ///
+    /// User-authored records are never destroyed as a sync side effect. The row
+    /// stays on device (hidden from lists via `sync_quarantine_reason`) and the
+    /// outbox body remains available for bootstrap recovery, so a later
+    /// successful replay + pull can restore full server state.
     private nonisolated static func reconcilePermanentExperimentCreateFailure(
         eventId: UUID,
         in db: Database
@@ -1925,17 +1988,17 @@ actor SyncEngine {
 
         try db.execute(
             sql: """
-                DELETE FROM experiment_measurements
-                WHERE experiment_id = ? OR experiment_id = ?
+                UPDATE experiments
+                SET sync_quarantine_reason = ?, updated_at = ?
+                WHERE (id = ? OR id = ?)
+                  AND sync_quarantine_reason IS NULL
                 """,
-            arguments: [eventId, eventId.uuidString]
-        )
-        try db.execute(
-            sql: """
-                DELETE FROM experiments
-                WHERE id = ? OR id = ?
-                """,
-            arguments: [eventId, eventId.uuidString]
+            arguments: [
+                "permanent_create_failure:\(eventId.uuidString)",
+                Date(),
+                eventId,
+                eventId.uuidString
+            ]
         )
     }
 

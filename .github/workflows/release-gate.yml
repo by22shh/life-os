@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PREFERRED_IOS_SIMULATOR: "iPhone 16"
+  PREFERRED_WATCHOS_SIMULATOR: "Apple Watch Series 10"
+
 jobs:
   ios-unit-tests:
     runs-on: macos-15
@@ -18,15 +22,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run iOS unit and widget tests
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select iOS simulator
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-unit-tests-XXXXXX")"
-          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_IOS_SIMULATOR" '
+            /iPhone/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
           if [[ -z "$SIM_NAME" ]]; then
             echo "No available iPhone simulator found"
             exit 1
           fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+
+      - name: Run iOS unit and widget tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-ios-unit-tests"
+          RESULT_BUNDLE="${RUNNER_TEMP}/lifeos-ios-unit-tests.xcresult"
 
           echo "Using simulator: $SIM_NAME"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
@@ -38,8 +68,17 @@ jobs:
             -scheme LifeOS \
             -destination "platform=iOS Simulator,name=${SIM_NAME}" \
             -derivedDataPath "$DERIVED_DATA_DIR" \
+            -resultBundlePath "$RESULT_BUNDLE" \
             -only-testing:LifeOSTests \
             -only-testing:LifeOSWidgetsTests
+
+      - name: Upload xcresult bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-ios-unit-tests-xcresult
+          path: ${{ runner.temp }}/lifeos-ios-unit-tests.xcresult
+          if-no-files-found: ignore
 
   ios-ui-tests:
     runs-on: macos-15
@@ -48,15 +87,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run iOS UI tests
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select iOS simulator
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-ui-tests-XXXXXX")"
-          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_IOS_SIMULATOR" '
+            /iPhone/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
           if [[ -z "$SIM_NAME" ]]; then
             echo "No available iPhone simulator found"
             exit 1
           fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+
+      - name: Run iOS UI tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-ios-ui-tests"
+          RESULT_BUNDLE="${RUNNER_TEMP}/lifeos-ios-ui-tests.xcresult"
 
           echo "Using simulator: $SIM_NAME"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
@@ -68,7 +133,16 @@ jobs:
             -scheme LifeOS \
             -destination "platform=iOS Simulator,name=${SIM_NAME}" \
             -derivedDataPath "$DERIVED_DATA_DIR" \
+            -resultBundlePath "$RESULT_BUNDLE" \
             -only-testing:LifeOSUITests
+
+      - name: Upload xcresult bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-ios-ui-tests-xcresult
+          path: ${{ runner.temp }}/lifeos-ios-ui-tests.xcresult
+          if-no-files-found: ignore
 
   ios-accessibility-audit:
     runs-on: macos-15
@@ -77,15 +151,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run iOS accessibility release-blocker audit
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select iOS simulator
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-accessibility-audit-XXXXXX")"
-          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_IOS_SIMULATOR" '
+            /iPhone/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
           if [[ -z "$SIM_NAME" ]]; then
             echo "No available iPhone simulator found"
             exit 1
           fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+
+      - name: Run iOS accessibility release-blocker audit
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-ios-accessibility-audit"
 
           echo "Using simulator: $SIM_NAME"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
@@ -106,12 +205,53 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select iOS simulator
+        shell: bash
+        run: |
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_IOS_SIMULATOR" '
+            /iPhone/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
+          if [[ -z "$SIM_NAME" ]]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+
       - name: Run iOS performance hard-gates
         env:
           LIFEOS_STARTUP_BUDGET_MS: "4000"
           LIFEOS_SYNC_LATENCY_BUDGET_MS: "2500"
           LIFEOS_SYNC_MEMORY_BUDGET_MB: "450"
-        run: bash scripts/run_ios_performance_hard_gates.sh
+        shell: bash
+        run: |
+          set -o pipefail
+          bash scripts/run_ios_performance_hard_gates.sh 2>&1 | tee "${RUNNER_TEMP}/lifeos-ios-performance-hard-gates.log"
+
+      - name: Upload performance hard-gates log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-ios-performance-hard-gates-log
+          path: ${{ runner.temp }}/lifeos-ios-performance-hard-gates.log
+          if-no-files-found: ignore
 
   ios-analyze:
     runs-on: macos-15
@@ -120,15 +260,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run iOS static analyze
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select iOS simulator
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-ios-analyze-XXXXXX")"
-          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          SIM_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_IOS_SIMULATOR" '
+            /iPhone/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
           if [[ -z "$SIM_NAME" ]]; then
             echo "No available iPhone simulator found"
             exit 1
           fi
+
+          echo "Using simulator: $SIM_NAME"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+
+      - name: Run iOS static analyze
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-ios-analyze"
 
           echo "Using simulator: $SIM_NAME"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
@@ -158,10 +323,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
       - name: Build watchOS target
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-watch-build-XXXXXX")"
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-watch-build"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
 
           xcodebuild build \
@@ -179,15 +354,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run watchOS tests
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Select watchOS simulator
         shell: bash
         run: |
-          DERIVED_DATA_DIR="$(mktemp -d "${RUNNER_TEMP}/lifeos-watch-tests-XXXXXX")"
-          WATCH_NAME="$(xcrun simctl list devices available | awk -F '[()]' '/Apple Watch/ {name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name); print name; exit}')"
+          WATCH_NAME="$(xcrun simctl list devices available | awk -F '[()]' -v preferred="$PREFERRED_WATCHOS_SIMULATOR" '
+            /Apple Watch/ {
+              name = $1
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+              if (name == preferred) { print name; found = 1; exit }
+              if (first == "") { first = name }
+            }
+            END { if (!found && first != "") print first }
+          ')"
           if [[ -z "$WATCH_NAME" ]]; then
             echo "No available Apple Watch simulator found"
             exit 1
           fi
+
+          echo "Using watch simulator: $WATCH_NAME"
+          echo "WATCH_NAME=$WATCH_NAME" >> "$GITHUB_ENV"
+
+      - name: Run watchOS tests
+        shell: bash
+        run: |
+          DERIVED_DATA_DIR="$HOME/Library/Developer/Xcode/DerivedData/lifeos-watch-tests"
 
           echo "Using watch simulator: $WATCH_NAME"
           echo "Using DerivedData: $DERIVED_DATA_DIR"
@@ -323,6 +523,38 @@ jobs:
           SECURITY_PASS_SKIP_EDGE_E2E: "1"
         run: bash scripts/run_preprod_security_pass.sh
 
+  # Optional: skipped entirely unless all three staging secrets are configured.
+  # The aggregate release-gate job tolerates "skipped" but fails on "failure".
+  supabase-staging-deploy:
+    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_STAGING_PROJECT_ID != '' && secrets.SUPABASE_STAGING_DB_PASSWORD != '' }}
+    needs:
+      - deno-gates
+      - supabase-db
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_STAGING_PROJECT_ID: ${{ secrets.SUPABASE_STAGING_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link staging project
+        run: supabase link --project-ref "$SUPABASE_STAGING_PROJECT_ID" --workdir .
+
+      - name: Push DB migrations
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+        run: supabase db push --workdir .
+
+      - name: Deploy edge functions
+        run: supabase functions deploy --project-ref "$SUPABASE_STAGING_PROJECT_ID" --workdir .
+
   release-gate:
     if: always()
     needs:
@@ -339,6 +571,7 @@ jobs:
       - supabase-edge-e2e
       - supabase-edge-load
       - security-preprod-pass
+      - supabase-staging-deploy
     runs-on: ubuntu-latest
     steps:
       - name: Enforce required jobs
@@ -396,4 +629,15 @@ jobs:
             echo "security-preprod-pass failed"
             exit 1
           fi
+          # Optional job: skipped (secrets not configured) is fine, failed is not.
+          staging_result="${{ needs.supabase-staging-deploy.result }}"
+          case "$staging_result" in
+            success|skipped)
+              echo "supabase-staging-deploy: $staging_result"
+              ;;
+            *)
+              echo "supabase-staging-deploy failed ($staging_result)"
+              exit 1
+              ;;
+          esac
           echo "Release gate passed"

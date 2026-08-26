@@ -14,6 +14,22 @@ enum AppFeatureFlag: String, CaseIterable, Codable, Sendable {
     case guardianModeEnabled = "guardian_mode_enabled"
     case batchRecipesEnabled = "batch_recipes_enabled"
 
+    /// When true, a stale cache degrades the flag to disabled instead of
+    /// restoring its last-known value. Applied to server-cost-bearing AI
+    /// features so a kill switch cannot silently decay after the cache TTL.
+    var failsClosedOnStaleCache: Bool {
+        switch self {
+        case .aiFoodPhotoEnabled,
+             .aiVoiceLoggingEnabled,
+             .aiLabOcrEnabled,
+             .aiInsightsEnabled,
+             .openrouterAvailable:
+            return true
+        case .guardianModeEnabled, .batchRecipesEnabled:
+            return false
+        }
+    }
+
     var defaultEnabled: Bool {
         switch self {
         case .batchRecipesEnabled:
@@ -333,13 +349,13 @@ final class FeatureFlagManager: @unchecked Sendable {
         let mergedValues = AppFeatureFlag.allCases.reduce(into: [AppFeatureFlag: FeatureFlagValue]()) { result, flag in
             if let staleEntry = staleMap[flag] {
                 result[flag] = FeatureFlagValue(
-                    enabled: staleEntry.enabled,
+                    enabled: flag.failsClosedOnStaleCache ? false : staleEntry.enabled,
                     variant: nil,
                     fetchedAt: staleEntry.fetchedAt
                 )
             } else {
                 result[flag] = FeatureFlagValue(
-                    enabled: flag.defaultEnabled,
+                    enabled: flag.failsClosedOnStaleCache ? false : flag.defaultEnabled,
                     variant: nil,
                     fetchedAt: staleMap[flag]?.fetchedAt
                 )

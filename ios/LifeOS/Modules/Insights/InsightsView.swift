@@ -735,6 +735,7 @@ struct ExperimentListView: View {
             experiments = try await DatabaseManager.shared.dbQueue.read { db in
                 try Experiment
                     .filter(Column("deleted_at") == nil)
+                    .filter(Column("sync_quarantine_reason") == nil)
                     .order(Column("updated_at").desc)
                     .fetchAll(db)
             }

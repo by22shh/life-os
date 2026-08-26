@@ -285,6 +285,36 @@ Deno.test("X-Outbox-Replay exemption accepts trimmed case-insensitive true", asy
   }
 });
 
+Deno.test("X-Outbox-Replay exemption is denied for cost-sensitive tiers even when endpoint opts in", async () => {
+  __rateLimitTestHooks.resetBuckets();
+
+  try {
+    const userKey = `ai-vision-replay-${crypto.randomUUID()}`;
+
+    for (let i = 0; i < 10; i += 1) {
+      const response = await enforceRateLimit(
+        requestWithHeaders({ "X-Outbox-Replay": "true" }),
+        userKey,
+        "ai_vision",
+        { allowOutboxReplayExemption: true },
+      );
+      assertEquals(response, null);
+    }
+
+    const blocked = await enforceRateLimit(
+      requestWithHeaders({ "X-Outbox-Replay": "true" }),
+      userKey,
+      "ai_vision",
+      { allowOutboxReplayExemption: true },
+    );
+
+    assertNotEquals(blocked, null);
+    assertEquals(blocked?.status, 429);
+  } finally {
+    __rateLimitTestHooks.resetBuckets();
+  }
+});
+
 Deno.test("local fallback bucket map stays bounded under high-cardinality traffic", async () => {
   const previousUrl = Deno.env.get("SUPABASE_URL");
   const previousServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

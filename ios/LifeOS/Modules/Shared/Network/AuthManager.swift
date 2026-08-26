@@ -312,11 +312,20 @@ final class AuthManager {
 
     // MARK: - Session Monitoring
 
+    private var sessionMonitorObservers: [NSObjectProtocol] = []
+
     /// Subscribes to foreground transitions and 401 responses so the session
     /// is re-validated automatically when the token might have expired.
+    /// Re-invocation removes previous observers first so duplicate
+    /// subscriptions never stack.
     func startSessionMonitor() {
+        for observer in sessionMonitorObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        sessionMonitorObservers.removeAll()
+
 #if os(iOS)
-        NotificationCenter.default.addObserver(
+        let foregroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: .main
@@ -325,8 +334,9 @@ final class AuthManager {
                 await self?.validateSession()
             }
         }
+        sessionMonitorObservers.append(foregroundObserver)
 #endif
-        NotificationCenter.default.addObserver(
+        let unauthorizedObserver = NotificationCenter.default.addObserver(
             forName: .apiClientReceivedUnauthorized,
             object: nil,
             queue: .main
@@ -335,6 +345,7 @@ final class AuthManager {
                 await self?.validateSession()
             }
         }
+        sessionMonitorObservers.append(unauthorizedObserver)
     }
 
     /// Validates the current session token. If refresh fails, we preserve the

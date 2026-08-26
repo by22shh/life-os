@@ -98,6 +98,18 @@ const OUTBOX_REPLAY_RULE: WindowRule = {
   label: "outbox_replay",
 };
 
+// Outbox replay raises throughput for high-volume sync endpoints by replacing
+// the interactive tier with OUTBOX_REPLAY_RULE. Cost-sensitive tiers are
+// deliberately excluded: a client-supplied header must never relax AI,
+// auth, deletion, export, or search budgets, because that would turn the
+// exemption into a quota-bypass vector (e.g. ai_vision 10/min + 30/hr would
+// otherwise become ~60/min sustained).
+const OUTBOX_REPLAY_EXEMPTABLE_TIERS: ReadonlySet<RateLimitTier> = new Set([
+  "standard",
+  "write_heavy",
+  "analytics",
+]);
+
 function nowEpochMs(): number {
   return Date.now();
 }
@@ -193,7 +205,8 @@ export async function enforceRateLimit(
     ?.trim()
     .toLowerCase();
   const outboxReplay = options.allowOutboxReplayExemption === true &&
-    replayHeaderValue === "true";
+    replayHeaderValue === "true" &&
+    OUTBOX_REPLAY_EXEMPTABLE_TIERS.has(tier);
 
   const rules = outboxReplay ? [OUTBOX_REPLAY_RULE] : RULES[tier];
   const nowMs = nowEpochMs();

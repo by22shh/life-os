@@ -325,7 +325,9 @@ final class FeatureFlagManagerTests: XCTestCase {
         XCTAssertEqual(fallbackSnapshot.source, .safeFallback)
         XCTAssertTrue(fallbackSnapshot.isEnabled(.guardianModeEnabled))
         XCTAssertFalse(fallbackSnapshot.isEnabled(.aiInsightsEnabled))
-        XCTAssertTrue(fallbackSnapshot.isEnabled(.openrouterAvailable))
+        // Cost-bearing AI flags fail closed on a stale cache instead of
+        // restoring their last-known-enabled value.
+        XCTAssertFalse(fallbackSnapshot.isEnabled(.openrouterAvailable))
         XCTAssertTrue(fallbackSnapshot.isEnabled(.batchRecipesEnabled))
         XCTAssertNil(fallbackSnapshot.variant(for: .aiInsightsEnabled))
     }
@@ -392,8 +394,9 @@ final class FeatureFlagManagerTests: XCTestCase {
 
         XCTAssertEqual(fallbackSnapshot.source, .safeFallback)
         XCTAssertTrue(fallbackSnapshot.isEnabled(.batchRecipesEnabled))
-        XCTAssertTrue(fallbackSnapshot.isEnabled(.aiFoodPhotoEnabled))
-        XCTAssertTrue(fallbackSnapshot.isEnabled(.openrouterAvailable))
+        // AI flags fail closed when the cache is stale.
+        XCTAssertFalse(fallbackSnapshot.isEnabled(.aiFoodPhotoEnabled))
+        XCTAssertFalse(fallbackSnapshot.isEnabled(.openrouterAvailable))
     }
 
     func testGuardianRefreshDowngradesGuardianWhenFeatureFlagDisabled() async throws {
