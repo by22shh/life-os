@@ -10,7 +10,7 @@ final class NotificationEngineTests: XCTestCase {
 
     override func setUp() async throws {
         manager = try DatabaseManager.inMemory()
-        engine = NotificationEngine(dbQueue: manager.dbQueue)
+        engine = NotificationEngine(dbQueue: manager.dbQueue, dispatchExperimentNotification: { _, _ in true })
         settings = NotificationSettings(userId: UUID())
         // Keep non-quiet-hour tests deterministic regardless of wall-clock time.
         settings.quietHoursStart = "00:00"
@@ -21,6 +21,112 @@ final class NotificationEngineTests: XCTestCase {
     }
 
     // MARK: - Quiet Hours
+
+    @MainActor
+    func testExperimentPhaseAnalysisUsesMeansMetricAndAdherence() {
+        let experiment = Experiment(userId: UUID(), title: "Test", variable: "Routine", metric: "stress", durationDays: 21)
+        func sample(_ value: Double, _ phase: ExperimentPhase, metric: String = "stress", unit: String? = nil) -> ExperimentMeasurement {
+            ExperimentMeasurement(experimentId: experiment.id, userId: experiment.userId, date: "2024-01-01", value: value, unit: unit, measurementPhase: phase, metricName: metric)
+        }
+        let insufficient = ExperimentDescriptiveAnalysis(experiment: experiment, measurements: [sample(1, .baseline), sample(100, .baseline), sample(100, .intervention), sample(2, .intervention)])
+        XCTAssertEqual(insufficient.baselineMean, 50.5)
+        XCTAssertEqual(insufficient.interventionMean, 51)
+        XCTAssertNil(insufficient.percentChange)
+        XCTAssertNil(insufficient.isImprovement)
+        var excluded = sample(10000, .baseline)
+        excluded.protocolFollowed = false
+        let rows = [sample(1, .baseline), sample(2, .baseline), sample(3, .baseline), sample(3, .intervention), sample(4, .intervention), sample(5, .intervention)]
+        let analysis = ExperimentDescriptiveAnalysis(experiment: experiment, measurements: rows + [excluded, sample(30000, .washout), sample(10000, .baseline, metric: "other")])
+        XCTAssertEqual(analysis.baselineMean, 2)
+        XCTAssertEqual(analysis.interventionMean, 4)
+        XCTAssertEqual(analysis.baselineCount, 3)
+        XCTAssertEqual(analysis.interventionCount, 3)
+        XCTAssertEqual(analysis.percentChange, 100)
+        XCTAssertEqual(analysis.isImprovement, false, "Increasing stress is not improvement")
+        let mixed = ExperimentDescriptiveAnalysis(experiment: experiment, measurements: rows + [sample(1, .baseline, unit: "hours")])
+        XCTAssertNil(mixed.baselineMean)
+        XCTAssertNil(mixed.percentChange)
+        XCTAssertTrue(mixed.summary.contains("Единицы"))
+    }
+
+    func testExperimentNotificationReportsPermissionFailureWithoutLeavingPendingIntent() async throws {
+        let deniedEngine = NotificationEngine(dbQueue: manager.dbQueue, dispatchExperimentNotification: { _, _ in false })
+        let notification = LifeOSNotification(category: .experiment, priority: .active, title: "Log", body: "Value")
+        let result = try await deniedEngine.scheduleNotification(notification, settings: settings)
+        XCTAssertFalse(result)
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try NotificationLog.fetchCount(db), 0)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+    }
+
+    func testCloudExperimentReminderUsesLocalDeliveryAndStillRespectsDailyCap() async throws {
+        await MainActor.run { AuthManager._testSetActiveHasCloudSession(true) }
+        defer { Task { @MainActor in AuthManager._testSetActiveHasCloudSession(false) } }
+        let notification = LifeOSNotification(category: .experiment, priority: .active, title: "Log", body: "Value")
+        let result = try await engine.scheduleNotification(notification, settings: settings)
+        XCTAssertTrue(result)
+        try await manager.dbQueue.read { db in
+            let event = try XCTUnwrap(OutboxEvent.fetchOne(db, key: notification.id))
+            let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: event.bodyJson) as? [String: Any])
+            XCTAssertEqual(payload["delivery_mode"] as? String, "local_scheduled")
+        }
+        settings.maxTotalPerDay = 1
+        let blocked = try await engine.scheduleNotification(LifeOSNotification(category: .experiment, priority: .active, title: "Second", body: "Value"), settings: settings)
+        XCTAssertFalse(blocked)
+    }
+
+    func testExperimentReminderScheduleSkipsLoggedDaysAndCompletedOrAbandonedRuns() async throws {
+        let userId = settings.userId
+        let now = localDate(year: 2026, month: 3, day: 15, hour: 10, minute: 0)
+        try await manager.dbQueue.write { db in
+            var user = User(id: userId, authId: UUID(), timezone: "UTC", units: .metric)
+            try user.insert(db)
+            var experiment = Experiment(userId: userId, title: "Test", variable: "Routine", metric: "stress", durationDays: 3)
+            experiment.status = .baseline
+            experiment.baselineStartDate = "2026-03-15"
+            experiment.baselineEndDate = "2026-03-15"
+            experiment.interventionStartDate = "2026-03-16"
+            experiment.interventionEndDate = "2026-03-17"
+            experiment.reminderTime = "18:00"
+            try experiment.insert(db)
+            var measurement = ExperimentMeasurement(experimentId: experiment.id, userId: userId, date: "2026-03-15", value: 4, metricName: "stress")
+            try measurement.insert(db)
+            let configured = NotificationSettings(userId: userId)
+            let intents = try NotificationScheduleCoordinator._testBuildExperimentReminders(db: db, userId: userId, settings: configured, now: now)
+            XCTAssertEqual(intents.count, 2)
+            XCTAssertEqual(intents.map { DiaryDateFormatter.formatDate($0.scheduledAt) }, ["2026-03-16", "2026-03-17"])
+            XCTAssertTrue(intents.allSatisfy { $0.notification.deepLink == "lifeos://experiments/\(experiment.id.uuidString)" })
+            experiment.status = .abandoned
+            try experiment.update(db)
+            XCTAssertTrue(try NotificationScheduleCoordinator._testBuildExperimentReminders(db: db, userId: userId, settings: configured, now: now).isEmpty)
+            experiment.status = .completed
+            try experiment.update(db)
+            XCTAssertTrue(try NotificationScheduleCoordinator._testBuildExperimentReminders(db: db, userId: userId, settings: configured, now: now).isEmpty)
+        }
+    }
+
+    func testExperimentCancellationRemovesSystemRequestAndBothLocalRecords() async throws {
+        actor CancelledIDs {
+            var ids: [UUID] = []
+            func record(_ values: [UUID]) { ids.append(contentsOf: values) }
+            func snapshot() -> [UUID] { ids }
+        }
+        let cancelled = CancelledIDs()
+        let now = Date()
+        let notification = LifeOSNotification(category: .experiment, priority: .active, title: "Log", body: "Value")
+        let queued = try await engine.scheduleNotification(notification, settings: settings, scheduledAt: now.addingTimeInterval(3600))
+        XCTAssertTrue(queued)
+        let coordinator = NotificationScheduleCoordinator(dbQueue: manager.dbQueue, cancelLocalNotifications: { await cancelled.record($0) })
+        let removed = try await coordinator._testRemoveManagedScheduledNotifications(userId: settings.userId, now: now)
+        XCTAssertEqual(removed, [notification.id])
+        let systemIDs = await cancelled.snapshot()
+        XCTAssertEqual(systemIDs, [notification.id])
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try NotificationLog.fetchCount(db), 0)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+    }
 
     func testQuietHoursBlocksNormalNotifications() async throws {
         // Quiet hours all day

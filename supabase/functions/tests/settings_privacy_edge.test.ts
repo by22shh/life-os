@@ -196,6 +196,17 @@ Deno.test("privacy settings edge handler creates defaults and runs real cleanup 
           auth_id: "auth-user-id",
         },
         responders: [
+          (request, { url }) => {
+            if (
+              url.pathname === "/rest/v1/vector_memory" &&
+              request.method === "HEAD"
+            ) {
+              return new Response(null, {
+                status: 200,
+                headers: { "Content-Range": "*/0" },
+              });
+            }
+          },
           (request, { bodyText, url }) => {
             if (
               url.pathname === "/rest/v1/privacy_settings" &&

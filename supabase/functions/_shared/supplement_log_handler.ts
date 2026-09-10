@@ -1,8 +1,10 @@
 import {
-  anonClient,
+  type AuthVerificationResult,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   serviceRoleClient,
+  verifyBearerUser,
 } from "./supabase.ts";
 import { enforceRateLimit } from "./rate_limit.ts";
 import { handleCors } from "./cors.ts";
@@ -17,15 +19,6 @@ interface SupplementLogPayload {
 }
 
 type UserRow = { id: string; timezone: string | null };
-
-interface SupplementLogAuthClient {
-  auth: {
-    getUser(): Promise<{
-      data: { user: { id: string } | null };
-      error: { message: string } | null;
-    }>;
-  };
-}
 
 interface SupplementLogServiceClient {
   from(table: "users"): {
@@ -56,7 +49,7 @@ interface SupplementLogServiceClient {
 }
 
 interface SupplementLogDependencies {
-  anonClient(authHeader: string): SupplementLogAuthClient;
+  verifyBearerUser(authHeader: string): Promise<AuthVerificationResult>;
   serviceRoleClient(): SupplementLogServiceClient;
   enforceRateLimit: typeof enforceRateLimit;
 }
@@ -65,7 +58,7 @@ const MAX_SUPPLEMENT_NAME_LENGTH = 120;
 const TIME_INPUT_PATTERN = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
 
 const defaultSupplementLogDependencies: SupplementLogDependencies = {
-  anonClient: (authHeader) => anonClient(authHeader) as SupplementLogAuthClient,
+  verifyBearerUser,
   // deno-coverage-ignore-start -- production service-role wiring is replaced by mocks in handler behavior tests.
   serviceRoleClient: () =>
     serviceRoleClient() as unknown as SupplementLogServiceClient,
@@ -99,11 +92,12 @@ export async function serveSupplementLog(request: Request): Promise<Response> {
     return jsonWithRequest(request, { error: "unauthorized" }, 401);
   }
 
-  const userClient = supplementLogDependencies.anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(
+    request,
+    supplementLogDependencies.verifyBearerUser,
+  );
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   let payloadRaw: unknown;
   try {

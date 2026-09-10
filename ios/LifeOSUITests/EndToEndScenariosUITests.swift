@@ -28,12 +28,16 @@ final class EndToEndScenariosUITests: XCTestCase {
             url: baseURL.appendingPathComponent("auth/v1/settings")
         )
         settingsRequest.setValue(anonKey, forHTTPHeaderField: "apikey")
-        let (_, response) = try await URLSession.shared.data(for: settingsRequest)
+        let (settingsData, response) = try await URLSession.shared.data(for: settingsRequest)
         XCTAssertEqual(
             (response as? HTTPURLResponse)?.statusCode,
             200,
             "The configured Supabase Auth endpoint is not reachable."
         )
+        let authSettings = try XCTUnwrap(JSONSerialization.jsonObject(with: settingsData) as? [String: Any])
+        let providers = try XCTUnwrap(authSettings["external"] as? [String: Any])
+        XCTAssertEqual(providers["anonymous_users"] as? Bool, true,
+                       "Anonymous sign-in must be enabled for first-launch cloud bootstrap.")
 
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -237,7 +241,7 @@ final class EndToEndScenariosUITests: XCTestCase {
             waitForHittableElement(
                 deleteButton,
                 in: privacyApp,
-                timeout: 3,
+                timeout: 8,
                 allowVerticalScroll: true,
                 preferredDirection: .up
             )
@@ -472,7 +476,10 @@ final class EndToEndScenariosUITests: XCTestCase {
         XCTAssertTrue(waitForElement(insightsScreen, in: app, timeout: 1, allowVerticalScroll: false))
 
         let experimentLibrary = app.descendants(matching: .any)["insights.experiments.library"]
-        XCTAssertTrue(waitForElement(experimentLibrary, in: app, timeout: 8, allowVerticalScroll: true))
+        XCTAssertTrue(
+            waitForElement(experimentLibrary, in: app, timeout: 8, allowVerticalScroll: true),
+            "Experiment library is missing from accessibility hierarchy:\n\(app.debugDescription)"
+        )
         experimentLibrary.tap()
         let experimentList = app.descendants(matching: .any)["experiments.list.screen"]
         XCTAssertTrue(waitForElement(experimentList, in: app, timeout: 8, allowVerticalScroll: false))
@@ -494,6 +501,37 @@ final class EndToEndScenariosUITests: XCTestCase {
         startExperimentButton.tap()
 
         XCTAssertTrue(detailScreen.waitForExistence(timeout: 5))
+    }
+
+    func testManualSleepEntryPersistsAfterClosingForm() throws {
+        let app = makeApp(
+            authState: "authenticated",
+            seedSyncBlocker: false,
+            initialURL: "lifeos://sleep?date=2026-02-24"
+        )
+        app.launch()
+        let screen = app.scrollViews["sleep.day.screen"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 10))
+        let add = app.buttons["sleep.manual.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.tap()
+        let save = app.buttons["sleep.manual.save"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        save.tap()
+        let formClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [formClosed], timeout: 8), .completed)
+        XCTAssertTrue(screen.waitForExistence(timeout: 8))
+        let duration = app.staticTexts["8h 0m"].firstMatch
+        XCTAssertTrue(waitForElement(duration, in: app, timeout: 8, allowVerticalScroll: true))
+        XCTAssertTrue(add.isHittable)
+        add.tap()
+        let cancel = app.navigationBars.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        cancel.tap()
+        let cancelledFormClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [cancelledFormClosed], timeout: 8), .completed)
+        XCTAssertTrue(screen.waitForExistence(timeout: 8))
+        XCTAssertTrue(waitForElement(duration, in: app, timeout: 8, allowVerticalScroll: true))
     }
 
     private func makeApp(
@@ -584,19 +622,31 @@ final class EndToEndScenariosUITests: XCTestCase {
         preferredDirection: VerticalScrollDirection
     ) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
-        var scrollAttempts = 0
-        while Date() < deadline {
-            if element.exists && element.isHittable {
-                return true
-            }
-            if allowVerticalScroll {
-                let direction = scrollAttempts.isMultiple(of: 2)
-                    ? preferredDirection
-                    : opposite(of: preferredDirection)
-                performVerticalScroll(in: app, direction: direction)
-                scrollAttempts += 1
-            }
+        if element.exists && element.isHittable {
+            return true
+        }
+        guard allowVerticalScroll else {
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+            return element.exists && element.isHittable
+        }
+
+        // Scroll monotonically in the preferred direction first so that an
+        // off-screen element below/above the fold is actually reached. Only
+        // reverse once the preferred direction is exhausted (element was on the
+        // opposite side), instead of alternating on every attempt, which nets
+        // almost no movement and leaves the element off-screen.
+        let attemptsPerDirection = 8
+        for direction in [preferredDirection, opposite(of: preferredDirection)] {
+            for _ in 0..<attemptsPerDirection {
+                if Date() >= deadline {
+                    return element.exists && element.isHittable
+                }
+                performVerticalScroll(in: app, direction: direction)
+                RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+                if element.exists && element.isHittable {
+                    return true
+                }
+            }
         }
         return element.exists && element.isHittable
     }

@@ -123,7 +123,7 @@ struct TrainingDayView: View {
 
                 Text(viewModel.displayDate)
                     .font(LifeOSTypography.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
 
                 TrainingWeekOverviewCard(
                     selectedDay: viewModel.dayString,
@@ -159,7 +159,7 @@ struct TrainingDayView: View {
                 if viewModel.sessions.isEmpty && viewModel.plannedSession == nil {
                     Text(String(localized: "no_workouts_today"))
                         .font(LifeOSTypography.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 } else if !viewModel.sessions.isEmpty {
                     LazyVStack(spacing: Spacing.s) {
                         ForEach(viewModel.sessions) { session in
@@ -236,7 +236,7 @@ struct TrainingDayView: View {
                 if let secondary = session.secondaryText {
                     Text(secondary)
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 }
             }
             Spacer()
@@ -282,7 +282,7 @@ struct TrainingDayView: View {
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(String(localized: "training_coming_up"))
                         .font(LifeOSTypography.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
 
                     ForEach(viewModel.upcomingPlanSessions) { session in
                         upcomingPlanSessionRow(session)
@@ -300,7 +300,7 @@ struct TrainingDayView: View {
 
             Text(viewModel.planAvailabilityMessage)
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -323,7 +323,7 @@ struct TrainingDayView: View {
 
             Text(plannedSession.planName)
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
 
             HStack(spacing: Spacing.s) {
                 Text(humanizedIdentifier(plannedSession.sessionType))
@@ -331,12 +331,12 @@ struct TrainingDayView: View {
                 Text(humanizedIdentifier(plannedSession.status))
             }
             .font(LifeOSTypography.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(LifeOSColors.Text.secondary)
 
             if let plannedDurationMinutes = plannedSession.plannedDurationMinutes {
                 Text(localizedTrainingMinutes(plannedDurationMinutes))
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(LifeOSColors.Text.tertiary)
             }
 
             NavigationLink {
@@ -383,12 +383,12 @@ struct TrainingDayView: View {
                 Text(humanizedIdentifier(plan.status))
             }
             .font(LifeOSTypography.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(LifeOSColors.Text.secondary)
 
             if let summaryLine = plan.summaryLine {
                 Text(summaryLine)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(LifeOSColors.Text.tertiary)
             }
 
             if !plan.adaptiveRules.isEmpty {
@@ -434,7 +434,7 @@ struct TrainingDayView: View {
                 .foregroundStyle(isError ? LifeOSColors.Recovery.caution : LifeOSColors.Recovery.ready)
             Text(message)
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background((isError ? LifeOSColors.Recovery.caution : LifeOSColors.Recovery.ready).opacity(0.12))
@@ -463,7 +463,7 @@ struct TrainingDayView: View {
                 }
                 Text(session.subtitle)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
             Spacer()
         }
@@ -2216,7 +2216,7 @@ struct ImportedWorkoutSummary: Identifiable, Equatable {
         if let durationMinutes = session.durationMinutes, durationMinutes > 0 {
             parts.append("\(durationMinutes) min")
         }
-        if let estimatedCalories = session.estimatedCalories, estimatedCalories > 0 {
+        if !NutritionSafetyPolicy.hidesCalories, let estimatedCalories = session.estimatedCalories, estimatedCalories > 0 {
             parts.append("\(estimatedCalories) kcal")
         }
         self.secondaryText = parts.isEmpty ? String(localized: "training_apple_health_imported_source") : parts.joined(separator: " • ")

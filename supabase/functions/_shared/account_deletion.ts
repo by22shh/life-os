@@ -1,5 +1,10 @@
 import { serviceRoleClient } from "./supabase.ts";
 import {
+  isStorageSchemaUnavailable,
+  listOwnedMedicalScanStorageObjects,
+  verifyMedicalScanStorageObjectsRemovedViaStorageApi,
+} from "./medical_scan_privacy.ts";
+import {
   assertDeletionStateTransition,
   type DeletionJobMode,
   type DeletionJobState,
@@ -419,19 +424,6 @@ export async function ensureDeletionJobStorageManifest(
     job.storage_object_paths,
     user.auth_id,
   );
-  if (normalizedExisting.length > 0) {
-    if (
-      normalizedExisting.length !== job.storage_object_paths.length ||
-      normalizedExisting.some((path, index) =>
-        path !== job.storage_object_paths[index]
-      )
-    ) {
-      return await updateDeletionJob(service, job, {
-        storage_object_paths: normalizedExisting,
-      });
-    }
-    return job;
-  }
 
   const { data, error } = await service
     .from("medical_scans")
@@ -443,13 +435,23 @@ export async function ensureDeletionJobStorageManifest(
 
   // deno-coverage-ignore-start -- null medical scan manifest fallback is defensive; manifest behavior is covered.
   const manifest = normalizeStorageObjectPaths(
-    (data ?? []).flatMap((
-      row: MedicalScanStorageRow,
-    ) => [row.original_image_url, row.image_url]),
+    [
+      ...normalizedExisting,
+      ...await listOwnedMedicalScanStorageObjects(service, user.auth_id),
+      ...(data ?? []).flatMap((
+        row: MedicalScanStorageRow,
+      ) => [row.original_image_url, row.image_url]),
+    ],
     user.auth_id,
   );
   // deno-coverage-ignore-stop
 
+  if (
+    manifest.length === job.storage_object_paths.length &&
+    manifest.every((path, index) => path === job.storage_object_paths[index])
+  ) {
+    return job;
+  }
   return await updateDeletionJob(service, job, {
     auth_user_id: job.auth_user_id ?? user.auth_id,
     storage_object_paths: manifest,
@@ -495,6 +497,22 @@ export async function cleanupMedicalScanStorage(
         .eq("bucket_id", MEDICAL_SCANS_BUCKET)
         .in("name", batch);
       if (verifyError) {
+        if (isStorageSchemaUnavailable(verifyError)) {
+          try {
+            await verifyMedicalScanStorageObjectsRemovedViaStorageApi(
+              service,
+              batch,
+            );
+          } catch (error) {
+            return {
+              ok: false,
+              job,
+              failureType: "storage",
+              error: String(error),
+            };
+          }
+          continue;
+        }
         return {
           ok: false,
           job,

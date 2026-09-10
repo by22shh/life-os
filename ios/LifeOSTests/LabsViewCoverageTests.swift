@@ -23,7 +23,7 @@ final class LabsViewCoverageTests: XCTestCase {
         }
     }
 
-    func testLabsMarkerCatalogParsesAliasesDeduplicatesAndUsesCatalogFallbacks() {
+    func testLabsMarkerCatalogParsesAliasesWithoutInventingUnitsOrReferenceIntervals() {
         let text = """
         Hgb 13.4 g/dL (12-17.5)
         WBC 12.1 10^3/uL
@@ -40,7 +40,7 @@ final class LabsViewCoverageTests: XCTestCase {
         XCTAssertEqual(markers.filter { $0.name == "Hemoglobin" }.count, 1)
         XCTAssertEqual(markers.first(where: { $0.name == "Hemoglobin" })?.referenceRange, "12-17.5")
         XCTAssertFalse(markers.first(where: { $0.name == "WBC" })?.isNormal ?? true)
-        XCTAssertEqual(markers.first(where: { $0.name == "Ferritin" })?.unit, "ng/mL")
+        XCTAssertEqual(markers.first(where: { $0.name == "Ferritin" })?.unit, "")
         XCTAssertFalse(markers.first(where: { $0.name == "Vitamin D" })?.isNormal ?? true)
         XCTAssertEqual(markers.first(where: { $0.name == "Custom Marker" })?.unit, "mg/dL")
     }
@@ -77,11 +77,185 @@ final class LabsViewCoverageTests: XCTestCase {
 
         XCTAssertEqual(explicitBounds.low ?? 0, 4.5, accuracy: 0.0001)
         XCTAssertEqual(explicitBounds.high ?? 0, 6.5, accuracy: 0.0001)
-        XCTAssertEqual(catalogBounds.low ?? 0, 0.0, accuracy: 0.0001)
-        XCTAssertEqual(catalogBounds.high ?? 0, 55.0, accuracy: 0.0001)
+        XCTAssertNil(catalogBounds.low)
+        XCTAssertNil(catalogBounds.high)
         XCTAssertNil(unknownBounds.low)
         XCTAssertNil(unknownBounds.high)
         XCTAssertEqual(LabsMarkerCatalog.markerIdentifier(for: "Vitamin D/25 OH"), "vitamin_d_25_oh")
+    }
+
+    func testAuditDecimalCommaCyrillicAndUnitExamplesNeverInventReferenceRanges() throws {
+        for (input, name, value, unit) in [
+            ("Glucose 5,6 mmol/L", "Glucose", "5.6", "mmol/L"),
+            ("Glucose 5.6 mmol/L", "Glucose", "5.6", "mmol/L"),
+            ("Глюкоза 5,6 ммоль/л", "Glucose", "5.6", "mmol/L"),
+            ("Ferritin 85,5 ng/mL", "Ferritin", "85.5", "ng/mL"),
+            ("Ферритин 85,5 нг/мл", "Ferritin", "85.5", "ng/mL"),
+            ("Креатинин 78 мкмоль/л", "Creatinine", "78", "µmol/L"),
+            ("Гемоглобин 134 г/л", "Hemoglobin", "134", "g/L")
+        ] {
+            let markers = LabsMarkerCatalog.extractMarkers(from: input)
+            XCTAssertEqual(markers.count, 1, input)
+            let marker = try XCTUnwrap(markers.first)
+            XCTAssertEqual(marker.name, name, input)
+            XCTAssertEqual(marker.value, value, input)
+            XCTAssertEqual(marker.unit, unit, input)
+            XCTAssertNil(marker.referenceRange, input)
+            XCTAssertNil(LabsMarkerCatalog.bounds(for: marker).low, input)
+            XCTAssertNil(LabsMarkerCatalog.normality(for: marker), input)
+        }
+    }
+
+    func testDocumentReferenceIntervalsAndEditedValuesDriveNormality() throws {
+        var marker = try XCTUnwrap(LabsMarkerCatalog.extractMarkers(from: "Глюкоза 5,6 ммоль/л (4,0–6,0)").first)
+        XCTAssertEqual(LabsMarkerCatalog.normality(for: marker), true)
+        marker.value = "9,1"
+        // Deliberately stale UI flag must never control interpreted status.
+        marker.isNormal = true
+        XCTAssertEqual(LabsMarkerCatalog.normality(for: marker), false)
+        marker.referenceRange = "6-4"
+        XCTAssertNil(LabsMarkerCatalog.normality(for: marker))
+        XCTAssertFalse(LabsMarkerCatalog.isValidForSave(marker))
+        marker.referenceRange = nil
+        XCTAssertNil(LabsMarkerCatalog.normality(for: marker))
+    }
+
+    func testMissingUnitsQualifiersAndNonfiniteValuesRequireCorrection() throws {
+        let missingUnit = try XCTUnwrap(LabsMarkerCatalog.extractMarkers(from: "Ferritin 85").first)
+        XCTAssertEqual(missingUnit.unit, "")
+        XCTAssertFalse(LabsMarkerCatalog.isValidForSave(missingUnit))
+        let censored = try XCTUnwrap(LabsMarkerCatalog.extractMarkers(from: "CRP <5 mg/L").first)
+        XCTAssertEqual(censored.value, "<5", "Never turn a censored result into an exact number")
+        XCTAssertFalse(LabsMarkerCatalog.isValidForSave(censored))
+        for value in ["nan", "inf", "1e999", "5,6,7", "<5", ""] {
+            XCTAssertNil(LabsMarkerCatalog.numericValue(value), value)
+        }
+        XCTAssertEqual(LabsMarkerCatalog.markerIdentifier(for: "Глюкоза"), "glucose")
+        XCTAssertEqual(LabsMarkerCatalog.canonicalName(for: "Гликированный гемоглобин"), "HbA1c")
+        XCTAssertEqual(LabsMarkerCatalog.canonicalName(for: "Glucose tolerance"), "Glucose tolerance")
+    }
+
+    func testDocumentDateRejectsBirthDatesInvalidDatesAndPreservesHistoricalDate() throws {
+        let expected = try XCTUnwrap(LabsMarkerCatalog.documentDate(from: "Дата забора крови: 21.02.2024"))
+        XCTAssertEqual(DiaryDateFormatter.formatDate(expected), "2024-02-21")
+        XCTAssertEqual(LabsMarkerCatalog.documentDate(from: "Collection date: 2024-02-21"), expected)
+        XCTAssertEqual(LabsMarkerCatalog.documentDate(from: "Дата анализа: 21/02/2024"), expected)
+        XCTAssertNil(LabsMarkerCatalog.documentDate(from: "Дата рождения: 21.02.1980"))
+        XCTAssertNil(LabsMarkerCatalog.documentDate(from: "Дата анализа: 31.02.2024"))
+    }
+
+    func testMarkerOverlapIncludesSixtyPercentBoundary() {
+        let original: Set<String> = ["a", "b", "c", "d", "e"]
+        XCTAssertEqual(LabsMarkerCatalog.markerOverlap(incoming: original, existing: ["a", "b", "c", "x", "y"]), 0.6)
+        XCTAssertEqual(LabsMarkerCatalog.markerOverlap(incoming: original, existing: ["a", "b", "x", "y", "z"]), 0.4)
+        XCTAssertEqual(LabsMarkerCatalog.markerOverlap(incoming: [], existing: original), 0)
+    }
+
+    func testOfflineImportPersistsChosenDateRequiresExplicitReviewAndRejectsDuplicate() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID(), authId = UUID(), scanId = UUID()
+        try await seedLabsUser(dbQueue: manager.dbQueue, userId: userId, authId: authId,
+                               medicalScanLocalOnly: true, cloudBackupEnabled: false)
+        let importedAt = Date()
+        let selectedDate = try XCTUnwrap(LabsMarkerCatalog.documentDate(from: "Дата анализа: 21.02.2024"))
+        let markers = LabsMarkerCatalog.extractMarkers(from: "Глюкоза 5,6 ммоль/л (4,0–6,0)")
+        try await LabsScanCaptureView._testPersistMarkers(
+            scanId: scanId, now: importedAt, authId: authId.uuidString, dbQueue: manager.dbQueue,
+            extractedMarkers: markers, ocrText: nil, sourceFileHash: "same-document", capturedAsset: nil,
+            captureConfidence: 0.99, measuredDate: selectedDate)
+        try await manager.dbQueue.read { db in
+            let scan = try XCTUnwrap(MedicalScan.fetchOne(db, key: scanId))
+            XCTAssertEqual(scan.scanDate, "2024-02-21")
+            XCTAssertTrue(scan.needsReview)
+            XCTAssertFalse(scan.manuallyVerified, "High supplied confidence is not manual review")
+            XCTAssertNil(scan.aiConfidence)
+            XCTAssertNil(scan.ocrConfidence)
+            let measurement = try XCTUnwrap(HealthMeasurement.fetchOne(db))
+            XCTAssertEqual(measurement.measuredDate, "2024-02-21")
+            XCTAssertEqual(measurement.measuredAt?.timeIntervalSince1970 ?? 0, selectedDate.timeIntervalSince1970, accuracy: 1)
+            XCTAssertEqual(measurement.value, 5.6, accuracy: 0.0001)
+            XCTAssertEqual(measurement.unit, "mmol/L")
+            XCTAssertEqual(measurement.referenceRangeLow, 4)
+            XCTAssertEqual(measurement.status, "optimal")
+            XCTAssertNil(measurement.confidence)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+        // No hash supplied on repeat: same-day overlap alone must catch it offline.
+        do {
+            try await LabsScanCaptureView._testPersistMarkers(
+                scanId: UUID(), now: importedAt, authId: authId.uuidString, dbQueue: manager.dbQueue,
+                extractedMarkers: markers, ocrText: nil, sourceFileHash: nil, capturedAsset: nil,
+                captureConfidence: 0, measuredDate: selectedDate, reviewConfirmed: true)
+            XCTFail("Duplicate should require an explicit choice")
+        } catch LabsScanCaptureView.LabsSaveError.duplicates(let ids) {
+            XCTAssertEqual(ids, [scanId])
+        }
+        let separateScanId = UUID()
+        try await LabsScanCaptureView._testPersistMarkers(
+            scanId: separateScanId, now: importedAt, authId: authId.uuidString, dbQueue: manager.dbQueue,
+            extractedMarkers: markers, ocrText: nil, sourceFileHash: nil, capturedAsset: nil,
+            captureConfidence: 0, measuredDate: selectedDate, reviewConfirmed: true, allowDuplicate: true)
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try MedicalScan.fetchCount(db), 2)
+            let scan = try XCTUnwrap(MedicalScan.fetchOne(db, key: separateScanId))
+            XCTAssertTrue(scan.userReviewed)
+            XCTAssertFalse(scan.needsReview)
+            XCTAssertEqual(scan.status, .completed)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+        // An identical file is still a duplicate if a user changes its date.
+        await XCTAssertThrowsErrorAsync {
+            try await LabsScanCaptureView._testPersistMarkers(
+                scanId: UUID(), now: importedAt, authId: authId.uuidString, dbQueue: manager.dbQueue,
+                extractedMarkers: markers, ocrText: nil, sourceFileHash: "same-document", capturedAsset: nil,
+                captureConfidence: 0, measuredDate: importedAt, reviewConfirmed: true)
+        }
+    }
+
+    func testInvalidImportIsAtomicAndUnknownRangeDoesNotBecomeNormal() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID(), authId = UUID()
+        try await seedLabsUser(dbQueue: manager.dbQueue, userId: userId, authId: authId,
+                               medicalScanLocalOnly: true, cloudBackupEnabled: false)
+        let valid = LabsMarkerCatalog.extractMarkers(from: "Glucose 5.6 mmol/L")
+        var invalid = try XCTUnwrap(valid.first)
+        invalid.value = "abc"
+        await XCTAssertThrowsErrorAsync {
+            try await LabsScanCaptureView._testPersistMarkers(
+                scanId: UUID(), now: Date(), authId: authId.uuidString, dbQueue: manager.dbQueue,
+                extractedMarkers: valid + [invalid], ocrText: nil, sourceFileHash: nil, capturedAsset: nil,
+                captureConfidence: 0.99, reviewConfirmed: true)
+        }
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try MedicalScan.fetchCount(db), 0)
+            XCTAssertEqual(try HealthMeasurement.fetchCount(db), 0)
+        }
+        try await LabsScanCaptureView._testPersistMarkers(
+            scanId: UUID(), now: Date(), authId: authId.uuidString, dbQueue: manager.dbQueue,
+            extractedMarkers: valid, ocrText: nil, sourceFileHash: nil, capturedAsset: nil,
+            captureConfidence: 0.99, reviewConfirmed: true)
+        try await manager.dbQueue.read { db in
+            let measurement = try XCTUnwrap(HealthMeasurement.fetchOne(db))
+            XCTAssertNil(measurement.status)
+            XCTAssertNil(measurement.referenceRangeLow)
+            XCTAssertNil(measurement.referenceRangeHigh)
+        }
+    }
+
+    func testMedicalAssetsExcludedFromBackupAndFileProtected() throws {
+        let url = try LabScanAssetStore.persistAsset(scanId: UUID(), asset: CapturedLabAsset(data: Data("test".utf8), fileExtension: "pdf"))
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertEqual(try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertEqual(try url.deletingLastPathComponent().resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+#if targetEnvironment(simulator)
+        // Simulator's host filesystem may not expose iOS data-protection metadata.
+        if let protection = attributes[.protectionKey] as? FileProtectionType {
+            XCTAssertEqual(protection, .complete)
+        }
+#else
+        XCTAssertEqual(attributes[.protectionKey] as? FileProtectionType, .complete)
+#endif
     }
 
     @MainActor
@@ -245,14 +419,6 @@ final class LabsViewCoverageTests: XCTestCase {
                 unit: "ng/mL",
                 referenceRange: nil,
                 isNormal: true
-            ),
-            ExtractedLabMarker(
-                id: UUID(),
-                name: "Broken",
-                value: "abc",
-                unit: "mg/dL",
-                referenceRange: nil,
-                isNormal: true
             )
         ]
         let asset = CapturedLabAsset(data: Data("pdf-data".utf8), fileExtension: "pdf")
@@ -266,7 +432,8 @@ final class LabsViewCoverageTests: XCTestCase {
             ocrText: "Ferritin 85 ng/mL",
             sourceFileHash: LabsScanCaptureView._testSha256(Data("source".utf8)),
             capturedAsset: asset,
-            captureConfidence: 0.91
+            captureConfidence: 0.91,
+            reviewConfirmed: true
         )
 
         let headers = try JSONSerialization.jsonObject(
@@ -280,7 +447,7 @@ final class LabsViewCoverageTests: XCTestCase {
             )
             XCTAssertEqual(scan.status, .completed)
             XCTAssertEqual(scan.storageMode, "cloud")
-            XCTAssertEqual(scan.markersExtracted, 3)
+            XCTAssertEqual(scan.markersExtracted, 2)
             XCTAssertFalse(scan.needsReview)
             XCTAssertTrue(scan.userReviewed)
             XCTAssertTrue(scan.manuallyVerified)

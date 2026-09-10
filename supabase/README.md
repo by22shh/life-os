@@ -56,6 +56,18 @@ may still mention legacy migration names that are no longer present in `supabase
   - `select vault.create_secret('http://api.supabase.internal:8000', 'project_url');`
   - `select vault.create_secret('<your-local-service-role-key>', 'service_role_key');`
 
+## AI Memory and Deletion Receipts
+
+AI memory requires server-side `PINECONE_INDEX_HOST`, `PINECONE_API_KEY`, and `OPENROUTER_API_KEY`. `VECTOR_EMBEDDING_MODEL` defaults to `openai/text-embedding-3-small`; provision a compatible dense Pinecone index (1536 dimensions for this default). Never ship these credentials in the client. Changing models requires clearing and reindexing existing memory.
+
+The authenticated internal `api-vector-memory-worker` endpoint uses `X-Vector-Memory-Worker: scheduled` plus the service-role authorization/apikey pair. Migration `20260909000002` schedules it every ten minutes when Vault secrets exist. It processes five users per invocation, incrementally backfills older records, refreshes each user at least daily as capacity permits, and retries pending cleanup. If Vault secrets were installed after migration, schedule the same request after configuring them. Prediction also synchronizes and queries opted-in memory. Both `vector_opt_in` and `ai_processing_consent` are required. Missing provider configuration produces a clear error when enabling/using memory. Only derived numeric/boolean observations are embedded; documents, notes and raw medical scans are excluded.
+
+An operation lease and durable cleanup flag preserve retry state across provider errors or consent revocation. External vectors are deleted and Pinecone namespace emptiness is verified **before** SQL account deletion. Eventual-consistency survivors remain pending rather than reporting success. Unexpected legacy namespaces require explicit migration; they are never silently considered deleted.
+
+For deletion, clients should generate 32 random bytes as 64 lowercase hex characters, persist them securely before the request, and supply `X-Deletion-Receipt` to `api-account-delete`. The authenticated handler binds only the SHA-256 hash to that job and its audit record. It returns `deletion_receipt` and `deletion_receipt_expires_at`. Poll `api-account-delete-status` with this header and the public apikey after auth deletion; the response contains only `deletion_state` and `completed`. The status route validates this capability itself (`verify_jwt=false`); its normal bearer path still checks a live user. Receipts expire after 60 days and are purged daily. Discard a cancelled receipt before creating a new deletion request.
+
+The integration regression SQL is `scripts/check_backend_integrity.sql` (local database only, all fixtures rolled back). External-provider tests use mocked HTTP; deployment requires a separate provider smoke check with an explicitly consenting test account.
+
 ## Useful Load-Test Env Switches
 
 - `EDGE_LOAD_SOAK_DURATION_SECONDS` — when `> 0`, runs duration-based soak instead of fixed request count.

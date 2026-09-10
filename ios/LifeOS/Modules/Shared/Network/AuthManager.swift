@@ -177,6 +177,7 @@ final class AuthManager {
     }
 
     static func _testResetOverrides() {
+        UserDefaults.standard.removeObject(forKey: signedOutVaultOwnerKey)
         runningTestsOverride = nil
         bootstrapSessionOverride = nil
         defaultBootstrapSessionOverride = nil
@@ -235,6 +236,11 @@ final class AuthManager {
     func bootstrap() async {
         authCallbackStatus = .idle
 
+        if UserDefaults.standard.string(forKey: Self.signedOutVaultOwnerKey) != nil {
+            authState = .signedOut
+            return
+        }
+
         if UITestBootstrap.isEnabled,
            let overrideState = UITestBootstrap.requestedAuthState {
             applyUITestOverride(state: overrideState)
@@ -286,7 +292,7 @@ final class AuthManager {
 #else
             session = try await client.auth.session
 #endif
-            applySessionState(session, isAnonymous: session.user.isAnonymous)
+            try applySessionState(session, isAnonymous: session.user.isAnonymous)
             await synchronizeLocalIdentityState(
                 authId: session.user.id,
                 email: session.user.email,
@@ -355,7 +361,7 @@ final class AuthManager {
 
         do {
             let refreshedSession = try await client.auth.session
-            applySessionState(refreshedSession, isAnonymous: refreshedSession.user.isAnonymous)
+            try applySessionState(refreshedSession, isAnonymous: refreshedSession.user.isAnonymous)
             logger.info("Session validated successfully.")
         } catch {
             logger.warning("Session validation failed — entering local recovery mode: \(error.localizedDescription, privacy: .public)")
@@ -454,6 +460,10 @@ final class AuthManager {
     /// Per spec: "Client signs in anonymously to get a JWT."
     /// This enables frictionless onboarding.
     func signInAnonymously() async {
+        guard UserDefaults.standard.string(forKey: Self.signedOutVaultOwnerKey) == nil else {
+            authState = .signedOut
+            return
+        }
         authCallbackStatus = .idle
         do {
             let session: Session
@@ -468,7 +478,7 @@ final class AuthManager {
 #else
             session = try await client.auth.signInAnonymously()
 #endif
-            applySessionState(session, isAnonymous: true)
+            try applySessionState(session, isAnonymous: true)
             await synchronizeLocalIdentityState(
                 authId: session.user.id,
                 email: session.user.email,
@@ -565,7 +575,7 @@ final class AuthManager {
             session = try await signInWithAppleIdentity(tokenString)
         }
 
-        applySessionState(session, isAnonymous: false)
+        try applySessionState(session, isAnonymous: false)
         await synchronizeLocalIdentityState(
             authId: session.user.id,
             email: session.user.email,
@@ -620,7 +630,7 @@ final class AuthManager {
 
         do {
             let session = try await client.auth.session(from: url)
-            applySessionState(session, isAnonymous: session.user.isAnonymous)
+            try applySessionState(session, isAnonymous: session.user.isAnonymous)
             await synchronizeLocalIdentityState(
                 authId: session.user.id,
                 email: session.user.email,
@@ -662,7 +672,7 @@ final class AuthManager {
             throw AuthError.sessionExpired
         }
 
-        applySessionState(session, isAnonymous: false)
+        try applySessionState(session, isAnonymous: false)
         await synchronizeLocalIdentityState(
             authId: session.user.id,
             email: session.user.email,
@@ -674,7 +684,17 @@ final class AuthManager {
 
     // MARK: - Sign Out
 
-    func signOut() async throws {
+    func signOut(removingLocalData: Bool = false) async throws {
+        let vaultOwner = userId
+        if removingLocalData, let authId = userId {
+            let localUser = try await dbQueue.dbQueue.read { db in
+                try UserIdentityLookup.fetchUser(authId: authId.uuidString, db: db)
+            }
+            if let localUser {
+                _ = try await LocalPrivacyErasureExecutor.execute(reason: "explicit_local_profile_removal", user: LocalPrivacyUserContext(userId: localUser.id, authId: authId), dbQueue: dbQueue.dbQueue)
+                try await clearLocalUserState()
+            }
+        }
 #if os(iOS)
         await PushNotificationManager.shared.unregisterCurrentDevice()
 #endif
@@ -691,7 +711,12 @@ final class AuthManager {
             try await client.auth.signOut()
 #endif
         }
-        try? await clearLocalUserState()
+        // Preserve local-only history and queued writes; this vault remains bound to its owner.
+        if removingLocalData {
+            UserDefaults.standard.removeObject(forKey: Self.signedOutVaultOwnerKey)
+        } else if let vaultOwner {
+            UserDefaults.standard.set(vaultOwner.uuidString, forKey: Self.signedOutVaultOwnerKey)
+        }
         BiometricAuthManager.shared.reset()
         Self.clearOfflineLocalAuthId()
         Self.clearLastCloudAuthId()
@@ -708,6 +733,7 @@ final class AuthManager {
         GuardianManager.shared.clearRuntimeBanner(for: .authLocalProfile)
         GuardianManager.shared.clearRuntimeBanner(for: .authStateRefresh)
         await AppContainer.shared?.widgetSnapshotCoordinator.clearSnapshot()
+        WatchSyncManager.shared.clearSnapshot()
     }
 
     // MARK: - Account Deletion (GDPR)
@@ -781,7 +807,14 @@ final class AuthManager {
         }
     }
 
-    private func applySessionState(_ session: Session, isAnonymous: Bool) {
+    private static let signedOutVaultOwnerKey = "lifeos.signed_out_vault_owner"
+
+    private func applySessionState(_ session: Session, isAnonymous: Bool) throws {
+        if let owner = UserDefaults.standard.string(forKey: Self.signedOutVaultOwnerKey),
+           owner.lowercased() != session.user.id.uuidString.lowercased() {
+            throw AuthError.localVaultBelongsToAnotherAccount
+        }
+        UserDefaults.standard.removeObject(forKey: Self.signedOutVaultOwnerKey)
         self.session = session
         self.userId = session.user.id
         self.isAnonymous = isAnonymous
@@ -856,6 +889,10 @@ final class AuthManager {
     }
 
     private func activateOfflineLocalMode() async {
+        guard UserDefaults.standard.string(forKey: Self.signedOutVaultOwnerKey) == nil else {
+            authState = .signedOut
+            return
+        }
         let offlineAuthId = Self.offlineLocalAuthId()
         await synchronizeLocalIdentityState(
             authId: offlineAuthId,
@@ -1196,8 +1233,12 @@ extension AuthManager {
         authCallbackStatus = value
     }
 
+    func _testApplyCloudIdentity(_ id: UUID) {
+        try? applySessionState(Self.makeUITestSession(authId: id, isAnonymous: false), isAnonymous: false)
+    }
+
     func _testApplySessionState(_ session: Session, isAnonymous: Bool) {
-        applySessionState(session, isAnonymous: isAnonymous)
+        try? applySessionState(session, isAnonymous: isAnonymous)
     }
 
     func _testSignInWithAppleToken(_ tokenString: String) async throws {
@@ -1229,6 +1270,7 @@ extension AuthManager {
 // MARK: - Auth Error
 
 enum AuthError: LocalizedError {
+    case localVaultBelongsToAnotherAccount
     case invalidCredential
     case sessionExpired
     case networkUnavailable
@@ -1239,6 +1281,8 @@ enum AuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .localVaultBelongsToAnotherAccount:
+            return String(localized: "auth_local_data_other_account_message")
         case .invalidCredential:
             return String(localized: "auth_error_invalid_credential")
         case .sessionExpired:

@@ -1,7 +1,7 @@
 import {
-  anonClient,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
@@ -23,11 +23,9 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "unauthorized" }, 401);
   }
 
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   const service = serviceRoleClient();
   const { data: userRow, error: userError } = await service

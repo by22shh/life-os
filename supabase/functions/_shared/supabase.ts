@@ -44,6 +44,94 @@ export function anonClient(authHeader: string) {
   });
 }
 
+// Share only an in-flight Auth request for an identical bearer. Never cache a
+// completed result: a subsequent request must still observe revoked sessions
+// and deleted accounts. This also bounds memory under unrelated-token floods.
+const pendingUserChecks = new Map<
+  string,
+  ReturnType<ReturnType<typeof anonClient>["auth"]["getUser"]>
+>();
+
+export async function verifyBearerUser(authHeader: string) {
+  const key = `${Deno.env.get("SUPABASE_URL")}\n${authHeader}`;
+  const pending = pendingUserChecks.get(key);
+  if (pending) return await pending;
+
+  // Supplying the JWT explicitly uses the SDK's stateless Auth-server path,
+  // avoiding browser/session initialization and refresh locks on the server.
+  const check = anonClient(authHeader).auth.getUser(authHeader.slice(7));
+  if (pendingUserChecks.size >= 256) return await check;
+  pendingUserChecks.set(key, check);
+  try {
+    return await check;
+  } finally {
+    pendingUserChecks.delete(key);
+  }
+}
+
+export interface AuthVerificationResult {
+  data: { user: { id: string } | null };
+  error:
+    | { status?: number; code?: string; name?: string; message?: string }
+    | null;
+}
+
+/** Auth only: callers retain their existing validation, lookup and budget order. */
+export async function resolveAuthenticatedUser(
+  request: Request,
+  verify: (header: string) => Promise<AuthVerificationResult> =
+    verifyBearerUser,
+): Promise<
+  | { ok: true; data: { user: { id: string } } }
+  | { ok: false; response: Response }
+> {
+  const authHeader = parseBearer(request);
+  if (!authHeader) {
+    return {
+      ok: false,
+      response: jsonWithRequest(request, { error: "unauthorized" }, 401),
+    };
+  }
+  let result: AuthVerificationResult;
+  try {
+    result = await verify(authHeader);
+  } catch {
+    console.error(
+      JSON.stringify({ event: "auth_unavailable", reason: "transport" }),
+    );
+    return {
+      ok: false,
+      response: jsonWithRequest(request, { error: "auth_unavailable" }, 503, {
+        "Retry-After": "1",
+      }),
+    };
+  }
+  if (result.error) {
+    const status = result.error.status;
+    console.error(JSON.stringify({
+      event: "auth_verification_failed",
+      status: status ?? null,
+      code: result.error.code ?? null,
+      name: result.error.name ?? null,
+    }));
+    if (!status || status === 429 || status >= 500) {
+      return {
+        ok: false,
+        response: jsonWithRequest(request, { error: "auth_unavailable" }, 503, {
+          "Retry-After": "1",
+        }),
+      };
+    }
+  }
+  if (result.error || !result.data.user) {
+    return {
+      ok: false,
+      response: jsonWithRequest(request, { error: "unauthorized" }, 401),
+    };
+  }
+  return { ok: true, data: { user: result.data.user } };
+}
+
 export function json(
   data: unknown,
   status = 200,

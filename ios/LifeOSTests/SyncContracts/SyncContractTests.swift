@@ -152,7 +152,7 @@ final class SyncFixtureContractGateTests: XCTestCase {
 
         let manager = try DatabaseManager.inMemory()
         let syncEngine = SyncEngine(dbQueue: manager.dbQueue)
-        let sanitized = await syncEngine._testSanitizeOutboundBody(
+        let sanitized = try await syncEngine._testSanitizeOutboundBody(
             encoded,
             path: "rest/v1/health_measurements"
         )

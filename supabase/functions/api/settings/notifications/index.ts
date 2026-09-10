@@ -1,11 +1,9 @@
 import {
-  anonClient,
   jsonWithRequest,
-  parseBearer,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
-import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
+import { resolveUserContext } from "../../../_shared/user_context.ts";
 import { handleCors } from "../../../_shared/cors.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { NotificationSettingsPayloadSchema } from "../../../_shared/payload_schemas.ts";
@@ -71,38 +69,10 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "method_not_allowed" }, 405);
   }
 
-  const authHeader = parseBearer(request);
-  if (!authHeader.startsWith("Bearer ")) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
-
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
-
-  const service = serviceRoleClient();
-  const { data: userRow, error: userError } = await service
-    .from("users")
-    .select("id")
-    .eq("auth_id", authData.user.id)
-    .maybeSingle<{ id: string }>();
-
-  if (userError) {
-    return jsonWithRequest(request, {
-      error: "user_lookup_failed",
-      detail: sanitizedInternalDetail(request, "index", userError),
-    }, 500);
-  }
-  if (!userRow) {
-    return jsonWithRequest(request, { error: "user_not_found" }, 404);
-  }
-
-  const rateLimited = await enforceRateLimit(request, userRow.id, "standard");
-  if (rateLimited) {
-    return rateLimited;
-  }
+  const resolved = await resolveUserContext(request, "standard");
+  if (!resolved.ok) return resolved.response;
+  const { service, userId } = resolved.context;
+  const userRow = { id: userId };
 
   if (request.method === "GET") {
     let featureFlags: ResolvedFeatureFlagRow[];

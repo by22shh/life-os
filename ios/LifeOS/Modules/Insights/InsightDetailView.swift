@@ -27,6 +27,7 @@ private struct ExperimentCreateRequest: Encodable, Sendable {
     let variable: String
     let controlDescription: String?
     let interventionDescription: String?
+    let baselineStartDate: String
     let baselineDurationDays: Int
     let interventionDurationDays: Int
     let washoutDurationDays: Int?
@@ -43,6 +44,7 @@ private struct ExperimentCreateRequest: Encodable, Sendable {
         case variable
         case controlDescription = "control_description"
         case interventionDescription = "intervention_description"
+        case baselineStartDate = "baseline_start_date"
         case baselineDurationDays = "baseline_duration_days"
         case interventionDurationDays = "intervention_duration_days"
         case washoutDurationDays = "washout_duration_days"
@@ -315,6 +317,7 @@ private final class InsightDetailViewModel {
                 experiment.status = .baseline
                 experiment.primaryMetric = primaryMetric
                 experiment.measurementFrequency = .daily
+                experiment.reminderTime = "18:00"
                 experiment.startDate = schedule.startDate
                 experiment.endDate = schedule.endDate
                 experiment.baselineStartDate = schedule.baselineStartDate
@@ -337,6 +340,7 @@ private final class InsightDetailViewModel {
                     variable: experiment.variable,
                     controlDescription: experiment.controlDescription,
                     interventionDescription: experiment.interventionDescription,
+                    baselineStartDate: schedule.baselineStartDate,
                     baselineDurationDays: schedule.baselineDurationDays,
                     interventionDurationDays: schedule.interventionDurationDays,
                     washoutDurationDays: schedule.washoutDurationDays,
@@ -357,6 +361,8 @@ private final class InsightDetailViewModel {
                 try event.insert(db)
             }
             activeExperimentId = experimentId
+            _ = await PushNotificationManager.shared.requestLocalReminderAuthorizationIfNeeded()
+            await NotificationScheduleCoordinator(dbQueue: dbQueue).refreshSchedules()
             startExperimentError = nil
         } catch {
             startExperimentError = (error as? LocalizedError)?.errorDescription
@@ -456,6 +462,7 @@ private final class InsightDetailViewModel {
 struct ExperimentDetailView: View {
     let experimentId: UUID
     @State private var viewModel: ExperimentDetailViewModel
+    @State private var showStopConfirmation = false
 
     init(experimentId: UUID) {
         self.experimentId = experimentId
@@ -486,7 +493,12 @@ struct ExperimentDetailView: View {
                     }
 
                     if viewModel.isActive {
+                        Label(viewModel.reminderStatusMessage, systemImage: "bell")
+                            .font(LifeOSTypography.caption)
+                            .foregroundStyle(.secondary)
                         dailyLoggingSection
+                        Button(String(localized: "experiment_stop_button"), role: .destructive) { showStopConfirmation = true }
+                            .disabled(viewModel.isStopping)
                     }
 
                     if !viewModel.measurements.isEmpty {
@@ -503,6 +515,10 @@ struct ExperimentDetailView: View {
         }
         .background(LifeOSColors.Surface.background)
         .navigationTitle(String(localized: "experiment_detail"))
+        .confirmationDialog(String(localized: "experiment_stop_confirm_title"), isPresented: $showStopConfirmation) {
+            Button(String(localized: "experiment_stop_confirm_action"), role: .destructive) { Task { await viewModel.stopExperiment() } }
+            Button(String(localized: "cancel"), role: .cancel) { }
+        }
         .task { await viewModel.load() }
     }
 
@@ -610,21 +626,23 @@ struct ExperimentDetailView: View {
                 VStack {
                     Text(viewModel.baselineValue)
                         .font(LifeOSTypography.headline)
-                    Text(String(localized: "experiment_baseline"))
+                    Text(String.localizedStringWithFormat(String(localized: "experiment_baseline_mean_format"), viewModel.baselineCount))
                         .font(LifeOSTypography.caption)
                         .foregroundStyle(.secondary)
                 }
                 VStack {
                     Text(viewModel.endValue)
                         .font(LifeOSTypography.headline)
-                    Text(String(localized: "experiment_end_value"))
+                    Text(String.localizedStringWithFormat(String(localized: "experiment_intervention_mean_format"), viewModel.interventionCount))
                         .font(LifeOSTypography.caption)
                         .foregroundStyle(.secondary)
                 }
                 VStack {
                     Text(viewModel.changeText)
                         .font(LifeOSTypography.headline)
-                        .foregroundStyle(viewModel.changeIsPositive ? LifeOSColors.Recovery.ready : LifeOSColors.Recovery.caution)
+                        .foregroundStyle(viewModel.changeHasDirection
+                            ? (viewModel.changeIsPositive ? LifeOSColors.Recovery.ready : LifeOSColors.Recovery.caution)
+                            : Color.secondary)
                     Text(String(localized: "experiment_change"))
                         .font(LifeOSTypography.caption)
                         .foregroundStyle(.secondary)
@@ -662,6 +680,11 @@ final class ExperimentDetailViewModel {
     var endValue = "—"
     var changeText = "—"
     var changeIsPositive = true
+    var changeHasDirection = false
+    var baselineCount = 0
+    var interventionCount = 0
+    var reminderStatusMessage = String(localized: "experiment_reminder_status_default")
+    var isStopping = false
     private let dbQueue: DatabaseQueue
 
     init(experimentId: UUID, dbQueue: DatabaseQueue = DatabaseManager.shared.dbQueue) {
@@ -674,10 +697,13 @@ final class ExperimentDetailViewModel {
     }
 
     func load() async {
+        await NotificationScheduleCoordinator(dbQueue: dbQueue).refreshSchedules()
         do {
             let loadedState = try await dbQueue.read { [experimentId] db -> (
                 experiment: Experiment,
-                measurements: [ExperimentMeasurementRow]
+                measurements: [ExperimentMeasurementRow],
+                analysis: ExperimentDescriptiveAnalysis,
+                nextReminderDate: Date?
             )? in
                 guard let experiment = try Experiment
                     .filter(sql: "id = ? OR id = ?", arguments: [experimentId, experimentId.uuidString])
@@ -690,7 +716,9 @@ final class ExperimentDetailViewModel {
                     .order(Column("measurement_date").desc, Column("created_at").desc)
                     .fetchAll(db)
 
-                let parsed = measurementRows.map { measurement in
+                let metric = experiment.primaryMetric ?? experiment.metric
+                let primaryRows = measurementRows.filter { ($0.metricName ?? metric) == metric }
+                let parsed = primaryRows.map { measurement in
                     let loggedDate = measurement.measurementDate ?? measurement.date
                     let metricValue = measurement.metricValue ?? measurement.value
                     return ExperimentMeasurementRow(
@@ -703,7 +731,9 @@ final class ExperimentDetailViewModel {
                 }
                 return (
                     experiment: experiment,
-                    measurements: parsed
+                    measurements: parsed,
+                    analysis: ExperimentDescriptiveAnalysis(experiment: experiment, measurements: primaryRows),
+                    nextReminderDate: try NotificationScheduleCoordinator.nextExperimentReminderDate(db: db, experimentId: experiment.id, userId: experiment.userId, now: Date())
                 )
             }
 
@@ -718,23 +748,30 @@ final class ExperimentDetailViewModel {
             experimentName = loadedState.experiment.title
             statusText = resolvedStatus.rawValue.capitalized
             hypothesis = loadedState.experiment.hypothesis
+            if let nextReminder = loadedState.nextReminderDate {
+                reminderStatusMessage = String.localizedStringWithFormat(
+                    String(localized: "experiment_reminder_next_format"),
+                    DateFormatter.localizedString(from: nextReminder, dateStyle: .short, timeStyle: .short)
+                )
+            } else {
+                reminderStatusMessage = String(localized: "experiment_reminder_none_message")
+            }
             metricLabel = loadedState.experiment.primaryMetric ?? loadedState.experiment.metric
             isActive = Self.isLifecycleActiveStatus(resolvedStatus)
             isCompleted = resolvedStatus == .completed
-            conclusion = loadedState.experiment.resultSummary
+            conclusion = isCompleted ? loadedState.analysis.summary : loadedState.experiment.resultSummary
             measurements = loadedState.measurements
 
             hasLoggedToday = loadedState.measurements.contains { $0.date == today }
 
-            if let first = loadedState.measurements.last, let last = loadedState.measurements.first {
-                baselineValue = first.value
-                endValue = last.value
-                if let fv = Double(first.value), let lv = Double(last.value), fv != 0 {
-                    let change = ((lv - fv) / fv) * 100
-                    changeText = String(format: "%+.1f%%", change)
-                    changeIsPositive = change >= 0
-                }
-            }
+            let analysis = loadedState.analysis
+            baselineValue = analysis.baselineMean.map { String(format: "%.2f", $0) } ?? "—"
+            endValue = analysis.interventionMean.map { String(format: "%.2f", $0) } ?? "—"
+            baselineCount = analysis.baselineCount
+            interventionCount = analysis.interventionCount
+            changeText = analysis.percentChange.map { String(format: "%+.1f%%", $0) } ?? "—"
+            changeHasDirection = analysis.isImprovement != nil
+            changeIsPositive = analysis.isImprovement == true
             loadError = nil
             logStatusMessage = nil
         } catch {
@@ -752,7 +789,11 @@ final class ExperimentDetailViewModel {
         }
 
         let today = DiaryDateFormatter.formatDate(Date())
-        let value = Double(dailyValue) ?? 0
+        guard let value = Double(dailyValue.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")),
+              value.isFinite, abs(value) < 1_000_000 else {
+            logStatusMessage = String(localized: "experiment_invalid_value_message")
+            return
+        }
         let now = Date()
 
         do {
@@ -835,6 +876,32 @@ final class ExperimentDetailViewModel {
         }
     }
 
+    func stopExperiment() async {
+        guard !isStopping else { return }
+        isStopping = true
+        defer { isStopping = false }
+        do {
+            try await dbQueue.write { [experimentId] db in
+                guard var experiment = try Experiment.filter(sql: "id = ? OR id = ?", arguments: [experimentId, experimentId.uuidString]).fetchOne(db) else {
+                    throw ExperimentError.notFound
+                }
+                guard Self.isLifecycleActiveStatus(experiment.resolvedLifecycleStatus(forLocalDate: DiaryDateFormatter.formatDate(Date()))) else {
+                    throw ExperimentError.invalidProtocol(reason: "Experiment is no longer active")
+                }
+                experiment.status = .abandoned
+                experiment.updatedAt = Date()
+                try experiment.update(db)
+                var event = OutboxEvent(httpMethod: .POST, path: "api-experiments/\(experimentId.uuidString)/stop", bodyJson: Data("{}".utf8), priority: 100)
+                event.dependsOn = try Self.createDependencyIfNeeded(for: experimentId, in: db)
+                event.headersJson = try Self.outboxHeadersJson()
+                try event.insert(db)
+            }
+            await load()
+        } catch {
+            logStatusMessage = error.localizedDescription
+        }
+    }
+
     private func resetLoadedState(error: String?) {
         experimentName = ""
         statusText = ""
@@ -854,6 +921,9 @@ final class ExperimentDetailViewModel {
         endValue = "—"
         changeText = "—"
         changeIsPositive = true
+        changeHasDirection = false
+        baselineCount = 0
+        interventionCount = 0
     }
 
     nonisolated private static func isLifecycleActiveStatus(_ status: ExperimentStatus) -> Bool {
@@ -971,6 +1041,71 @@ final class ExperimentDetailViewModel {
             return nil
         }
         return experimentId
+    }
+}
+
+struct ExperimentDescriptiveAnalysis: Sendable {
+    let baselineMean: Double?
+    let interventionMean: Double?
+    let baselineCount: Int
+    let interventionCount: Int
+    let percentChange: Double?
+    let isImprovement: Bool?
+    let summary: String
+
+    init(experiment: Experiment, measurements: [ExperimentMeasurement]) {
+        let metric = experiment.primaryMetric ?? experiment.metric
+        let included = measurements.filter { measurement in
+            let date = measurement.measurementDate ?? measurement.date
+            let phase = measurement.measurementPhase
+            let scheduled = experiment.scheduledPhase(forLocalDate: date)
+            let hasSchedule = experiment.baselineStartDate != nil || experiment.interventionStartDate != nil
+            return (measurement.metricName ?? metric) == metric && measurement.protocolFollowed &&
+                (measurement.metricValue ?? measurement.value).isFinite &&
+                (phase == .baseline || phase == .intervention) &&
+                (!hasSchedule || phase == scheduled)
+        }
+        let units = Set(included.map { ($0.metricUnit ?? $0.unit ?? "").trimmingCharacters(in: .whitespacesAndNewlines) })
+        let baseline = units.count <= 1 ? included.filter { $0.measurementPhase == .baseline }.map { $0.metricValue ?? $0.value } : []
+        let intervention = units.count <= 1 ? included.filter { $0.measurementPhase == .intervention }.map { $0.metricValue ?? $0.value } : []
+        baselineCount = baseline.count
+        interventionCount = intervention.count
+        baselineMean = baseline.isEmpty ? nil : baseline.reduce(0) { $0 + $1 / Double(baseline.count) }
+        interventionMean = intervention.isEmpty ? nil : intervention.reduce(0) { $0 + $1 / Double(intervention.count) }
+        let enoughData = baseline.count >= 3 && intervention.count >= 3
+        let delta: Double?
+        if let baselineMean, let interventionMean {
+            delta = interventionMean - baselineMean
+        } else {
+            delta = nil
+        }
+        if enoughData, let baselineMean, baselineMean != 0, let delta {
+            percentChange = delta / abs(baselineMean) * 100
+        } else {
+            percentChange = nil
+        }
+        let direction: Double?
+        switch metric.lowercased() {
+        case "sleep_quality", "energy", "energy_level": direction = 1
+        case "stress", "stress_level", "fatigue", "pain": direction = -1
+        default: direction = nil
+        }
+        if enoughData, let direction, let delta, delta != 0 {
+            isImprovement = delta * direction > 0
+        } else {
+            isImprovement = nil
+        }
+        if units.count > 1 {
+            summary = String(localized: "experiment_units_mismatch_summary")
+        } else if !enoughData {
+            summary = String.localizedStringWithFormat(
+                String(localized: "experiment_insufficient_data_format"),
+                baselineCount,
+                interventionCount
+            )
+        } else {
+            summary = String(localized: "experiment_descriptive_summary")
+        }
     }
 }
 

@@ -984,50 +984,61 @@ struct SettingsPrivacyView: View {
     var body: some View {
         @Bindable var viewModel = viewModel
 
-        Form {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.l) {
             if !viewModel.isLoaded {
                 ProgressView(String(localized: "loading"))
             } else {
-                Section {
-                    Toggle(String(localized: "settings_menstrual_local_only"), isOn: $viewModel.settings.menstrualLocalOnly)
+                privacySection {
+                    privacyToggle(String(localized: "settings_menstrual_local_only"), isOn: $viewModel.settings.menstrualLocalOnly)
                     PrivacyNoteView(.menstrualLocalOnly)
 
-                    Toggle(String(localized: "settings_medical_scan_local_only"), isOn: $viewModel.settings.medicalScanLocalOnly)
+                    privacyToggle(String(localized: "settings_medical_scan_local_only"), isOn: $viewModel.settings.medicalScanLocalOnly)
                     PrivacyNoteView(.medicalScanRetention)
 
-                    Toggle(String(localized: "settings_cloud_backup_enabled"), isOn: $viewModel.settings.cloudBackupEnabled)
-                    Toggle(String(localized: "settings_vector_opt_in"), isOn: $viewModel.settings.vectorOptIn)
-                    Toggle(String(localized: "settings_analytics_consent"), isOn: $viewModel.settings.analyticsConsent)
-                    Toggle(String(localized: "settings_cloud_ocr_enabled"), isOn: $viewModel.settings.cloudOcrEnabled)
+                    privacyToggle(String(localized: "settings_cloud_backup_enabled"), isOn: $viewModel.settings.cloudBackupEnabled)
+                    privacyToggle(String(localized: "settings_vector_opt_in"), isOn: $viewModel.settings.vectorOptIn)
+                    privacyToggle(String(localized: "settings_analytics_consent"), isOn: $viewModel.settings.analyticsConsent)
+                    privacyToggle(String(localized: "settings_ai_processing_consent"), isOn: $viewModel.settings.aiProcessingConsent)
+                    PrivacyNoteView(.aiProcessing)
+                    privacyToggle(String(localized: "settings_cloud_ocr_enabled"), isOn: $viewModel.settings.cloudOcrEnabled)
                 } header: {
                     Text(String(localized: "settings_privacy"))
                 } footer: {
-                    Text(String(localized: "settings_privacy_footer"))
+                    privacyFooter(String(localized: "settings_privacy_footer"))
                 }
 
-                Section {
-                    Toggle(String(localized: "settings_privacy_widget_recovery"), isOn: $viewModel.widgetPrivacy.showRecoveryScore)
-                    Toggle(String(localized: "settings_privacy_widget_nutrition"), isOn: $viewModel.widgetPrivacy.showNutrition)
-                    Toggle(String(localized: "settings_privacy_widget_supplements"), isOn: $viewModel.widgetPrivacy.showSupplements)
-                    Toggle(String(localized: "settings_privacy_widget_workout"), isOn: $viewModel.widgetPrivacy.showTraining)
+                privacySection {
+                    privacyToggle(String(localized: "settings_privacy_widget_recovery"), isOn: $viewModel.widgetPrivacy.showRecoveryScore)
+                    privacyToggle(String(localized: "settings_privacy_widget_nutrition"), isOn: $viewModel.widgetPrivacy.showNutrition)
+                    privacyToggle(String(localized: "settings_privacy_widget_supplements"), isOn: $viewModel.widgetPrivacy.showSupplements)
+                    privacyToggle(String(localized: "settings_privacy_widget_workout"), isOn: $viewModel.widgetPrivacy.showTraining)
                 } header: {
                     Text(String(localized: "settings_privacy_widgets_header"))
                 } footer: {
-                    Text(String(localized: "settings_privacy_widgets_footer"))
+                    privacyFooter(String(localized: "settings_privacy_widgets_footer"))
                 }
 
-                Section {
-                    Button(String(localized: "settings_save"), action: triggerSave)
+                privacySection {
+                    Button(action: triggerSave) {
+                        Text(String(localized: "settings_save"))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("settings.privacy.save")
                 }
 
-                Section {
-                    Label(
-                        viewModel.accountDeletionSummaryText,
-                        systemImage: viewModel.accountDeletionSummaryIconName
-                    )
-                    .foregroundStyle(viewModel.accountDeletionSummaryColor)
+                privacySection {
+                    Label {
+                        Text(viewModel.accountDeletionSummaryText)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: viewModel.accountDeletionSummaryIconName)
+                            .foregroundStyle(viewModel.accountDeletionSummaryColor)
+                    }
 
                     if viewModel.requiresCloudReconnect {
                         SettingsCloudReconnectNotice(requirement: .general)
@@ -1037,69 +1048,82 @@ struct SettingsPrivacyView: View {
                         if let deletionDate = snapshot.deletionDateText {
                             LabeledContent(String(localized: "settings_delete_account_scheduled_for")) {
                                 Text(deletionDate)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let stateText = viewModel.deletionStateText(for: snapshot) {
                             LabeledContent(String(localized: "settings_delete_account_state_label")) {
                                 Text(stateText)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let modeText = viewModel.deletionModeText(for: snapshot) {
                             LabeledContent(String(localized: "settings_delete_account_mode_label")) {
                                 Text(modeText)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let reasonText = viewModel.deletionReasonText(for: snapshot) {
                             LabeledContent(String(localized: "settings_delete_account_reason_label")) {
                                 Text(reasonText)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let attemptCount = snapshot.deletionAttemptCount, attemptCount > 0 {
                             LabeledContent(String(localized: "settings_delete_account_attempts_label")) {
                                 Text("\(attemptCount)")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let retryText = viewModel.retryAfterText(for: snapshot) {
                             LabeledContent(String(localized: "settings_delete_account_retry_after_label")) {
                                 Text(retryText)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                         }
 
                         if let note = viewModel.accountDeletionStatusNote {
                             Text(note)
                                 .font(LifeOSTypography.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(LifeOSColors.Text.secondary)
                         }
                     }
                 } header: {
                     Text(String(localized: "settings_delete_account_status_section"))
                 }
 
-                Section {
-                    Button(String(localized: "settings_delete_account_refresh_status"), action: triggerRefreshDeleteStatus)
+                privacySection {
+                    Button(action: triggerRefreshDeleteStatus) {
+                        Text(String(localized: "settings_delete_account_refresh_status"))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
                         .disabled(viewModel.isRefreshingDeletionStatus)
                         .accessibilityIdentifier("settings.privacy.delete_account.refresh")
 
-                    Button(String(localized: "settings_delete_account_cancel_scheduled"), action: triggerCancelScheduledDeletion)
+                    Button(action: triggerCancelScheduledDeletion) {
+                        Text(String(localized: "settings_delete_account_cancel_scheduled"))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
                         .disabled(!viewModel.canCancelScheduledDeletion)
                         .accessibilityIdentifier("settings.privacy.delete_account.cancel")
                 }
 
                 // MARK: Account Deletion (GDPR / App Store requirement)
-                Section {
+                privacySection {
                     Button(role: .destructive, action: triggerDeletePrompt) {
                         Label(String(localized: "settings_delete_account"), systemImage: "trash")
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityLabel(String(localized: "settings_delete_account_accessibility"))
                     .accessibilityIdentifier("settings.privacy.delete_account")
@@ -1107,7 +1131,7 @@ struct SettingsPrivacyView: View {
                 } header: {
                     Text(String(localized: "settings_danger_zone"))
                 } footer: {
-                    Text(viewModel.deleteActionFooterText)
+                    privacyFooter(viewModel.deleteActionFooterText)
                 }
                 .confirmationDialog(
                     String(localized: "settings_delete_account_confirm_title"),
@@ -1126,17 +1150,73 @@ struct SettingsPrivacyView: View {
                 }
 
                 if let statusMessage = viewModel.statusMessage {
-                    Section {
+                    privacySection {
                         Text(statusMessage)
                             .font(LifeOSTypography.footnote)
                             .accessibilityIdentifier("settings.privacy.status")
                     }
                 }
             }
+            }
+            .padding(Spacing.m)
         }
+        .background(LifeOSColors.Surface.background)
         .navigationTitle(String(localized: "settings_privacy"))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.privacy.screen")
         .task(viewModel.load)
+    }
+
+    // Keep this finite form eager: every preference remains in the view tree
+    // when larger Dynamic Type sizes move its row beyond the visible viewport.
+    private func privacySection<Content: View, Header: View, Footer: View>(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder footer: () -> Footer
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            header()
+                .font(LifeOSTypography.headline)
+                .foregroundStyle(LifeOSColors.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: Spacing.m, content: content)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Spacing.m)
+                .background(LifeOSColors.Surface.card, in: RoundedRectangle(cornerRadius: CornerRadius.md))
+            footer()
+        }
+    }
+
+    private func privacySection<Content: View, Header: View>(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder header: () -> Header
+    ) -> some View {
+        privacySection(content: content, header: header, footer: { EmptyView() })
+    }
+
+    private func privacySection<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        privacySection(content: content, header: { EmptyView() }, footer: { EmptyView() })
+    }
+
+    private func privacyToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(LifeOSTypography.body)
+                .foregroundStyle(LifeOSColors.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(minHeight: 44)
+    }
+
+    private func privacyFooter(_ text: String) -> some View {
+        Text(text)
+            .font(LifeOSTypography.footnote)
+            .foregroundStyle(LifeOSColors.Text.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func triggerSave() {
@@ -2508,6 +2588,8 @@ private final class SettingsPrivacyViewModel {
     func deletionModeText(for snapshot: SettingsAccountDeletionSnapshot) -> String? {
         guard let mode = snapshot.deletionMode?.lowercased() else { return nil }
         switch mode {
+        case "local_erased_cloud_pending":
+            return String(localized: "settings_delete_account_local_erased_cloud_pending")
         case "scheduled":
             return String(localized: "settings_delete_account_mode_scheduled")
         case "immediate":
@@ -2552,6 +2634,9 @@ private final class SettingsPrivacyViewModel {
 
     fileprivate func applyPrivacyOutboxPolicyIfNeeded() async throws {
         var pathsToCancel: [String] = []
+        if settings.menstrualLocalOnly {
+            pathsToCancel.append(contentsOf: ["api-menstrual-sync", "rest/v1/menstrual_logs"])
+        }
         if settings.medicalScanLocalOnly {
             pathsToCancel.append(contentsOf: [
                 "api-labs",
@@ -2828,6 +2913,7 @@ private final class SettingsPrivacyViewModel {
             "cloud_backup_enabled": settings.cloudBackupEnabled,
             "vector_opt_in": settings.vectorOptIn,
             "analytics_consent": settings.analyticsConsent,
+            "ai_processing_consent": settings.aiProcessingConsent,
             "cloud_ocr_enabled": settings.cloudOcrEnabled
         ]
     }

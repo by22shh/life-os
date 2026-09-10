@@ -51,7 +51,17 @@ targets:
           SUPABASE_ANON_KEY: $(LIFEOS_SUPABASE_ANON_KEY)
     resources:
       - path: LifeOS/App/PrivacyInfo.xcprivacy
+    preBuildScripts:
+      - name: Bundle runtime capability declarations
+        script: python3 "$SRCROOT/../scripts/write_runtime_capabilities.py"
+        inputFiles:
+          - $(SRCROOT)/$(CODE_SIGN_ENTITLEMENTS)
+          - $(SRCROOT)/../scripts/write_runtime_capabilities.py
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/RuntimeCapabilities.plist
     dependencies:
+      - target: LifeOSWatch
+        embed: true
       - target: GuardianMonitorExtension
         embed: true
       - target: LifeOSWidgets
@@ -75,7 +85,7 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.app.guardianmonitor
       INFOPLIST_FILE: GuardianMonitorExtension/Info.plist
       CODE_SIGN_ENTITLEMENTS: GuardianMonitorExtension/GuardianMonitorExtension.entitlements
-      SKIP_INSTALL: NO
+      SKIP_INSTALL: YES
 
   LifeOSWidgets:
     type: app-extension
@@ -90,7 +100,7 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.app.widgets
       INFOPLIST_FILE: LifeOSWidgets/Info.plist
       CODE_SIGN_ENTITLEMENTS: LifeOSWidgets/LifeOSWidgets.entitlements
-      SKIP_INSTALL: NO
+      SKIP_INSTALL: YES
 
   LifeOSTests:
     type: bundle.unit-test
@@ -146,6 +156,7 @@ targets:
       - path: LifeOS/Resources/Localizable.xcstrings
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.app.watch
+      SKIP_INSTALL: YES
       INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.lifeos.app
       CODE_SIGN_ENTITLEMENTS: ../watch/LifeOSWatchApp/LifeOSWatch.entitlements
     dependencies:
@@ -166,7 +177,7 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.app.watch.complications
       INFOPLIST_FILE: ../watch/LifeOSComplications/Info.plist
       CODE_SIGN_ENTITLEMENTS: ../watch/LifeOSComplications/LifeOSComplications.entitlements
-      SKIP_INSTALL: NO
+      SKIP_INSTALL: YES
 
   LifeOSWatchTests:
     type: bundle.unit-test

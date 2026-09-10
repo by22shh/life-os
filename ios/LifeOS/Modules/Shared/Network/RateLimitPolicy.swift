@@ -75,6 +75,7 @@ enum RateLimitPolicy {
              "api-training-plan",
              "api-user-supplements",
              "api-experiments",
+             "api-sleep-log",
              "api-labs":
             return .writeHeavy
         case "api-supplements-log",
@@ -108,7 +109,6 @@ enum RateLimitPolicy {
              "api-recommendations",
              "api-sleep-daily",
              "api-sleep-calendar",
-             "api-sleep-log", // legacy alias
              "api-supplements-daily",
              "api-supplements-calendar",
              "api-workouts-daily",

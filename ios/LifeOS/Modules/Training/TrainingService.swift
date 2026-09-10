@@ -92,6 +92,8 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
     struct Exercise: Decodable, Sendable {
         struct Set: Decodable, Sendable {
             let id: UUID
+            var createdAt: Date? = nil
+            var updatedAt: Date? = nil
             let setNumber: Int
             let weight: Double?
             let reps: Int?
@@ -103,6 +105,8 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
 
             enum CodingKeys: String, CodingKey {
                 case id
+                case createdAt = "created_at"
+                case updatedAt = "updated_at"
                 case setNumber = "set_number"
                 case weight
                 case reps
@@ -115,6 +119,8 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
         }
 
         let id: UUID
+        var createdAt: Date? = nil
+        var updatedAt: Date? = nil
         let exerciseId: UUID?
         let name: String?
         var category: ExerciseCategory? = nil
@@ -129,6 +135,8 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case id
+            case createdAt = "created_at"
+            case updatedAt = "updated_at"
             case exerciseId = "exercise_id"
             case name
             case category
@@ -144,6 +152,7 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
     }
 
     let id: UUID
+    var createdAt: Date? = nil
     let startedAt: Date
     let endedAt: Date?
     let sessionDate: String
@@ -163,9 +172,11 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
     let postFeeling: Int?
     let notes: String?
     let exercises: [Exercise]
+    var updatedAt: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
+        case createdAt = "created_at"
         case startedAt = "started_at"
         case endedAt = "ended_at"
         case sessionDate = "session_date"
@@ -185,6 +196,7 @@ struct WorkoutSessionRemoteDetailResponse: Decodable, Sendable {
         case postFeeling = "post_feeling"
         case notes
         case exercises
+        case updatedAt = "updated_at"
     }
 }
 
@@ -378,7 +390,7 @@ actor TrainingService {
                 return localDetail
             }
             try await cacheWorkoutDetail(remoteDetail)
-            return remoteDetail
+            return try await loadLocalWorkoutDetail(id: id)
         } catch {
             if localDetail == nil {
                 throw error
@@ -660,7 +672,8 @@ actor TrainingService {
         session.notes = response.notes
         session.deletedAt = nil
         session.deletedReason = nil
-        session.updatedAt = Date()
+        session.createdAt = response.createdAt ?? .distantPast
+        session.updatedAt = response.updatedAt ?? .distantPast
 
         let categoryMap = try await dbQueue.read { db in
             try Self.exerciseCategoryMap(
@@ -685,7 +698,8 @@ actor TrainingService {
             entry.maxWeight = exercise.maxWeight
             entry.durationSeconds = exercise.durationSeconds
             entry.notes = exercise.notes
-            entry.updatedAt = Date()
+            entry.createdAt = exercise.createdAt ?? .distantPast
+            entry.updatedAt = exercise.updatedAt ?? .distantPast
 
             let sets = exercise.sets.map { remoteSet in
                 var set = localDetail?.exercises
@@ -706,7 +720,8 @@ actor TrainingService {
                 set.isWarmup = remoteSet.isWarmup
                 set.isFailure = remoteSet.isFailure
                 set.isDropset = remoteSet.isDropset
-                set.updatedAt = Date()
+                set.createdAt = remoteSet.createdAt ?? .distantPast
+                set.updatedAt = remoteSet.updatedAt ?? .distantPast
                 return set
             }
 
@@ -723,6 +738,15 @@ actor TrainingService {
 
     private func cacheWorkoutDetail(_ detail: WorkoutSessionDetail) async throws {
         try await dbQueue.write { db in
+            // Recheck in the write transaction: an edit may occur during the GET.
+            let entityId = detail.session.id
+            let pending = try OutboxEvent.fetchAll(db, sql: "SELECT * FROM outbox_events WHERE status NOT IN (?, ?)", arguments: [OutboxStatus.succeeded.rawValue, OutboxStatus.cancelled.rawValue])
+            guard !pending.contains(where: { event in
+                event.id == entityId || event.path.lowercased().contains(entityId.uuidString.lowercased()) ||
+                String(data: event.bodyJson, encoding: .utf8)?.lowercased().contains(entityId.uuidString.lowercased()) == true
+            }) else { return }
+            if let existing = try WorkoutSession.fetchOne(db, sql: "SELECT * FROM workout_sessions WHERE id = ? OR id = ?", arguments: [entityId, entityId.uuidString]),
+               existing.updatedAt > detail.session.updatedAt { return }
             try detail.session.save(db)
             try db.execute(
                 sql: """

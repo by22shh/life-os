@@ -1959,7 +1959,7 @@ final class NutritionServiceTests: XCTestCase {
             _ = try Self.insertMeal(db, logId: mealId, userId: userId, calories: 410, protein: 24, fat: 14, carbs: 44)
         }
 
-        let remoteDetail = NutritionMealRemoteDetailResponse(
+        var remoteDetail = NutritionMealRemoteDetailResponse(
             id: mealId,
             loggedAt: Date(timeIntervalSince1970: 1_773_420_000),
             loggedDate: "2026-03-14",
@@ -2001,6 +2001,7 @@ final class NutritionServiceTests: XCTestCase {
                 )
             ]
         )
+        remoteDetail.updatedAt = Date().addingTimeInterval(60)
         let detailClient = NutritionMealDetailClientMock(response: remoteDetail)
         let service = NutritionService(dbQueue: manager.dbQueue, detailAPIClient: detailClient)
 
@@ -2039,6 +2040,15 @@ final class NutritionServiceTests: XCTestCase {
             ) ?? -1
             XCTAssertEqual(itemCount, 2)
         }
+        // An outbox edit must survive a newer-looking remote response too.
+        try await manager.dbQueue.write { db in
+            try db.execute(sql: "UPDATE food_logs SET calories = ? WHERE id = ? OR id = ?", arguments: [999, mealId, mealId.uuidString])
+            try OutboxEvent(httpMethod: .PATCH, path: "api-edit/\(mealId.uuidString)", bodyJson: Data("{}".utf8)).insert(db)
+        }
+        let reloaded = try await service.loadMealDetail(id: mealId, preferRemote: true)
+        let retained = try XCTUnwrap(reloaded)
+        XCTAssertEqual(retained.log.calories, 999)
+
     }
 
     func testLoadMealTemplateDetailReturnsLocalTemplateItems() async throws {

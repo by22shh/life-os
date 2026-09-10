@@ -1,0 +1,22 @@
+Source: /tmp/lifeos-fix-20260909/ios-a11y-recheck2.log
+Test Case '-[LifeOSUITests.AccessibilityAuditUITests testCriticalHealthFlowsAccessibilityAudit]' passed (54.782 seconds).
+	 Executed 1 test, with 0 failures (0 unexpected) in 54.782 (54.783) seconds
+Test Case '-[LifeOSUITests.EndToEndScenariosUITests testInsightsExperimentScenario]' passed (10.600 seconds).
+	 Executed 1 test, with 0 failures (0 unexpected) in 10.600 (10.601) seconds
+	 Executed 2 tests, with 0 failures (0 unexpected) in 65.382 (65.386) seconds
+	 Executed 2 tests, with 0 failures (0 unexpected) in 65.382 (65.387) seconds
+** TEST SUCCEEDED **
+
+Source: /tmp/lifeos-fix-20260909/ios-a11y-final.log
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testComputeIsRunningTestsDetectsAllSignals]' passed (0.002 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testIsRuntimeConfiguredRequiresRealURLAndAnonKey]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testResolveAnonKeyPriorityAndFallback]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testResolveURLFallsBackToDefaultWhenNoInputsProvided]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testResolveURLFallsBackToPlistWhenEnvironmentMissingOrInvalid]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testResolveURLPrefersEnvironmentWhenValid]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.SupabaseConfigCoverageTests testValidatedSupabaseURLSchemeRules]' passed (0.001 seconds).
+Test Case '-[LifeOSUITests.AccessibilityAuditUITests testAuthenticatedCoreScreensAccessibilityAudit]' passed (25.492 seconds).
+Test Case '-[LifeOSUITests.EndToEndScenariosUITests testInsightsExperimentScenario]' passed (10.904 seconds).
+
+Source: /tmp/lifeos-fix-20260909/ios-ui-recheck.log
+Test Case '-[LifeOSUITests.EndToEndScenariosUITests testManualSleepEntryPersistsAfterClosingForm]' passed (17.850 seconds).

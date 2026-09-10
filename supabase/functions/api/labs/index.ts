@@ -4,6 +4,7 @@ import {
   computeMedicalScanScheduledDeletionAt,
   loadMedicalScanPrivacySettings,
   type MedicalScanPrivacySettings,
+  normalizeMedicalScanStoragePath,
   pruneExpiredMedicalScanArtifacts,
 } from "../../_shared/medical_scan_privacy.ts";
 import {
@@ -93,7 +94,7 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === "POST" && (route === "" || route === "scan")) {
-    return await handleScanCreate(request, service, userId);
+    return await handleScanCreate(request, service, userId, authUserId);
   }
 
   if (request.method === "GET" && route === "scan") {
@@ -116,6 +117,7 @@ async function handleScanCreate(
     typeof import("../../_shared/supabase.ts").serviceRoleClient
   >,
   userId: string,
+  authUserId: string,
 ): Promise<Response> {
   const bodyResult = await readJsonBody(request);
   if (!bodyResult.ok) {
@@ -156,7 +158,6 @@ async function handleScanCreate(
       "id,user_id,created_at,updated_at,scan_type,status,storage_mode,image_url,image_uploaded_at,original_image_url,extraction_status,extraction_error,ai_confidence,ocr_confidence,processed_data,scan_date,lab_name,document_language,source_file_sha256,store_original_in_cloud,manually_verified,needs_review,user_reviewed,user_reviewed_at,pinned_by_user,markers_extracted,notes,scheduled_deletion_at,deleted_at",
     )
     .eq("id", scanId)
-    .eq("user_id", userId)
     .maybeSingle<ScanRow>();
 
   if (existingScanError) {
@@ -164,6 +165,9 @@ async function handleScanCreate(
       error: "scan_lookup_failed",
       detail: sanitizedInternalDetail(request, "index", existingScanError),
     }, 500);
+  }
+  if (existingScan && existingScan.user_id !== userId) {
+    return jsonWithRequest(request, { error: "forbidden_id_ownership" }, 403);
   }
 
   const scanDate = optionalString(payload.scan_date) ??
@@ -204,8 +208,15 @@ async function handleScanCreate(
     existingScan?.image_url ??
     null;
   const storedAssetPath = allowStoredCloudOriginal
-    ? requestedStoredAssetPath
+    ? normalizeMedicalScanStoragePath(requestedStoredAssetPath, authUserId)
     : null;
+  if (
+    allowStoredCloudOriginal && requestedStoredAssetPath && !storedAssetPath
+  ) {
+    return jsonWithRequest(request, {
+      error: "invalid_storage_object_ownership",
+    }, 403);
+  }
   const requestedStoreOriginalInCloud =
     toBooleanOrNull(payload.store_original_in_cloud) ??
       existingScan?.store_original_in_cloud ??
@@ -237,6 +248,32 @@ async function handleScanCreate(
     }
   }
   const extractedMarkers = extractMarkers(processedData);
+  // Validate all caller-provided IDs before changing the parent scan. SQL
+  // owner immutability additionally closes concurrent insert/upsert races.
+  const suppliedMeasurementIds = extractedMarkers
+    .map((marker) => marker.measurement_id).filter((id): id is string => !!id);
+  if (suppliedMeasurementIds.length > 0) {
+    const { data: measurements, error: ownershipError } = await service
+      .from("health_measurements").select("id,user_id,source_scan_id")
+      .in("id", suppliedMeasurementIds)
+      .returns<
+        Array<{ id: string; user_id: string; source_scan_id: string | null }>
+      >();
+    if (ownershipError) {
+      return jsonWithRequest(request, {
+        error: "scan_measurements_lookup_failed",
+      }, 500);
+    }
+    if (
+      (measurements ?? []).some((row) =>
+        row.user_id !== userId || row.source_scan_id !== scanId
+      )
+    ) {
+      return jsonWithRequest(request, {
+        error: "forbidden_measurement_ownership",
+      }, 403);
+    }
+  }
   const normalizedStatus = normalizeScanStatus(
     payload.status,
     extractedMarkers.length > 0,

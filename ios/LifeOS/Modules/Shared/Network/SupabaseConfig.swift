@@ -57,10 +57,14 @@ enum SupabaseConfig {
     // MARK: - Client
 
     /// Shared Supabase client instance.
+    /// Session tokens go to a hardened Keychain storage
+    /// (AfterFirstUnlock + ThisDeviceOnly) instead of the SDK default, which
+    /// migrates to other devices via device backups.
     static let client = SupabaseClient(
         supabaseURL: url,
         supabaseKey: anonKey,
         options: .init(
+            auth: .init(storage: SupabaseSessionKeychainStorage()),
             global: .init(
                 headers: [
                     "Accept-Encoding": "gzip, br" // Implements §6.1.1 HTTP Compression
@@ -89,6 +93,11 @@ enum SupabaseConfig {
     }
 
     private static func computeIsRunningTests(env: [String: String], args: [String]) -> Bool {
+#if DEBUG
+        // Live UI smoke uses the real Auth flow against the local HTTP stack.
+        // It intentionally does not enable the fake-profile bootstrap flag.
+        if env["LIFEOS_UI_TEST_LIVE_BACKEND"] == "1" { return true }
+#endif
         let uiBootstrapFlag = env["LIFEOS_UI_TEST_BOOTSTRAP"] == "1"
             || args.contains(where: { $0 == "--lifeos-ui-test-bootstrap=1" })
         if env["XCTestConfigurationFilePath"] != nil {

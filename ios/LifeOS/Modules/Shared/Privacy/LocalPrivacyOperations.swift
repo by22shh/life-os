@@ -124,15 +124,18 @@ struct LocalPrivacyErasureDependencies: Sendable {
     let removeLocalExports: @Sendable () throws -> Void
     let removeNutritionPhotoDrafts: @Sendable () throws -> Void
     let deleteDeviceKey: @Sendable () throws -> Void
+    let removeRawAssetsAndBackups: @Sendable () async throws -> Void
 
     init(
         removeLocalExports: @escaping @Sendable () throws -> Void,
         deleteDeviceKey: @escaping @Sendable () throws -> Void,
-        removeNutritionPhotoDrafts: @escaping @Sendable () throws -> Void = {}
+        removeNutritionPhotoDrafts: @escaping @Sendable () throws -> Void = {},
+        removeRawAssetsAndBackups: @escaping @Sendable () async throws -> Void = {}
     ) {
         self.removeLocalExports = removeLocalExports
         self.removeNutritionPhotoDrafts = removeNutritionPhotoDrafts
         self.deleteDeviceKey = deleteDeviceKey
+        self.removeRawAssetsAndBackups = removeRawAssetsAndBackups
     }
 
     static let live = LocalPrivacyErasureDependencies(
@@ -144,6 +147,24 @@ struct LocalPrivacyErasureDependencies: Sendable {
         },
         removeNutritionPhotoDrafts: {
             try NutritionPhotoDraftStore.removeAll()
+        },
+        removeRawAssetsAndBackups: {
+            // Serialize with the backup actor so an in-progress backup cannot
+            // recreate an erased snapshot after cleanup has reported success.
+            try await DatabaseBackupManager.shared.removeAllBackupsForErasure()
+            let fm = FileManager.default
+            let support = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+            let directories = [
+                support.appendingPathComponent("LifeOS/MedicalScans"),
+                support.appendingPathComponent("LifeOS/RecoveryQuarantine"),
+                fm.temporaryDirectory.appendingPathComponent("LifeOS/PrivacyExports")
+            ]
+            for directory in directories where fm.fileExists(atPath: directory.path) {
+                try fm.removeItem(at: directory)
+                guard !fm.fileExists(atPath: directory.path) else {
+                    throw LocalPrivacyOperationError.exportCleanupVerificationFailed(directory)
+                }
+            }
         }
     )
 }
@@ -181,7 +202,7 @@ enum LocalPrivacyExportWriter {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             try FileManager.default.removeItem(at: fileURL)
         }
-        try data.write(to: fileURL, options: .atomic)
+        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         return fileURL
     }
 
@@ -209,7 +230,7 @@ enum LocalPrivacyExportWriter {
             }
             let rows = try Row.fetchAll(db, sql: request.sql, arguments: request.arguments)
             guard !rows.isEmpty else { continue }
-            tables[table] = rows.map(serializedRow(from:))
+            tables[table] = try rows.map { try serializedRow(from: $0) }
         }
 
         return LocalPrivacyExportDocument(
@@ -231,6 +252,15 @@ enum LocalPrivacyExportWriter {
     ) throws -> (sql: String, arguments: StatementArguments)? {
         let columns = Set(try db.columns(in: table).map { $0.name.lowercased() })
         let tableName = LocalUserDataReset.quotedIdentifier(table)
+
+        // These children have no user_id: select through their owned parent.
+        let parentLinks: [String: (String, String)] = [
+            "workout_exercises": ("workout_sessions", "session_id"),
+            "batch_recipe_ingredients": ("batch_recipes", "batch_recipe_id")
+        ]
+        if let (parent, foreignKey) = parentLinks[table] {
+            return ("SELECT child.* FROM \(tableName) child JOIN \(parent) parent ON child.\(foreignKey) = parent.id WHERE parent.user_id = ? OR lower(CAST(parent.user_id AS TEXT)) = lower(?) ORDER BY child.rowid", [user.userId, user.userId.uuidString])
+        }
 
         if columns.contains("user_id") {
             return (
@@ -296,13 +326,17 @@ enum LocalPrivacyExportWriter {
         return nil
     }
 
-    private static func serializedRow(from row: Row) -> [String: LocalPrivacyExportValue] {
-        Dictionary(uniqueKeysWithValues: Array(row.columnNames).enumerated().map { index, columnName in
-            (columnName, serializedValue(from: row[index]))
+    private static func serializedRow(from row: Row) throws -> [String: LocalPrivacyExportValue] {
+        try Dictionary(uniqueKeysWithValues: Array(row.columnNames).enumerated().map { index, columnName in
+            if (columnName == "id" || columnName.hasSuffix("_id")),
+               let uuid = MixedUUIDStorage.decode(from: row, column: columnName) {
+                return (columnName, .string(uuid.uuidString.lowercased()))
+            }
+            return (columnName, try serializedValue(from: row[index]))
         })
     }
 
-    private static func serializedValue(from value: (any DatabaseValueConvertible)?) -> LocalPrivacyExportValue {
+    private static func serializedValue(from value: (any DatabaseValueConvertible)?) throws -> LocalPrivacyExportValue {
         guard let value else { return .null }
         switch value {
         case let value as Int64:
@@ -314,6 +348,13 @@ enum LocalPrivacyExportWriter {
         case let value as Float:
             return .double(Double(value))
         case let value as String:
+            if FieldEncryption.isStorageEncrypted(value) {
+                // Fail the export instead of silently exporting unreadable ciphertext.
+                guard let plaintext = FieldEncryption.decryptStoredString(value) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                return .string(plaintext)
+            }
             return .string(value)
         case let value as Data:
             return .data(value.base64EncodedString())
@@ -372,6 +413,12 @@ enum LocalPrivacyErasureExecutor {
         dependencies: LocalPrivacyErasureDependencies = .live
     ) async throws -> ErasureStatusResponse {
         let completedAt = Date()
+        do {
+            try await dependencies.removeRawAssetsAndBackups()
+        } catch {
+            try await recordFailure(for: user.userId, type: "local_raw_asset_backup_cleanup", error: error, dbQueue: dbQueue, createdAt: completedAt)
+            throw error
+        }
         do {
             try dependencies.removeLocalExports()
         } catch {
@@ -441,6 +488,13 @@ enum LocalPrivacyErasureExecutor {
                 createdAt: completedAt
             )
             throw error
+        }
+
+        // Erase freed SQLite pages and truncate WAL before certifying deletion.
+        try await dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+            try db.execute(sql: "VACUUM")
+            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
         }
 
         try await dbQueue.write { db in

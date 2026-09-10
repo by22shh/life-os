@@ -52,6 +52,11 @@ actor WidgetSnapshotCoordinator {
             let snapshot = try await snapshotBuilder(dbQueue, authId, now, privacy)
             WidgetSnapshotStorage.storeSnapshot(snapshot, defaults: defaults)
         } catch {
+            let canPreserve = (try? await dbQueue.read { db in
+                guard let user = try UserIdentityLookup.fetchUser(authId: authId, db: db) else { return false }
+                return try !NutritionSafetyPolicy.hidesCalories(in: db, userId: user.id)
+            }) ?? false
+            if !canPreserve { WidgetSnapshotStorage.storeSnapshot(nil, defaults: defaults) }
             let preservedExistingSnapshot = WidgetSnapshotStorage.loadSnapshot(defaults: defaults) != nil
             let errorDescription = String(describing: error)
             Self.logger.error(
@@ -80,6 +85,10 @@ actor WidgetSnapshotCoordinator {
             let timeZone = safeTimeZone(user.timezone)
             let today = localDayString(for: now, timeZone: timeZone)
             let todayDate = date(from: today, timeZone: timeZone)
+            var privacy = privacy
+            if try NutritionSafetyPolicy.hidesCalories(in: db, userId: user.id) {
+                privacy.showNutrition = false
+            }
 
             return WidgetSnapshot(
                 generatedAt: now,
@@ -170,6 +179,7 @@ actor WidgetSnapshotCoordinator {
         userId: UUID,
         today: String
     ) throws -> WidgetSnapshot.NutritionPayload {
+        let suppressTargets = try NutritionSafetyPolicy.suppressesTargets(in: db, userId: userId)
         let totals = try Row.fetchOne(
             db,
             sql: """
@@ -221,13 +231,13 @@ actor WidgetSnapshotCoordinator {
 
         return WidgetSnapshot.NutritionPayload(
             calories: totals?["calories"] ?? 0,
-            targetCalories: targetRow?["calories"],
+            targetCalories: suppressTargets ? nil : targetRow?["calories"],
             proteinG: totals?["protein_g"] ?? 0,
-            targetProteinG: targetRow?["protein_g"],
+            targetProteinG: suppressTargets ? nil : targetRow?["protein_g"],
             carbsG: totals?["carbs_g"] ?? 0,
-            targetCarbsG: targetRow?["carbs_g"],
+            targetCarbsG: suppressTargets ? nil : targetRow?["carbs_g"],
             fatG: totals?["fat_g"] ?? 0,
-            targetFatG: targetRow?["fat_g"],
+            targetFatG: suppressTargets ? nil : targetRow?["fat_g"],
             fiberG: totals?["fiber_g"] ?? 0,
             targetFiberG: fiberTarget,
             waterMl: totalWaterMl,

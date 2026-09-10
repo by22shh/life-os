@@ -22,6 +22,7 @@ private actor HealthSyncDataProviderStub: HealthSyncDataProviding {
         var failingHRVDateKeys: Set<String> = []
         var throwOnSteps = false
         var throwOnActiveCalories = false
+        var workouts: [HealthKitImportedWorkout] = []
     }
 
     private let config: Config
@@ -30,6 +31,8 @@ private actor HealthSyncDataProviderStub: HealthSyncDataProviding {
     init(config: Config) {
         self.config = config
     }
+
+    func fetchWorkouts(for dayContext: HistoricalLocalDayContext) async throws -> [HealthKitImportedWorkout] { config.workouts }
 
     func fetchLatestHRV(for dayContext: HistoricalLocalDayContext) async throws -> Double? {
         let key = dayContext.dayString
@@ -143,6 +146,252 @@ private actor EnvironmentServiceStub: EnvironmentServiceProtocol {
 }
 
 final class HealthSyncManagerFlowIntegrationTests: XCTestCase {
+    private static func sleepDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer().decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: value) { return date }
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: value) { return date }
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Invalid date"))
+        }
+        return decoder
+    }
+
+    func testLiveImportHonorsDisabledHRVAndMatchesDatabaseScoring() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        let target = dateFrom(day: "2026-03-08")
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try Self.seedBaselineRows(userId: user.id, db: db)
+            var flags = UserHealthFlags(userId: user.id)
+            flags.hasCardiacCondition = true
+            try flags.insert(db)
+        }
+        let sleep = SleepData(totalHours: 8, deepMinutes: 0, remMinutes: 0, lightMinutes: 480, awakeMinutes: 0, efficiency: nil, bedTime: nil, wakeTime: nil, hasStages: false)
+        let engine = SyncEngine(dbQueue: manager.dbQueue)
+        let sync = HealthSyncManager(
+            healthKitManager: HealthSyncDataProviderStub(config: .init(hrv: 4.8, sleep: sleep, rhr: 55)),
+            environmentService: EnvironmentServiceStub(result: .failure(HealthSyncTestError.environment)),
+            dbQueue: manager.dbQueue, isHealthKitAvailable: { true }, syncEngineProvider: { engine },
+            timeZoneHistoryStore: TimeZoneHistoryStore(dbQueue: manager.dbQueue), nowProvider: { target }
+        )
+        try await sync.syncDailyState(for: target, userId: user.id)
+        try await manager.dbQueue.read { db in
+            let state = try XCTUnwrap(PhysiologicalState.filter(Column("user_id") == user.id.uuidString && Column("date") == "2026-03-08").fetchOne(db))
+            let recomputed = try RecoveryEngine.computeScore(userId: user.id, date: state.date, db: db)
+            XCTAssertNil(state.hrvScore)
+            XCTAssertNil(state.deepSleepPercent)
+            XCTAssertNil(state.remSleepPercent)
+            XCTAssertEqual(state.recoveryScore, recomputed.score, accuracy: 0.0001)
+            XCTAssertEqual(state.sleepScore, recomputed.components.sleepScore)
+            XCTAssertEqual(try SleepLog.filter((Column("user_id") == user.id || Column("user_id") == user.id.uuidString) && Column("date") == state.date).fetchCount(db), 1)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 2)
+        }
+    }
+
+    @MainActor
+    func testManualSleepValidatesIntervalAndPersistsScoreWithOutboxAtomically() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        try await manager.dbQueue.write { db in try user.insert(db) }
+        AuthManager.setActiveAuthIdForTests(user.authId)
+        defer { AuthManager.setActiveAuthIdForTests(nil) }
+        let wake = try XCTUnwrap(DiaryDateFormatter.parseDate("2026-03-08")).addingTimeInterval(8 * 3600)
+        let model = SleepDayViewModel(dateString: "2026-03-08", dbQueue: manager.dbQueue, syncEngine: SyncEngine(dbQueue: manager.dbQueue))
+        do {
+            try await model.saveManualSleep(bedTime: wake, wakeTime: wake)
+            XCTFail("Zero duration must fail")
+        } catch { }
+        try await model.saveManualSleep(bedTime: wake.addingTimeInterval(-8 * 3600), wakeTime: wake)
+        try await manager.dbQueue.read { db in
+            let log = try XCTUnwrap(SleepLog.fetchOne(db))
+            XCTAssertEqual(log.source, .manual)
+            XCTAssertEqual(log.totalDurationMinutes, 480)
+            XCTAssertNil(log.deepSleepMinutes)
+            XCTAssertEqual(try PhysiologicalState.fetchCount(db), 1)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 2)
+        }
+    }
+
+    @MainActor
+    func testHealthKitManualHealthKitRetainsOneIdentityAndManualMetricsWithoutEngine() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        try await manager.dbQueue.write { db in try user.insert(db) }
+        AuthManager.setActiveAuthIdForTests(user.authId)
+        defer { AuthManager.setActiveAuthIdForTests(nil) }
+        let wake = try XCTUnwrap(DiaryDateFormatter.parseDate("2026-03-08")).addingTimeInterval(8 * 3600)
+        let sample = SleepData(totalHours: 6, deepMinutes: 60, remMinutes: 60, lightMinutes: 240, awakeMinutes: 0, efficiency: 90, bedTime: wake.addingTimeInterval(-6 * 3600), wakeTime: wake)
+        let sync = HealthSyncManager(
+            healthKitManager: HealthSyncDataProviderStub(config: .init(sleep: sample)),
+            environmentService: EnvironmentServiceStub(result: .failure(HealthSyncTestError.environment)),
+            dbQueue: manager.dbQueue, isHealthKitAvailable: { true }, syncEngineProvider: { nil },
+            timeZoneHistoryStore: TimeZoneHistoryStore(dbQueue: manager.dbQueue), nowProvider: { wake }
+        )
+        try await sync.syncDailyState(for: wake, userId: user.id)
+        let firstID = try await manager.dbQueue.read { db in try XCTUnwrap(SleepLog.fetchOne(db)).id }
+        let model = SleepDayViewModel(dateString: "2026-03-08", dbQueue: manager.dbQueue, syncEngine: nil)
+        try await model.saveManualSleep(bedTime: wake.addingTimeInterval(-8 * 3600), wakeTime: wake)
+        try await sync.syncDailyState(for: wake, userId: user.id)
+        try await manager.dbQueue.read { db in
+            let logs = try SleepLog.filter(Column("deleted_at") == nil).fetchAll(db)
+            XCTAssertEqual(logs.count, 1)
+            let log = try XCTUnwrap(logs.first)
+            XCTAssertEqual(log.id, firstID)
+            XCTAssertEqual(log.source, .manual)
+            XCTAssertEqual(log.totalDurationMinutes, 480)
+            XCTAssertNil(log.deepSleepMinutes)
+            let state = try XCTUnwrap(PhysiologicalState.fetchOne(db))
+            XCTAssertEqual(state.sleepDurationHours, 8)
+            XCTAssertNil(state.deepSleepPercent)
+            XCTAssertNil(state.remSleepPercent)
+            let score = try RecoveryEngine.computeScore(userId: user.id, date: log.date, db: db)
+            XCTAssertEqual(state.recoveryScore, score.score, accuracy: 0.0001)
+            let sleepEvents = try OutboxEvent.filter(Column("path") == "api-sleep-log").fetchAll(db)
+            XCTAssertEqual(sleepEvents.count, 2)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 5)
+            XCTAssertTrue(try sleepEvents.contains { try Self.sleepDecoder().decode(SleepLog.self, from: $0.bodyJson).source == .manual })
+        }
+    }
+
+    @MainActor
+    func testManualSleepAndStateRollbackWhenOutboxInsertFails() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try db.execute(sql: "CREATE TRIGGER fail_sleep_outbox BEFORE INSERT ON outbox_events WHEN NEW.path = 'api-sleep-log' BEGIN SELECT RAISE(ABORT, 'injected failure'); END")
+        }
+        AuthManager.setActiveAuthIdForTests(user.authId)
+        defer { AuthManager.setActiveAuthIdForTests(nil) }
+        let wake = try XCTUnwrap(DiaryDateFormatter.parseDate("2026-03-08")).addingTimeInterval(8 * 3600)
+        let model = SleepDayViewModel(dateString: "2026-03-08", dbQueue: manager.dbQueue, syncEngine: nil)
+        do {
+            try await model.saveManualSleep(bedTime: wake.addingTimeInterval(-8 * 3600), wakeTime: wake)
+            XCTFail("Outbox failure must fail the complete mutation")
+        } catch { }
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try SleepLog.fetchCount(db), 0)
+            XCTAssertEqual(try PhysiologicalState.fetchCount(db), 0)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+    }
+
+    func testSleepHistoryUsesDistinctDaysAndManualPrecedenceForLegacyUUIDRepresentations() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            for day in ["2026-03-06", "2026-03-07"] {
+                var manual = SleepLog(userId: user.id, date: day, source: .manual)
+                manual.totalDurationMinutes = 480
+                manual.updatedAt = Date(timeIntervalSince1970: 1000)
+                try manual.insert(db)
+                var imported = SleepLog(userId: user.id, date: day)
+                imported.totalDurationMinutes = 360
+                imported.updatedAt = Date(timeIntervalSince1970: 2000)
+                try imported.insert(db)
+                // Exercise text IDs in addition to GRDB's historical UUID blobs.
+                try db.execute(sql: "UPDATE sleep_logs SET user_id = ? WHERE id = ?", arguments: [user.id.uuidString, imported.id])
+            }
+            let recent = try SleepRecordSelection.recent(userId: user.id, before: "2026-03-08", limit: 7, db: db)
+            XCTAssertEqual(recent.count, 2)
+            XCTAssertTrue(recent.allSatisfy { $0.source == .manual && $0.totalDurationMinutes == 480 })
+            try SleepSyncHandler.reconcileParentChild(in: db)
+            XCTAssertEqual(try SleepLog.filter(Column("deleted_at") == nil).fetchCount(db), 2)
+        }
+    }
+
+    func testLegacySubjectiveSleepCanBeEnrichedWhileManualTombstoneCannot() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        let target = dateFrom(day: "2026-03-08")
+        var legacy = SleepLog(userId: user.id, date: "2026-03-08", source: .manual)
+        legacy.notes = "Subjective diary retained"
+        legacy.perceivedQuality = 4
+        let original = legacy
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try original.insert(db)
+            var state = PhysiologicalState(userId: user.id, date: original.date, recoveryScore: 50)
+            state.sleepDurationHours = 7
+            try state.insert(db)
+            try SleepSyncHandler.reconcileParentChild(in: db)
+            XCTAssertEqual(try PhysiologicalState.fetchOne(db)?.sleepDurationHours, 7)
+        }
+        let sample = SleepData(totalHours: 8, deepMinutes: 60, remMinutes: 60, lightMinutes: 360, awakeMinutes: 0, efficiency: 90, bedTime: target.addingTimeInterval(-8 * 3600), wakeTime: target)
+        let sync = HealthSyncManager(
+            healthKitManager: HealthSyncDataProviderStub(config: .init(sleep: sample)),
+            environmentService: EnvironmentServiceStub(result: .failure(HealthSyncTestError.environment)),
+            dbQueue: manager.dbQueue, isHealthKitAvailable: { true }, syncEngineProvider: { nil },
+            timeZoneHistoryStore: TimeZoneHistoryStore(dbQueue: manager.dbQueue), nowProvider: { target }
+        )
+        try await sync.syncDailyState(for: target, userId: user.id)
+        try await manager.dbQueue.write { db in
+            var log = try XCTUnwrap(SleepRecordSelection.daily(userId: user.id, day: original.date, db: db))
+            XCTAssertEqual(log.id, original.id)
+            XCTAssertEqual(log.source, .healthkit)
+            XCTAssertEqual(log.totalDurationMinutes, 480)
+            XCTAssertEqual(log.perceivedQuality, 4)
+            XCTAssertEqual(log.notes, original.notes)
+            log.source = .manual
+            log.totalDurationMinutes = nil
+            log.deletedAt = Date()
+            try log.update(db)
+        }
+        try await sync.syncDailyState(for: target, userId: user.id)
+        try await manager.dbQueue.read { db in
+            let deleted = try XCTUnwrap(SleepRecordSelection.daily(userId: user.id, day: original.date, includeDeleted: true, db: db))
+            XCTAssertNotNil(deleted.deletedAt)
+            XCTAssertNil(deleted.totalDurationMinutes)
+            XCTAssertNil(try PhysiologicalState.fetchOne(db)?.sleepDurationHours)
+        }
+    }
+
+    func testSleepPullDecodesLegacyServerDiaryAlongsideObjectiveFields() throws {
+        let object: [String: Any] = [
+            "id": UUID().uuidString, "user_id": UUID().uuidString,
+            "sleep_date": "2026-03-08", "created_at": "2026-03-08T08:00:00Z", "updated_at": "2026-03-08T08:00:00Z",
+            "source": "manual", "total_duration_minutes": 480, "bedtime_actual": "23:00:00", "waketime": "07:00:00",
+            "sleep_timezone": "UTC", "alcohol": true, "room_temperature": "comfortable", "room_darkness": "dark", "noise_level": "silent"
+        ]
+        let log = try Self.sleepDecoder().decode(SleepLog.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertEqual(log.totalDurationMinutes, 480)
+        XCTAssertEqual(log.source, .manual)
+        XCTAssertEqual(try XCTUnwrap(log.waketime).timeIntervalSince(try XCTUnwrap(log.bedtimeActual)), 8 * 3600, accuracy: 0.01)
+        XCTAssertNil(log.roomTemperature, "Qualitative labels must not fabricate measured temperature")
+        XCTAssertEqual(log.alcohol, 1)
+        var corrected = log
+        corrected.bedTime = try XCTUnwrap(log.bedtimeActual).addingTimeInterval(3600)
+        let snapshot = SleepDetailSnapshot(day: log.date, displayDate: log.date, age: 30, baselineSleepHours: nil, sleepLog: corrected, state: nil, score: nil, confidenceScore: nil, trendPoints: [], factors: [], tryTonightItems: [], stageFeedback: nil)
+        XCTAssertEqual(snapshot.bedtime, corrected.bedTime, "Canonical bedtime must override stale legacy TIME after cloud pull")
+    }
+
+    func testImportedWorkoutWithoutEngineIsQueuedOnce() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        try await manager.dbQueue.write { db in try user.insert(db) }
+        let date = dateFrom(day: "2026-03-08")
+        let workout = HealthKitImportedWorkout(sourceId: "hk-regression", startDate: date, endDate: date.addingTimeInterval(1800), sessionDate: "2026-03-08", workoutType: .cardio, estimatedCalories: 200, durationMinutes: 30, startedTimezone: "UTC", startedUTCOffsetMinutes: 0, trimpScore: 40, inferredRPE: 5, sourceRank: 1)
+        let sync = HealthSyncManager(
+            healthKitManager: HealthSyncDataProviderStub(config: .init(workouts: [workout])),
+            environmentService: EnvironmentServiceStub(result: .failure(HealthSyncTestError.environment)),
+            dbQueue: manager.dbQueue, isHealthKitAvailable: { true }, syncEngineProvider: { nil },
+            timeZoneHistoryStore: TimeZoneHistoryStore(dbQueue: manager.dbQueue), nowProvider: { date }
+        )
+        try await sync.syncImportedWorkouts(for: date, userId: user.id)
+        try await sync.syncImportedWorkouts(for: date, userId: user.id)
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try WorkoutSession.fetchCount(db), 1)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 1)
+        }
+    }
+
     func testSyncDailyStateInsertsThenUpdatesAndEnqueuesOutbox() async throws {
         let manager = try DatabaseManager.inMemory()
         let user = User(authId: UUID())
@@ -216,7 +465,7 @@ final class HealthSyncManagerFlowIntegrationTests: XCTestCase {
         let outboxCountAfterInsert = try await manager.dbQueue.read { db in
             try OutboxEvent.fetchCount(db)
         }
-        XCTAssertEqual(outboxCountAfterInsert, 1)
+        XCTAssertEqual(outboxCountAfterInsert, 2) // state and imported sleep commit together
 
         let updateStub = HealthSyncDataProviderStub(
             config: .init(
@@ -251,7 +500,7 @@ final class HealthSyncManagerFlowIntegrationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(updated.updatedAt, inserted.updatedAt)
         XCTAssertEqual(try XCTUnwrap(updated.hrvMs), 4.1, accuracy: 0.0001)
         XCTAssertEqual(updated.restingHeartRateBpm, 60)
-        XCTAssertNil(updated.sleepDurationHours)
+        XCTAssertEqual(updated.sleepDurationHours, 8.0) // retain the saved sleep record when a query has no new data
         XCTAssertNil(updated.steps)
         XCTAssertNil(updated.activeCalories)
         XCTAssertEqual(updated.environmentalContext?.city, "Baku")
@@ -260,7 +509,7 @@ final class HealthSyncManagerFlowIntegrationTests: XCTestCase {
         let outboxCountAfterUpdate = try await manager.dbQueue.read { db in
             try OutboxEvent.fetchCount(db)
         }
-        XCTAssertEqual(outboxCountAfterUpdate, 2)
+        XCTAssertEqual(outboxCountAfterUpdate, 3)
     }
 
     func testSyncDailyStateExitsWhenHealthKitUnavailable() async throws {

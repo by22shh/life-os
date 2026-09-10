@@ -1,0 +1,21 @@
+Test Suite 'LifeOSTests.xctest' started at 2026-09-09 12:46:34.490.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.022 (0.024) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.243 (0.245) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.006 (0.007) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.223 (0.233) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.019 (0.020) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.214 (0.216) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.005 (0.006) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 2.760 (2.761) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.374 (0.376) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.322 (0.324) seconds
+Test Suite 'LifeOSTests.xctest' passed at 2026-09-09 12:48:19.260.
+	 Executed 815 tests, with 5 tests skipped and 0 failures (0 unexpected) in 104.353 (104.770) seconds
+	 Executed 815 tests, with 5 tests skipped and 0 failures (0 unexpected) in 104.353 (104.771) seconds
+Test Suite 'LifeOSWidgetsTests.xctest' started at 2026-09-09 12:48:21.059.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.123 (0.125) seconds
+Test Suite 'LifeOSWidgetsTests.xctest' passed at 2026-09-09 12:48:21.184.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.123 (0.125) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.123 (0.126) seconds
+** TEST SUCCEEDED **

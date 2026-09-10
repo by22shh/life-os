@@ -408,7 +408,7 @@ async function buildExportPayload(
   const workoutSets = await fetchAllByIds(
     service,
     "workout_sets",
-    "exercise_id",
+    "exercise_entry_id",
     collectIds(workoutExercises),
   );
   const trainingPlanSessions = await fetchAllByIds(

@@ -588,6 +588,7 @@ final class HomeViewModel {
         today: String
     ) throws -> Int? {
         // Get daily target
+        guard try !NutritionSafetyPolicy.suppressesTargets(in: db, userId: userId) else { return nil }
         let targetCalories = try Int.fetchOne(
             db,
             sql: """
@@ -927,11 +928,11 @@ private struct RecoverySnapshot {
             sql: """
                 SELECT *
                 FROM physiological_states
-                WHERE user_id = ? OR user_id = ?
+                WHERE (user_id = ? OR user_id = ?) AND date = ?
                 ORDER BY date DESC
                 LIMIT 1
                 """,
-            arguments: [userId, userId.uuidString]
+            arguments: [userId, userId.uuidString, DiaryDateFormatter.formatDate(Date())]
         ) else {
             return nil
         }

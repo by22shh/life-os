@@ -1,0 +1,19 @@
+Source: /tmp/lifeos-fix-20260909/ios-performance-final.log
+Running iOS performance hard-gates on simulator: iPhone 17 Pro
+Budgets: startup=4000ms sync_latency=2500ms sync_memory=450MB sync_memory_growth=64MB
+Test Case '-[LifeOSTests.PerformanceBudgetTests testBudgetConstantsMatchBlueprint]' passed (0.001 seconds).
+Test Case '-[LifeOSTests.PerformanceBudgetTests testDiaryRefreshFitsBudgetOnInMemoryDatabase]' passed (0.089 seconds).
+Test Case '-[LifeOSTests.PerformanceBudgetTests testLocalQueryFitsBudgetOnInMemoryDatabase]' passed (0.078 seconds).
+Test Case '-[LifeOSTests.PerformanceBudgetTests testPerformanceMonitorTrackingPathsDoNotCrash]' passed (2.606 seconds).
+	 Executed 4 tests, with 0 failures (0 unexpected) in 2.774 (2.776) seconds
+Test Case '-[LifeOSTests.PerformanceHardGateTests testSyncPushLatencyHardGate]' passed (0.249 seconds).
+Test Case '-[LifeOSTests.PerformanceHardGateTests testSyncPushResidentMemoryHardGate]' passed (0.387 seconds).
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.637 (0.637) seconds
+	 Executed 6 tests, with 0 failures (0 unexpected) in 3.411 (3.414) seconds
+	 Executed 6 tests, with 0 failures (0 unexpected) in 3.411 (3.415) seconds
+Test Case '-[LifeOSUITests.PerformanceHardGateUITests testColdLaunchStartupBudgetHardGate]' passed (17.566 seconds).
+	 Executed 1 test, with 0 failures (0 unexpected) in 17.566 (17.567) seconds
+	 Executed 1 test, with 0 failures (0 unexpected) in 17.566 (17.568) seconds
+	 Executed 1 test, with 0 failures (0 unexpected) in 17.566 (17.569) seconds
+** TEST SUCCEEDED **
+iOS performance hard-gates passed.

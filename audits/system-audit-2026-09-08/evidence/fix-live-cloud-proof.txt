@@ -1,0 +1,3 @@
+PASS: fresh simulator persisted a real cloud Auth identity.
+PASS: matching anonymous auth.users/public.users row exists in local Supabase.
+PASS: no offline fallback identity was created.

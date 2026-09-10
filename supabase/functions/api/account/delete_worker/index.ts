@@ -18,6 +18,7 @@ import {
   type UserRow,
   verifyVectorDeletion,
 } from "../../../_shared/account_deletion.ts";
+import { deleteUserVectorMemory } from "../../../_shared/vector_memory.ts";
 
 const DEFAULT_BATCH_SIZE = 25;
 const MAX_BATCH_SIZE = 25;
@@ -223,6 +224,18 @@ async function processDueScheduledDeletionJob(
     );
   }
 
+  try {
+    await deleteUserVectorMemory(service, effectiveUser.id);
+  } catch (error) {
+    return await handleScheduledFailure(service, job, reason, {
+      failureType: "pinecone",
+      error: error instanceof Error ? error.message : "vector_delete_failed",
+      storageDeleted: true,
+      postgresDeleted: false,
+      vectorsDeleted: false,
+      authDeleted: false,
+    }, context.user != null);
+  }
   const postgresDelete = await deletePostgresData(service, effectiveUser.id);
   if (!postgresDelete.ok) {
     return await handleScheduledFailure(

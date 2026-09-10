@@ -29,7 +29,7 @@ struct MealTemplatesView: View {
                 Text(String(localized: "nutrition_templates_title"))
                     .font(LifeOSTypography.subheadline.weight(.semibold))
                 Spacer()
-                NavigationLink(String(localized: "nutrition_see_all")) {
+                NavigationLink {
                     MealTemplateLibraryView(
                         targetDay: targetDay,
                         loggedAt: loggedAt,
@@ -39,8 +39,13 @@ struct MealTemplatesView: View {
                         },
                         onTemplateLogged: onTemplateLogged
                     )
+                } label: {
+                    Text(String(localized: "nutrition_see_all"))
+                        .font(LifeOSTypography.caption)
+                        .foregroundStyle(LifeOSColors.Semantic.primary)
+                        .frame(minWidth: LayoutConstants.minTouchTarget, minHeight: LayoutConstants.minTouchTarget)
+                        .contentShape(Rectangle())
                 }
-                .font(LifeOSTypography.caption)
             }
 
             if isLoading {
@@ -48,7 +53,7 @@ struct MealTemplatesView: View {
             } else if templates.isEmpty {
                 Text(String(localized: "nutrition_no_templates"))
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Spacing.s) {
@@ -96,11 +101,11 @@ struct MealTemplatesView: View {
                     .lineLimit(2)
                 Text(templateMacroSummary(template))
                     .font(LifeOSTypography.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                 if let lastUsed = template.lastUsedAt {
                     Text(localizedNutritionLastUsed(lastUsed))
                         .font(LifeOSTypography.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(LifeOSColors.Text.tertiary)
                 }
             }
             .frame(width: 164, alignment: .leading)
@@ -112,7 +117,8 @@ struct MealTemplatesView: View {
     }
 
     private func templateMacroSummary(_ template: NutritionMealTemplateSummary) -> String {
-        String(
+        if NutritionSafetyPolicy.hidesCalories { return localizedNutritionMacroTotals(protein: template.proteinG, fat: template.fatG, carbs: template.carbsG, fiber: nil) }
+        return String(
             format: String(localized: "nutrition_template_macro_summary_format"),
             Int(template.calories.rounded()),
             Int(template.proteinG.rounded()),
@@ -159,7 +165,7 @@ struct MealTemplateLibraryView: View {
                 VStack(spacing: Spacing.s) {
                     Text(showingArchived ? String(localized: "nutrition_no_archived_templates") : String(localized: "nutrition_no_templates"))
                         .font(LifeOSTypography.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .multilineTextAlignment(.center)
 
                     if !showingArchived {
@@ -281,17 +287,17 @@ struct MealTemplateLibraryView: View {
                         .foregroundStyle(.primary)
                     Text(templateRowSubtitle(template))
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                     if let lastUsed = template.lastUsedAt {
                         Text(localizedNutritionLastUsed(lastUsed))
                             .font(LifeOSTypography.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(LifeOSColors.Text.tertiary)
                     }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(LifeOSColors.Text.tertiary)
             }
         }
         .buttonStyle(.plain)
@@ -376,7 +382,8 @@ struct MealTemplateLibraryView: View {
     }
 
     private func templateRowSubtitle(_ template: NutritionMealTemplateSummary) -> String {
-        String(
+        if NutritionSafetyPolicy.hidesCalories { return localizedNutritionMacroTotals(protein: template.proteinG, fat: template.fatG, carbs: template.carbsG, fiber: nil) }
+        return String(
             format: String(localized: "nutrition_template_row_subtitle_format"),
             localizedNutritionMealType(template.mealType, emptyKey: "nutrition_any_meal"),
             Int(template.calories.rounded()),
@@ -848,7 +855,7 @@ struct MealTemplateDetailView: View {
                         .font(LifeOSTypography.title3.weight(.semibold))
                     Text(localizedNutritionMealType(viewModel.mealType, emptyKey: "nutrition_any_meal"))
                         .font(LifeOSTypography.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 }
                 Spacer()
                 if viewModel.archived {
@@ -865,7 +872,7 @@ struct MealTemplateDetailView: View {
                 .font(LifeOSTypography.title3)
             Text(templateTotalsText(totals))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
 
             HStack(spacing: Spacing.s) {
                 Text(localizedNutritionUsedCount(viewModel.timesUsed))
@@ -874,7 +881,7 @@ struct MealTemplateDetailView: View {
                 }
             }
             .font(LifeOSTypography.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(LifeOSColors.Text.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -945,11 +952,11 @@ struct MealTemplateDetailView: View {
             if !item.brand.isEmpty {
                 Text(item.brand)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
             Text(templateItemSummary(item))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -1032,7 +1039,7 @@ struct MealTemplateDetailView: View {
 
             HStack(spacing: Spacing.s) {
                 templateNumericField(String(localized: "nutrition_unit_grams"), value: $viewModel.items[index].weightG)
-                templateNumericField(String(localized: "nutrition_unit_kcal"), value: $viewModel.items[index].calories)
+                if !NutritionSafetyPolicy.hidesCalories { templateNumericField(String(localized: "nutrition_unit_kcal"), value: $viewModel.items[index].calories) }
             }
 
             HStack(spacing: Spacing.s) {
@@ -1051,7 +1058,7 @@ struct MealTemplateDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             TextField(
                 title,
                 value: value,
@@ -1220,7 +1227,7 @@ struct MealTemplateComposerView: View {
                 .font(LifeOSTypography.title3)
             Text(templateTotalsText(totals))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -1248,7 +1255,7 @@ struct MealTemplateComposerView: View {
             if items.isEmpty {
                 Text(String(localized: "nutrition_template_items_hint"))
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(Spacing.s)
                     .background(LifeOSColors.Surface.card)
@@ -1283,7 +1290,7 @@ struct MealTemplateComposerView: View {
 
             HStack(spacing: Spacing.s) {
                 templateNumericField(String(localized: "nutrition_unit_grams"), value: $items[index].weightG)
-                templateNumericField(String(localized: "nutrition_unit_kcal"), value: $items[index].calories)
+                if !NutritionSafetyPolicy.hidesCalories { templateNumericField(String(localized: "nutrition_unit_kcal"), value: $items[index].calories) }
             }
 
             HStack(spacing: Spacing.s) {
@@ -1295,7 +1302,7 @@ struct MealTemplateComposerView: View {
 
             Text(templateItemSummary(items[index]))
                 .font(LifeOSTypography.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -1320,7 +1327,7 @@ struct MealTemplateComposerView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             TextField(
                 title,
                 value: value,
@@ -1625,7 +1632,7 @@ struct BatchRecipeLibraryView: View {
                             : String(localized: "nutrition_create_first_meal_prep")
                     )
                         .font(LifeOSTypography.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .multilineTextAlignment(.center)
 
                     if !showingArchived {
@@ -1686,11 +1693,11 @@ struct BatchRecipeLibraryView: View {
                             if let cookedAt = recipe.cookedAt {
                                 Text(localizedNutritionCooked(cookedAt))
                                     .font(LifeOSTypography.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                             Text(remainingLine(recipe))
                                 .font(LifeOSTypography.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(LifeOSColors.Text.secondary)
                         }
                         Spacer()
                         if recipe.archived {
@@ -1703,18 +1710,18 @@ struct BatchRecipeLibraryView: View {
                         } else {
                             Image(systemName: "chevron.right")
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(LifeOSColors.Text.tertiary)
                         }
                     }
 
                     Text(batchMacroLine(recipe.per100g, prefix: String(localized: "nutrition_per_100g")))
                         .font(LifeOSTypography.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(LifeOSColors.Text.tertiary)
 
                     if let perPortion = recipe.perPortion {
                         Text(batchMacroLine(perPortion, prefix: String(localized: "nutrition_per_portion")))
                             .font(LifeOSTypography.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2021,7 +2028,7 @@ struct BatchRecipeDetailView: View {
                     if let cookedAt = detail.recipe.cookedAt {
                         Text(localizedNutritionCooked(cookedAt))
                             .font(LifeOSTypography.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
                     }
                 }
                 Spacer()
@@ -2041,7 +2048,7 @@ struct BatchRecipeDetailView: View {
             if let portionsRemaining = detail.portionsRemaining {
                 Text(localizedNutritionPortionsLeft(portionsRemaining))
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
 
             HStack(spacing: Spacing.s) {
@@ -2051,12 +2058,12 @@ struct BatchRecipeDetailView: View {
                 }
             }
             .font(LifeOSTypography.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(LifeOSColors.Text.tertiary)
 
             if let description = detail.recipe.description, !description.isEmpty {
                 Text(description)
                     .font(LifeOSTypography.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2076,7 +2083,7 @@ struct BatchRecipeDetailView: View {
                     Text(batchMacroLine(perPortion, prefix: String(localized: "nutrition_per_portion")))
                 }
                 Text(
-                    String(
+                    NutritionSafetyPolicy.hidesCalories ? localizedNutritionMacroTotals(protein: detail.recipe.totalProteinG, fat: detail.recipe.totalFatG, carbs: detail.recipe.totalCarbsG, fiber: nil) : String(
                         format: String(localized: "nutrition_batch_total_summary_format"),
                         Int(detail.recipe.totalCalories.rounded()),
                         Int(detail.recipe.totalProteinG.rounded()),
@@ -2086,7 +2093,7 @@ struct BatchRecipeDetailView: View {
                 )
             }
             .font(LifeOSTypography.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -2112,11 +2119,11 @@ struct BatchRecipeDetailView: View {
             if let brand = ingredient.brand, !brand.isEmpty {
                 Text(brand)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
             Text(batchIngredientLine(ingredient))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -2538,13 +2545,13 @@ struct BatchRecipeComposerView: View {
 
             Text(batchMacroLine(totals, prefix: String(localized: "nutrition_batch_total")))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             Text(batchMacroLine(per100g, prefix: String(localized: "nutrition_per_100g")))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             Text(batchMacroLine(perPortion, prefix: String(localized: "nutrition_per_portion")))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -2558,7 +2565,7 @@ struct BatchRecipeComposerView: View {
                     .font(LifeOSTypography.subheadline.weight(.semibold))
                 Spacer()
                 Menu {
-                    Button("Photo Draft", action: beginCameraCapture)
+                    Button(String(localized: "nutrition_add_ingredient_photo"), action: beginCameraCapture)
                     Button(String(localized: "nutrition_search_food"), action: presentIngredientSearch)
                     Button(String(localized: "nutrition_manual_ingredient"), action: addManualIngredient)
                 } label: {
@@ -2594,7 +2601,7 @@ struct BatchRecipeComposerView: View {
 
             HStack(spacing: Spacing.s) {
                 batchNumericField(String(localized: "nutrition_weight"), value: $ingredients[index].weightG)
-                batchNumericField(String(localized: "nutrition_unit_kcal"), value: $ingredients[index].calories)
+                if !NutritionSafetyPolicy.hidesCalories { batchNumericField(String(localized: "nutrition_unit_kcal"), value: $ingredients[index].calories) }
             }
 
             HStack(spacing: Spacing.s) {
@@ -2613,7 +2620,7 @@ struct BatchRecipeComposerView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             TextField(
                 title,
                 value: value,
@@ -2628,7 +2635,7 @@ struct BatchRecipeComposerView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             TextField(title, value: value, format: .number)
                 .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
@@ -2962,12 +2969,12 @@ struct BatchPortionLogView: View {
                         .font(LifeOSTypography.title3.weight(.semibold))
                     Text(localizedNutritionRemainingLine(weightG: remainingWeightG))
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(String(localized: "nutrition_portion_weight_g"))
                             .font(LifeOSTypography.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
                         TextField(
                             String(localized: "nutrition_portion_weight"),
                             value: $portionWeightG,
@@ -2995,7 +3002,7 @@ struct BatchPortionLogView: View {
 
                     Text(batchMacroLine(preview, prefix: String(localized: "nutrition_preview")))
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
 
                     if portionWeightG > remainingWeightG + 0.001 {
                         Text(String(localized: "nutrition_portion_exceeds_remaining"))
@@ -3094,14 +3101,14 @@ struct BatchRecipeIngredientPickerView: View {
         VStack(spacing: 0) {
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                 TextField(String(localized: "nutrition_search_foods"), text: $query)
                     .textFieldStyle(.plain)
                     .onSubmit(submitSearch)
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
                     }
                 }
             }
@@ -3116,7 +3123,7 @@ struct BatchRecipeIngredientPickerView: View {
             } else if results.isEmpty && !query.isEmpty {
                 Text(String(localized: "nutrition_no_results"))
                     .font(LifeOSTypography.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .padding(.top, Spacing.l)
             } else {
                 List(results, rowContent: searchResultButton)
@@ -3191,11 +3198,11 @@ struct BatchRecipeIngredientPickerView: View {
             if let brand = result.brand {
                 Text(brand)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
-            Text("\(result.roundedCaloriesPer100g) kcal / 100g")
+            Text(NutritionSafetyPolicy.hidesCalories ? "" : "\(result.roundedCaloriesPer100g) kcal / 100g")
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(LifeOSColors.Text.tertiary)
         }
     }
 

@@ -423,6 +423,7 @@ Deno.test("true last mile account deletion storage cleanup persists verified man
           removedBatches.push(batch);
           return Promise.resolve({ error: null });
         },
+        list: () => Promise.resolve({ data: [], error: null }),
       }),
     },
     schema: () => ({
@@ -1282,18 +1283,15 @@ Deno.test("true last mile supplement log validates default dependency guards and
   __supplementLogTestHooks.reset();
   await withEnv("SUPABASE_URL", undefined, async () => {
     await withEnv("SUPABASE_ANON_KEY", undefined, async () => {
-      await assertRejects(
-        () =>
-          serveSupplementLog(
-            new Request("http://localhost", {
-              method: "POST",
-              headers: { Authorization: "Bearer user-token" },
-              body: JSON.stringify({ supplement_name: "Magnesium" }),
-            }),
-          ),
-        Error,
-        "Missing SUPABASE_URL or SUPABASE_ANON_KEY",
+      const response = await serveSupplementLog(
+        new Request("http://localhost", {
+          method: "POST",
+          headers: { Authorization: "Bearer user-token" },
+          body: JSON.stringify({ supplement_name: "Magnesium" }),
+        }),
       );
+      assertEquals(response.status, 503);
+      assertEquals(await response.json(), { error: "auth_unavailable" });
     });
   });
 

@@ -74,6 +74,8 @@ struct NutritionCalendarView: View {
         HStack {
             Button(action: showPreviousMonth) {
                 Image(systemName: "chevron.left")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+                    .contentShape(Rectangle())
             }
 
             Spacer()
@@ -85,6 +87,8 @@ struct NutritionCalendarView: View {
 
             Button(action: showNextMonth) {
                 Image(systemName: "chevron.right")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+                    .contentShape(Rectangle())
             }
         }
         .padding(.horizontal, LayoutConstants.contentPadding)

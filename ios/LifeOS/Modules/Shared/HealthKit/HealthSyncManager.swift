@@ -131,19 +131,11 @@ actor HealthSyncManager {
             steps: steps, activeCal: activeCal
         )
 
-        // 2. Fetch baseline
         let dateString = dayContext.dayString
-        let baseline = try await dbQueue.read { db in
-            try RecoveryEngine.fetchBaseline(userId: userId, currentDate: dateString, db: db)
-        }
-
-        // 3. Compute score via RecoveryEngine
-        let computed = RecoveryEngine.computeScore(
-            hrv: hrv,
-            sleep: sleep,
-            restingHeartRate: rhr,
-            wristTempDeviation: temp,
-            baseline: baseline
+        // Scores are computed from the persisted state inside its transaction,
+        // using the same health flags, age and sleep history as every other caller.
+        let computed = RecoveryEngine.ComputedScore(
+            score: 50, zone: RecoveryZone.from(score: 50), confidence: 0, components: .init()
         )
 
         let existingState = try await dbQueue.read { db in
@@ -171,29 +163,44 @@ actor HealthSyncManager {
             dayContext: dayContext
         )
 
-        // 5. Save to database and enqueue for sync
+        // 5+6. Save to database and enqueue the sync event in ONE transaction:
+        // a crash between the local write and the outbox insert would otherwise
+        // leave the change stranded locally forever.
         let stateSnapshot = state
-        let persistedState: PhysiologicalState = try await dbQueue.write { db in
-            var stateToPersist = stateSnapshot
-            if existingState != nil {
-                stateToPersist.updatedAt = Date()
-                try stateToPersist.update(db)
-            } else {
-                try stateToPersist.insert(db)
-            }
-            return stateToPersist
-        }
-
-        // 6. Push to server via Outbox
         if let syncEngine = syncEngineProvider() {
-            let payload = try JSONEncoder.supabase.encode(persistedState)
-            let event = OutboxEvent(
-                httpMethod: .POST,
-                path: "rest/v1/physiological_states",
-                bodyJson: payload,
-                priority: 90
-            )
-            try await syncEngine.enqueueMutation(event)
+            _ = try await syncEngine.performConditionalOptimisticMutation { db -> (value: Void, event: OutboxEvent?) in
+                var stateToPersist = stateSnapshot
+                if existingState != nil {
+                    stateToPersist.updatedAt = Date()
+                    try stateToPersist.update(db)
+                } else {
+                    try stateToPersist.insert(db)
+                }
+                try Self.applyRecovery(to: &stateToPersist, sleep: sleep, db: db, enqueue: { try syncEngine.enqueueMutation($0, in: db) })
+                let payload = try JSONEncoder.supabase.encode(stateToPersist)
+                let event = OutboxEvent(
+                    httpMethod: .POST,
+                    path: "rest/v1/physiological_states",
+                    bodyJson: payload,
+                    priority: 90
+                )
+                return (value: (), event: event)
+            }
+        } else {
+            let stateSnapshot = stateSnapshot
+            _ = try await dbQueue.write { db -> Void in
+                var stateToPersist = stateSnapshot
+                if existingState != nil {
+                    stateToPersist.updatedAt = Date()
+                    try stateToPersist.update(db)
+                } else {
+                    try stateToPersist.insert(db)
+                }
+                try Self.applyRecovery(to: &stateToPersist, sleep: sleep, db: db, enqueue: { try $0.insert(db) })
+                var stateEvent = OutboxEvent(httpMethod: .POST, path: "rest/v1/physiological_states", bodyJson: try JSONEncoder.supabase.encode(stateToPersist), priority: 90)
+                stateEvent.headersJson = try Self.outboxHeadersJson()
+                try stateEvent.insert(db)
+            }
         }
 
         try await syncImportedWorkouts(for: dayContext, userId: userId)
@@ -283,7 +290,10 @@ actor HealthSyncManager {
         userId: UUID
     ) async throws {
         let updateTimestamp = nowProvider()
-        let session = try await dbQueue.write { db -> WorkoutSession? in
+
+        // The session write and its outbox event must commit together: a crash
+        // between them would leave an imported workout stranded locally forever.
+        let persist: @Sendable (Database) throws -> WorkoutSession? = { db in
             if let existing = try WorkoutSession.fetchOne(
                 db,
                 sql: """
@@ -332,9 +342,21 @@ actor HealthSyncManager {
             return inserted
         }
 
-        guard let session else { return }
+        guard let syncEngine = syncEngineProvider() else {
+            try await dbQueue.write { db in
+                guard let session = try persist(db) else { return }
+                var event = OutboxEvent(httpMethod: .POST, path: "rest/v1/workout_sessions", bodyJson: try JSONEncoder.supabase.encode(session), priority: 95)
+                event.headersJson = try Self.outboxHeadersJson()
+                try event.insert(db)
+            }
+            return
+        }
 
-        let event: OutboxEvent = try {
+        let session: WorkoutSession? = try await syncEngine.performConditionalOptimisticMutation { db in
+            let value = try persist(db)
+            guard let session = value else {
+                return (value: nil as WorkoutSession?, event: nil)
+            }
             var event = OutboxEvent(
                 httpMethod: .POST,
                 path: "rest/v1/workout_sessions",
@@ -342,12 +364,9 @@ actor HealthSyncManager {
                 priority: 95
             )
             event.headersJson = try Self.outboxHeadersJson()
-            return event
-        }()
-
-        try await dbQueue.write { db in
-            try event.insert(db)
+            return (value: session, event: event)
         }
+        _ = session
     }
 
     private static func applyImportedWorkout(
@@ -462,6 +481,52 @@ actor HealthSyncManager {
         try JSONSerialization.data(withJSONObject: ["Content-Type": "application/json"])
     }
 
+    private static func applyRecovery(to state: inout PhysiologicalState, sleep: SleepData?, db: Database, enqueue: ((OutboxEvent) throws -> Void)? = nil) throws {
+        if let sleep {
+            let existing = try SleepRecordSelection.daily(userId: state.userId, day: state.date, includeDeleted: true, db: db)
+            // Respect an explicit local deletion; a later HealthKit pull must not resurrect it.
+            if existing?.deletedAt == nil && existing?.overridesImportedSleep != true {
+                var log = existing ?? SleepLog(userId: state.userId, date: state.date)
+                log.source = .healthkit
+                log.date = state.date
+                log.sleepDate = state.date
+                let sample = sleep.scoringLog
+                log.totalDurationMinutes = sample.totalDurationMinutes
+                log.deepSleepMinutes = sample.deepSleepMinutes
+                log.remSleepMinutes = sample.remSleepMinutes
+                log.lightSleepMinutes = sample.lightSleepMinutes
+                log.awakeMinutes = sample.awakeMinutes
+                log.sleepEfficiency = sample.sleepEfficiency
+                log.bedTime = sample.bedTime
+                log.wakeTime = sample.wakeTime
+                log.sleepTimezone = state.localTimezone
+                log.sleepUtcOffsetMinutes = state.localUtcOffsetMinutes
+                log.updatedAt = state.updatedAt
+                try log.save(db)
+                try SleepRecordSelection.supersedeOtherRecords(with: log, db: db)
+                if let enqueue {
+                    try enqueue(SleepRecordSelection.outboxEvent(for: log))
+                }
+            }
+        }
+        // The visible values and the score must use the same selected record.
+        // A manual correction takes precedence over a later wearable refresh.
+        let selected = try SleepRecordSelection.daily(userId: state.userId, day: state.date, db: db)
+        if let selected { try SleepRecordSelection.supersedeOtherRecords(with: selected, db: db) }
+        SleepRecordSelection.applySleepFields(selected, to: &state)
+        try state.update(db)
+        let score = try RecoveryEngine.computeScore(userId: state.userId, date: state.date, db: db)
+        state.recoveryScore = score.score
+        state.recoveryZone = RecoveryZone.from(score: score.score)
+        state.confidenceScore = score.confidence
+        state.hrvScore = score.components.hrvScore
+        state.sleepScore = score.components.sleepScore
+        state.sleepQualityPercent = score.components.sleepScore
+        state.rhrScore = score.components.rhrScore
+        state.tempScore = score.components.tempScore
+        try state.update(db)
+    }
+
     private static func buildState(
         dateString: String,
         userId: UUID,
@@ -504,9 +569,9 @@ actor HealthSyncManager {
         state.sleepDurationHours = sleep?.totalHours
         state.sleepQualityPercent = sleep?.qualityScore
         state.sleepScore = computed.components.sleepScore
-        state.deepSleepPercent = Self.safePercentage(sleep?.deepMinutes, total: sleep?.totalHours)
-        state.remSleepPercent = Self.safePercentage(sleep?.remMinutes, total: sleep?.totalHours)
-        state.lightSleepPercent = Self.safePercentage(sleep?.lightMinutes, total: sleep?.totalHours)
+        state.deepSleepPercent = Self.safePercentage(sleep?.hasStages == true ? sleep?.deepMinutes : nil, total: sleep?.totalHours)
+        state.remSleepPercent = Self.safePercentage(sleep?.hasStages == true ? sleep?.remMinutes : nil, total: sleep?.totalHours)
+        state.lightSleepPercent = Self.safePercentage(sleep?.hasStages == true ? sleep?.lightMinutes : nil, total: sleep?.totalHours)
         state.awakePercent = Self.safePercentage(sleep?.awakeMinutes, total: sleep?.totalHours)
 
         state.steps = steps ?? nil

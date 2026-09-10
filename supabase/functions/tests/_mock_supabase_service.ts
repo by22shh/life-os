@@ -64,6 +64,14 @@ export function createMockSupabaseService(
         state.filters.push({ op: "eq", column, value });
         return query;
       },
+      neq(column: string, value: unknown) {
+        state.filters.push({ op: "neq", column, value });
+        return query;
+      },
+      or(value: string) {
+        state.filters.push({ op: "or", column: "", value });
+        return query;
+      },
       gte(column: string, value: unknown) {
         state.filters.push({ op: "gte", column, value });
         return query;

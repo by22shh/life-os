@@ -36,6 +36,74 @@ function settingsRow(
   };
 }
 
+Deno.test("notification burst shares in-flight Auth while preserving all writes and standard budgets", async () => {
+  const handler = await captureEdgeHandler(
+    "../api/settings/notifications/index.ts",
+  );
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => release = resolve);
+  let writes = 0;
+  await withMockedEdgeRuntime({
+    authResponse: async () => {
+      await barrier;
+      return jsonResponse({ id: "auth-user-id" });
+    },
+    responders: [(request, { url, bodyText }) => {
+      if (url.pathname === "/rest/v1/rpc/resolve_feature_flags_for_user") {
+        return jsonResponse([{
+          flag_key: "guardian_mode_enabled",
+          enabled: true,
+        }]);
+      }
+      if (url.pathname === "/rest/v1/notification_settings") {
+        if (request.method === "POST") {
+          writes += 1;
+          return jsonResponse(settingsRow(JSON.parse(bodyText)));
+        }
+        return jsonResponse([settingsRow()]);
+      }
+    }],
+  }, async (calls) => {
+    const requests = Array.from(
+      { length: 16 },
+      () =>
+        handler(
+          new Request("http://localhost/notifications", {
+            method: "PATCH",
+            headers: {
+              Authorization: "Bearer notification-burst-token",
+              "Content-Type": "application/json",
+              "X-Outbox-Replay": "true",
+              "Idempotency-Key": crypto.randomUUID(),
+            },
+            body: JSON.stringify({
+              critical_only: true,
+              control_level: "guardian",
+              focus_control_enabled: true,
+            }),
+          }),
+        ),
+    );
+    release();
+    const responses = await Promise.all(requests);
+    for (const response of responses) {
+      assertEquals(response.status, 200);
+      const body = await response.json();
+      assertEquals(body.control_level, "advisory");
+      assertEquals(body.focus_control_enabled, false);
+    }
+    assertEquals(calls.authHeaders.length, 1);
+    assertEquals(writes, 16);
+    assertEquals(calls.rateLimitBodies.length, 16);
+    assertEquals(
+      calls.rateLimitBodies.every((body) =>
+        body.p_bucket_key === "standard:public-user-id" && body.p_limit === 120
+      ),
+      true,
+    );
+  });
+});
+
 Deno.test("notification settings edge handler enforces guardian invariants and persists normalized payloads", async (t) => {
   const handler = await captureEdgeHandler(
     "../api/settings/notifications/index.ts",

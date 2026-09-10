@@ -9,8 +9,36 @@ import SwiftUI
 import UIKit
 import Vision
 
+enum NutritionSafetyPolicy {
+    static func hidesCalories(in db: Database, userId: UUID) throws -> Bool {
+        try Bool.fetchOne(db, sql: "SELECT (hide_calories = 1 OR has_eating_disorder_history = 1) FROM user_health_flags WHERE user_id = ? OR user_id = ? ORDER BY updated_at DESC LIMIT 1", arguments: [userId, userId.uuidString]) ?? false
+    }
+
+    static func suppressesTargets(in db: Database, userId: UUID) throws -> Bool {
+        if try hidesCalories(in: db, userId: userId) { return true }
+        return try Bool.fetchOne(db, sql: "SELECT (pregnancy_mode = 1 OR is_pregnant = 1) FROM user_health_flags WHERE user_id = ? OR user_id = ? ORDER BY updated_at DESC LIMIT 1", arguments: [userId, userId.uuidString]) ?? false
+    }
+
+    // Auth enforces a single-owner vault. Rendering reads the current committed
+    // policy, so changing safety settings does not leave a cached calorie label.
+    static var hidesCalories: Bool {
+        guard let queue = DatabaseManager.sharedStartupState.manager?.dbQueue else { return true }
+        return (try? queue.read { db in
+            try Bool.fetchOne(db, sql: "SELECT MAX(hide_calories = 1 OR has_eating_disorder_history = 1) FROM user_health_flags") ?? false
+        }) ?? true
+    }
+
+    static var suppressesTargets: Bool {
+        guard let queue = DatabaseManager.sharedStartupState.manager?.dbQueue else { return true }
+        return (try? queue.read { db in
+            try Bool.fetchOne(db, sql: "SELECT MAX(hide_calories = 1 OR has_eating_disorder_history = 1 OR pregnancy_mode = 1 OR is_pregnant = 1) FROM user_health_flags") ?? false
+        }) ?? true
+    }
+}
+
 func localizedNutritionCalories(_ calories: Int) -> String {
-    String(format: String(localized: "nutrition_kcal_format"), calories)
+    guard !NutritionSafetyPolicy.hidesCalories else { return "" }
+    return String(format: String(localized: "nutrition_kcal_format"), calories)
 }
 
 func localizedNutritionLastUsed(_ date: Date) -> String {
@@ -76,6 +104,9 @@ func localizedNutritionItemSummary(
     carbs: Double,
     fiber: Double?
 ) -> String {
+    if NutritionSafetyPolicy.hidesCalories {
+        return "\(Int(weightG.rounded())) g · " + localizedNutritionMacroTotals(protein: protein, fat: fat, carbs: carbs, fiber: fiber)
+    }
     let weightValue = Int(weightG.rounded())
     let caloriesValue = Int(calories.rounded())
     let proteinValue = Int(protein.rounded())
@@ -103,6 +134,9 @@ func localizedNutritionItemSummary(
 }
 
 func localizedNutritionBatchMacroLine(_ snapshot: NutritionBatchMacroSnapshot, prefix: String) -> String {
+    if NutritionSafetyPolicy.hidesCalories {
+        return prefix + " · " + localizedNutritionItemSummary(weightG: snapshot.weightG, calories: 0, protein: snapshot.proteinG, fat: snapshot.fatG, carbs: snapshot.carbsG, fiber: snapshot.fiberG)
+    }
     let weightValue = Int(snapshot.weightG.rounded())
     let caloriesValue = Int(snapshot.calories.rounded())
     let proteinValue = Int(snapshot.proteinG.rounded())
@@ -406,7 +440,7 @@ struct NutritionDayView: View {
                                 .font(LifeOSTypography.body)
                             Text(draft.updatedAt, style: .time)
                                 .font(LifeOSTypography.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(LifeOSColors.Text.secondary)
                         }
                         Spacer()
                         Button(String(localized: "nutrition_photo_draft_resume")) {
@@ -459,7 +493,7 @@ struct NutritionDayView: View {
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -474,7 +508,7 @@ struct NutritionDayView: View {
             if mealsLogged.isEmpty {
                 Text(String(localized: "no_meals_logged"))
                     .font(LifeOSTypography.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, Spacing.l)
             } else {
@@ -509,12 +543,12 @@ struct NutritionDayView: View {
                     .font(LifeOSTypography.body)
                 Text(localizedNutritionCalories(Int(meal.calories)))
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
             Spacer()
             Text(meal.loggedAt, style: .time)
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(LifeOSColors.Text.tertiary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -531,6 +565,8 @@ struct NutritionDayView: View {
         HStack {
             Button(action: previousDayButtonTapped) {
                 Image(systemName: "chevron.left")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+                    .contentShape(Rectangle())
             }
 
             Spacer()
@@ -541,7 +577,7 @@ struct NutritionDayView: View {
                         .font(LifeOSTypography.title3)
                     Text(selectedDate.formatted(.dateTime.month().day().weekday(.wide)))
                         .font(LifeOSTypography.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 }
             }
             .buttonStyle(.plain)
@@ -550,6 +586,8 @@ struct NutritionDayView: View {
 
             Button(action: nextDayButtonTapped) {
                 Image(systemName: "chevron.right")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+                    .contentShape(Rectangle())
             }
         }
         .refreshOnFeatureFlagChanges()
@@ -1279,7 +1317,7 @@ struct NutritionLogView: View {
                 if !viewModel.dynamicHint.isEmpty {
                     Text(viewModel.dynamicHint)
                         .font(LifeOSTypography.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -1339,7 +1377,7 @@ struct NutritionLogView: View {
             HStack(spacing: Spacing.xs) {
                 Text(viewModel.methodLabel)
                     .font(LifeOSTypography.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
 
                 if let confidence = viewModel.displayConfidence {
                     Text("\(Int((confidence * 100).rounded()))%")
@@ -1353,7 +1391,7 @@ struct NutritionLogView: View {
 
             Text(viewModel.loggedAt.formatted(date: .abbreviated, time: .shortened))
                 .font(LifeOSTypography.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1408,13 +1446,13 @@ struct NutritionLogView: View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(detectedItemsTitle(for: viewModel))
                 .font(LifeOSTypography.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
 
             ForEach(viewModel.draftCandidateItems, content: draftCandidateItemRow)
 
             Text(detectedItemsFootnote(for: viewModel))
                 .font(LifeOSTypography.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -1434,16 +1472,16 @@ struct NutritionLogView: View {
                 if let brand = item.brand {
                     Text(brand)
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 }
                 Text(itemDraftSubtitle(item))
                     .font(LifeOSTypography.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(LifeOSColors.Text.tertiary)
                 if let notes = item.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !notes.isEmpty {
                     Text(notes)
                         .font(LifeOSTypography.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                 }
             }
             Spacer()
@@ -1486,7 +1524,7 @@ struct NutritionLogView: View {
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
                     Text(String(localized: "notes"))
                         .font(LifeOSTypography.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                     TextEditor(text: $viewModel.userNotes)
                         .frame(minHeight: 88)
                         .padding(Spacing.xxs)
@@ -1518,7 +1556,7 @@ struct NutritionLogView: View {
                 )
             )
             .font(LifeOSTypography.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -1595,7 +1633,7 @@ struct NutritionLogView: View {
 
             HStack(spacing: Spacing.s) {
                 numericField(String(localized: "nutrition_unit_grams"), value: item.weightG)
-                numericField(String(localized: "nutrition_unit_kcal"), value: item.calories)
+                if !NutritionSafetyPolicy.hidesCalories { numericField(String(localized: "nutrition_unit_kcal"), value: item.calories) }
             }
 
             HStack(spacing: Spacing.s) {
@@ -1614,7 +1652,7 @@ struct NutritionLogView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             TextField(
                 title,
                 value: value,
@@ -1634,12 +1672,12 @@ struct NutritionLogView: View {
             if let deletedStatusText = viewModel.deletedStatusText {
                 Text(deletedStatusText)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
 
             Text(String(localized: "nutrition_restore_meal_window"))
                 .font(LifeOSTypography.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.s)
@@ -1694,7 +1732,7 @@ struct NutritionLogView: View {
         VStack(alignment: .leading, spacing: Spacing.xxs) {
             Text(title)
                 .font(LifeOSTypography.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
             Text(body)
                 .font(LifeOSTypography.body)
                 .foregroundStyle(.primary)
@@ -1711,7 +1749,7 @@ struct NutritionLogView: View {
            let weightG = item.weightG,
            let calories = item.calories {
             fragments.append("\(Int(weightG.rounded()))g")
-            fragments.append("\(Int(calories.rounded())) kcal")
+            if !NutritionSafetyPolicy.hidesCalories { fragments.append("\(Int(calories.rounded())) kcal") }
         } else {
             fragments.append(String(localized: "nutrition_item_needs_review"))
         }
@@ -1767,6 +1805,7 @@ struct NutritionLogView: View {
     }
 
     private func draftMacroSummaryText(_ totals: NutritionDraftMacroSummary) -> String {
+        if NutritionSafetyPolicy.hidesCalories { return localizedNutritionMacroTotals(protein: totals.proteinG, fat: totals.fatG, carbs: totals.carbsG, fiber: totals.fiberG) }
         let calories = Int(totals.calories.rounded())
         let protein = Int(totals.proteinG.rounded())
         let fat = Int(totals.fatG.rounded())

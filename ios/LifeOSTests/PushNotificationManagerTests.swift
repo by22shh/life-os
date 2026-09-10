@@ -9,6 +9,41 @@ final class PushNotificationManagerTests: XCTestCase {
     private let tokenDefaultsKey = "lifeos.push.apns_token"
     private let registrationErrorDefaultsKey = "lifeos.push.apns_registration_error"
 
+    func testLocalReminderPermissionWorksWithoutAPNsAndDenialDoesNotPretendToSchedule() async {
+        var requested = false
+        let manager = PushNotificationManager(
+            notificationAuthorizationStatusProvider: { .notDetermined },
+            requestAuthorizationHandler: { requested = true; return true },
+            isRunningTestsProvider: { false },
+            isRemotePushAvailableProvider: { false },
+            notificationDeliveryUnlockedProvider: { true }
+        )
+        let granted = await manager.requestLocalReminderAuthorizationIfNeeded()
+        XCTAssertTrue(granted)
+        XCTAssertTrue(requested)
+        let denied = PushNotificationManager(
+            notificationAuthorizationStatusProvider: { .denied },
+            addNotificationRequestHandler: { _ in XCTFail("Denied authorization must not add a request") },
+            isRunningTestsProvider: { false }
+        )
+        let scheduled = await denied.scheduleLocalNotification(
+            LifeOSNotification(category: .experiment, priority: .active, title: "Test", body: "Value"), at: Date().addingTimeInterval(600)
+        )
+        XCTAssertFalse(scheduled)
+    }
+
+    func testLocalReminderReportsSystemSchedulingFailure() async {
+        let manager = PushNotificationManager(
+            notificationAuthorizationStatusProvider: { .authorized },
+            addNotificationRequestHandler: { _ in throw NSError(domain: "test", code: 1) },
+            isRunningTestsProvider: { false }
+        )
+        let scheduled = await manager.scheduleLocalNotification(
+            LifeOSNotification(category: .experiment, priority: .active, title: "Test", body: "Value"), at: Date().addingTimeInterval(600)
+        )
+        XCTAssertFalse(scheduled)
+    }
+
     func testSyncAuthorizationStateWhenDeniedCancelsPendingRegistrationAndQueuesUnregistration() async throws {
         let dbManager = try DatabaseManager.inMemory()
         let syncEngine = makeNoopPushSyncEngine(dbQueue: dbManager.dbQueue)

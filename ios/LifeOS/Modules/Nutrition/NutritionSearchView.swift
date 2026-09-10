@@ -186,7 +186,7 @@ struct NutritionSearchView: View {
                     .font(LifeOSTypography.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("\(result.roundedCaloriesPer100g) kcal / 100g")
+            Text(NutritionSafetyPolicy.hidesCalories ? "" : "\(result.roundedCaloriesPer100g) kcal / 100g")
                 .font(LifeOSTypography.caption)
                 .foregroundStyle(.tertiary)
             if !result.tags.isEmpty {

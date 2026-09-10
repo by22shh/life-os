@@ -58,6 +58,12 @@ struct SleepLog: Codable, Equatable, Sendable, Identifiable {
     var noiseLevel: Int?
     var dreamRecall: Bool?
 
+    /// Legacy diary-only rows may carry subjective context without overriding
+    /// measured duration. A deletion remains authoritative even without metrics.
+    var overridesImportedSleep: Bool {
+        source == .manual && (totalDurationMinutes != nil || deletedAt != nil)
+    }
+
     // Source
     var source: SleepSource
     var deviceName: String?
@@ -143,10 +149,26 @@ struct SleepLog: Codable, Equatable, Sendable, Identifiable {
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
 
         bedTime = try container.decodeIfPresent(Date.self, forKey: .bedTime)
-        bedtimeIntended = try container.decodeIfPresent(Date.self, forKey: .bedtimeIntended)
-        bedtimeActual = try container.decodeIfPresent(Date.self, forKey: .bedtimeActual)
+        // Legacy server diary columns are TIME, while local rows use timestamps.
+        // Resolve a clock time in the recorded sleep timezone, never the device's
+        // current timezone after travel.
+        func diaryTime(_ key: CodingKeys, previousEvening: Bool) throws -> Date? {
+            if let timestamp = try? container.decodeIfPresent(Date.self, forKey: key) { return timestamp }
+            guard let clock = try container.decodeIfPresent(String.self, forKey: key) else { return nil }
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = (try container.decodeIfPresent(String.self, forKey: .sleepTimezone)).flatMap(TimeZone.init(identifier:)) ?? TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            guard let timestamp = formatter.date(from: "\(normalizedDate) \(clock)") else { return nil }
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = formatter.timeZone
+            return previousEvening && calendar.component(.hour, from: timestamp) >= 12
+                ? calendar.date(byAdding: .day, value: -1, to: timestamp) : timestamp
+        }
+        bedtimeIntended = try diaryTime(.bedtimeIntended, previousEvening: true)
+        bedtimeActual = try diaryTime(.bedtimeActual, previousEvening: true)
         wakeTime = try container.decodeIfPresent(Date.self, forKey: .wakeTime)
-        waketime = try container.decodeIfPresent(Date.self, forKey: .waketime)
+        waketime = try diaryTime(.waketime, previousEvening: false)
         totalDurationMinutes = try container.decodeIfPresent(Int.self, forKey: .totalDurationMinutes)
         timeInBedMinutes = try container.decodeIfPresent(Int.self, forKey: .timeInBedMinutes)
         deepSleepMinutes = try container.decodeIfPresent(Int.self, forKey: .deepSleepMinutes)
@@ -161,7 +183,8 @@ struct SleepLog: Codable, Equatable, Sendable, Identifiable {
         timeToFallAsleepMinutes = try container.decodeIfPresent(Int.self, forKey: .timeToFallAsleepMinutes)
         numberOfAwakenings = try container.decodeIfPresent(Int.self, forKey: .numberOfAwakenings)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
-        alcohol = try container.decodeIfPresent(Double.self, forKey: .alcohol)
+        if let amount = try? container.decodeIfPresent(Double.self, forKey: .alcohol) { alcohol = amount }
+        else { alcohol = try container.decodeIfPresent(Bool.self, forKey: .alcohol).map { $0 ? 1 : 0 } }
         if let decodedCaffeine = try container.decodeIfPresent(Bool.self, forKey: .caffeineAfter14) {
             caffeineAfter14 = decodedCaffeine
         } else {
@@ -172,9 +195,11 @@ struct SleepLog: Codable, Equatable, Sendable, Identifiable {
         exerciseEvening = try container.decodeIfPresent(Bool.self, forKey: .exerciseEvening)
         stressfulDay = try container.decodeIfPresent(Bool.self, forKey: .stressfulDay)
         screenBeforeBed = try container.decodeIfPresent(Bool.self, forKey: .screenBeforeBed)
-        roomDarkness = try container.decodeIfPresent(Int.self, forKey: .roomDarkness)
-        roomTemperature = try container.decodeIfPresent(Double.self, forKey: .roomTemperature)
-        noiseLevel = try container.decodeIfPresent(Int.self, forKey: .noiseLevel)
+        // Older qualitative server labels do not represent measured numbers.
+        // Preserve them server-side; their absence must not break an entire pull.
+        roomDarkness = try? container.decodeIfPresent(Int.self, forKey: .roomDarkness)
+        roomTemperature = try? container.decodeIfPresent(Double.self, forKey: .roomTemperature)
+        noiseLevel = try? container.decodeIfPresent(Int.self, forKey: .noiseLevel)
         dreamRecall = try container.decodeIfPresent(Bool.self, forKey: .dreamRecall)
         source = try container.decodeIfPresent(SleepSource.self, forKey: .source) ?? .healthkit
         deviceName = try container.decodeIfPresent(String.self, forKey: .deviceName)

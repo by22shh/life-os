@@ -146,6 +146,104 @@ Deno.test("resolveUserContext returns user context on successful auth lookup", a
   });
 });
 
+Deno.test("concurrent identical bearers share only the in-flight auth check and still consume each request budget", async () => {
+  let checks = 0;
+  let budgets = 0;
+  let revoked = false;
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => release = resolve);
+  await withMockedRuntime({
+    authResponse: async (request) => {
+      checks += 1;
+      assertEquals(request.headers.get("Authorization"), "Bearer same-token");
+      await barrier;
+      return revoked
+        ? jsonResponse({ message: "session expired" }, 401)
+        : jsonResponse({ id: "auth-user-1" });
+    },
+    rateLimitResponse: () => {
+      budgets += 1;
+      return jsonResponse([{ ok: true }]);
+    },
+  }, async () => {
+    const request = () =>
+      new Request("http://localhost/test", {
+        headers: { Authorization: "Bearer same-token" },
+      });
+    const requests = Array.from(
+      { length: 16 },
+      () => resolveUserContext(request(), "standard"),
+    );
+    release();
+    const results = await Promise.all(requests);
+    assertEquals(results.every((result) => result.ok), true);
+    assertEquals(checks, 1);
+    assertEquals(budgets, 16);
+    revoked = true;
+    const next = await resolveUserContext(request(), "standard");
+    assertEquals(next.ok, false);
+    if (!next.ok) assertEquals(next.response.status, 401);
+    assertEquals(checks, 2);
+    assertEquals(budgets, 16);
+  });
+});
+
+Deno.test("different bearers never share an auth result", async () => {
+  const tokens: string[] = [];
+  await withMockedRuntime({
+    authResponse: (request) => {
+      const token = request.headers.get("Authorization") ?? "";
+      tokens.push(token);
+      return token === "Bearer valid"
+        ? jsonResponse({ id: "auth-user-1" })
+        : jsonResponse({ message: "invalid token" }, 401);
+    },
+  }, async () => {
+    const results = await Promise.all(
+      ["valid", "forged"].map((token) =>
+        resolveUserContext(
+          new Request("http://localhost/test", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          "standard",
+        )
+      ),
+    );
+    assertEquals(results.map((result) => result.ok), [true, false]);
+    assertEquals(tokens.sort(), ["Bearer forged", "Bearer valid"]);
+  });
+});
+
+Deno.test("Auth overload and server failures are retryable 503 and never proceed to profile or budget", async () => {
+  for (const status of [429, 500, 502, 503]) {
+    await withMockedRuntime({
+      authResponse: () =>
+        jsonResponse({ message: "upstream overloaded" }, status),
+      userLookupResponse: () => {
+        throw new Error("must not access profile");
+      },
+      rateLimitResponse: () => {
+        throw new Error("must not consume budget");
+      },
+    }, async () => {
+      const result = await resolveUserContext(
+        new Request("http://localhost/test", {
+          headers: { Authorization: "Bearer valid" },
+        }),
+        "standard",
+      );
+      assertEquals(result.ok, false);
+      if (!result.ok) {
+        assertEquals(result.response.status, 503);
+        assertEquals(result.response.headers.get("Retry-After"), "1");
+        assertEquals(await result.response.json(), {
+          error: "auth_unavailable",
+        });
+      }
+    });
+  }
+});
+
 Deno.test("resolveUserContext maps auth, lookup, not-found, and rate-limit failures", async (t) => {
   await t.step("auth fetch failure returns unauthorized", async () => {
     await withMockedRuntime({

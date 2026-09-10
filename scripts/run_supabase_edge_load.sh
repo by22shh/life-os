@@ -13,7 +13,7 @@ run_with_timeout() {
   local safe_label="${label//[^A-Za-z0-9_.-]/_}"
   local log_file="${TMPDIR:-/tmp}/lifeos_${safe_label}_$$.log"
 
-  "$@" >"$log_file" 2>&1 &
+  "$@" <&0 >"$log_file" 2>&1 &
   local cmd_pid=$!
   local elapsed=0
 
@@ -62,9 +62,10 @@ require_docker
 # Stop only this project stack to avoid impacting other local Supabase workspaces.
 run_with_timeout 45 "supabase stop (preflight)" \
   supabase stop --workdir . --no-backup --yes >/dev/null 2>&1 || true
-run_with_timeout 240 "supabase start" \
-  supabase start --workdir . --exclude edge-runtime
 trap cleanup EXIT
+# Keep optional log analytics outside the API latency measurement.
+run_with_timeout 240 "supabase start" \
+  supabase start --workdir . --exclude edge-runtime,logflare,vector
 
 run_with_timeout 180 "supabase db reset" \
   supabase db reset --workdir . --no-seed --yes

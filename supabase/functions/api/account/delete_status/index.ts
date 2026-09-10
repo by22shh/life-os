@@ -1,12 +1,13 @@
 import {
-  anonClient,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 import { handleCors } from "../../../_shared/cors.ts";
+import { readDeletionReceipt } from "../../../_shared/deletion_receipt.ts";
 
 interface DeletionJobStatusRow {
   mode: "scheduled" | "immediate";
@@ -41,16 +42,40 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "method_not_allowed" }, 405);
   }
 
+  const receipt = request.headers.get("X-Deletion-Receipt");
+  if (receipt) {
+    const rateLimited = await enforceRateLimit(
+      request,
+      "deletion-receipt-public",
+      "standard",
+    );
+    if (rateLimited) return rateLimited;
+    try {
+      const state = await readDeletionReceipt(serviceRoleClient(), receipt);
+      if (!state) {
+        return jsonWithRequest(request, {
+          error: "invalid_or_expired_deletion_receipt",
+        }, 401);
+      }
+      return jsonWithRequest(request, {
+        deletion_state: state,
+        completed: state === "completed",
+      });
+    } catch {
+      return jsonWithRequest(request, {
+        error: "deletion_receipt_lookup_failed",
+      }, 503);
+    }
+  }
+
   const authHeader = parseBearer(request);
   if (!authHeader.startsWith("Bearer ")) {
     return jsonWithRequest(request, { error: "unauthorized" }, 401);
   }
 
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   const service = serviceRoleClient();
   const { data: userRow, error: userError } = await service

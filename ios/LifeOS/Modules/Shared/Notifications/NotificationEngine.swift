@@ -84,6 +84,7 @@ actor NotificationEngine {
 
     private let dbQueue: DatabaseQueue
     private let dispatchLocalNotification: @Sendable (LifeOSNotification, Date) async -> Void
+    private let dispatchExperimentNotification: @Sendable (LifeOSNotification, Date) async -> Bool
 
     init(
         dbQueue: DatabaseQueue,
@@ -94,10 +95,18 @@ actor NotificationEngine {
 #else
             _ = (notification, scheduledAt)
 #endif
+        },
+        dispatchExperimentNotification: @escaping @Sendable (LifeOSNotification, Date) async -> Bool = { notification, scheduledAt in
+#if os(iOS)
+            await PushNotificationManager.shared.scheduleLocalNotification(notification, at: scheduledAt)
+#else
+            false
+#endif
         }
     ) {
         self.dbQueue = dbQueue
         self.dispatchLocalNotification = dispatchLocalNotification
+        self.dispatchExperimentNotification = dispatchExperimentNotification
     }
 
     // MARK: - Public API
@@ -110,7 +119,8 @@ actor NotificationEngine {
         scheduledAt: Date = Date()
     ) async throws -> Bool {
         let normalizedSettings = settings.normalizedForInvariants()
-        let deliveryMode: NotificationOutboxDeliveryMode = await Self.shouldDispatchLocally()
+        let localDelivery = await Self.shouldDispatchLocally()
+        let deliveryMode: NotificationOutboxDeliveryMode = notification.category == .experiment || localDelivery
             ? .localScheduled
             : .remoteOnly
 
@@ -183,7 +193,16 @@ actor NotificationEngine {
         }
 
         if queued {
-            if deliveryMode == .localScheduled {
+            if notification.category == .experiment {
+                guard await dispatchExperimentNotification(notification, effectiveScheduledAt) else {
+                    // Permission denial / OS scheduling failure is not a scheduled reminder.
+                    try await dbQueue.write { db in
+                        try NotificationLog.deleteOne(db, key: notification.id)
+                        try OutboxEvent.deleteOne(db, key: notification.id)
+                    }
+                    return false
+                }
+            } else if deliveryMode == .localScheduled {
                 await dispatchLocalNotification(notification, effectiveScheduledAt)
             }
         }
@@ -629,16 +648,25 @@ actor NotificationScheduleCoordinator {
     private let engine: NotificationEngine
     private let nowProvider: @Sendable () -> Date
     private let horizonDays: Int
+    private let cancelLocalNotifications: @Sendable ([UUID]) async -> Void
 
     init(
         dbQueue: DatabaseQueue,
         nowProvider: @escaping @Sendable () -> Date = Date.init,
-        horizonDays: Int = 3
+        horizonDays: Int = 3,
+        cancelLocalNotifications: @escaping @Sendable ([UUID]) async -> Void = { ids in
+#if os(iOS)
+            await MainActor.run {
+                PushNotificationManager.shared.cancelPendingNotifications(identifiers: ids.map(\.uuidString))
+            }
+#endif
+        }
     ) {
         self.dbQueue = dbQueue
         self.engine = NotificationEngine(dbQueue: dbQueue)
         self.nowProvider = nowProvider
         self.horizonDays = max(1, horizonDays)
+        self.cancelLocalNotifications = cancelLocalNotifications
     }
 
     func refreshSchedules() async {
@@ -703,6 +731,8 @@ actor NotificationScheduleCoordinator {
                 settings: settings,
                 horizonDays: horizonDays,
                 now: now
+            )) + (try Self.buildExperimentReminderIntents(
+                db: db, userId: userId, settings: settings, horizonDays: horizonDays, now: now
             ))
 
             return ScheduleSnapshot(
@@ -711,6 +741,20 @@ actor NotificationScheduleCoordinator {
                 scheduledIntents: intents
             )
         }
+    }
+
+    nonisolated static func nextExperimentReminderDate(
+        db: Database, experimentId: UUID, userId: UUID, now: Date
+    ) throws -> Date? {
+        let keys = Set((0..<30).compactMap { offset -> UUID? in
+            guard let date = Calendar.current.date(byAdding: .day, value: offset, to: now) else { return nil }
+            return NotificationScheduleKey.stableUUID(for: "experiment:\(userId.uuidString):\(experimentId.uuidString):\(dayString(for: date))")
+        })
+        return try NotificationLog.fetchAll(db, sql: """
+            SELECT * FROM notification_log WHERE (user_id = ? OR user_id = ?) AND category = ? AND delivered_at > ?
+            ORDER BY delivered_at ASC
+            """, arguments: [userId, userId.uuidString, NotificationCategory.experiment.rawValue, now])
+            .first { keys.contains($0.id) }?.deliveredAt
     }
 
     nonisolated private static func buildMorningBriefIntents(
@@ -757,6 +801,53 @@ actor NotificationScheduleCoordinator {
                     scheduledAt: scheduledAt
                 )
             )
+        }
+        return intents
+    }
+
+    nonisolated private static func buildExperimentReminderIntents(
+        db: Database,
+        userId: UUID,
+        settings: NotificationSettings,
+        horizonDays: Int,
+        now: Date
+    ) throws -> [ScheduledIntent] {
+        guard settings.positiveEnabled, !settings.criticalOnly else { return [] }
+        let experiments = try Experiment.fetchAll(db, sql: """
+            SELECT * FROM experiments WHERE (user_id = ? OR user_id = ?) AND deleted_at IS NULL
+            """, arguments: [userId, userId.uuidString])
+        var intents: [ScheduledIntent] = []
+        for experiment in experiments {
+            guard ExperimentStatus.lifecycleActiveStatuses.contains(experiment.resolvedLifecycleStatus(forLocalDate: dayString(for: now))),
+                  let time = experiment.reminderTime.flatMap(parseWallClockTime) else { continue }
+            let metric = experiment.primaryMetric ?? experiment.metric
+            let measurements = try ExperimentMeasurement.fetchAll(db, sql: """
+                SELECT * FROM experiment_measurements WHERE experiment_id = ? OR experiment_id = ?
+                """, arguments: [experiment.id, experiment.id.uuidString])
+            let loggedDays = Set(measurements.filter { ($0.metricName ?? metric) == metric }.map { $0.measurementDate ?? $0.date })
+            // Typical 21-day experiment fits in the OS pending-request budget.
+            // Longer protocols replenish their rolling window on foreground refresh.
+            for offset in 0..<min(30, max(21, horizonDays)) {
+                guard let scheduledAt = wallClockDate(dayOffset: offset, hour: time.hour, minute: time.minute, from: now), scheduledAt > now else { continue }
+                let day = dayString(for: scheduledAt)
+                guard !loggedDays.contains(day),
+                      ExperimentStatus.lifecycleActiveStatuses.contains(experiment.resolvedLifecycleStatus(forLocalDate: day)) else { continue }
+                if experiment.measurementFrequency == .weekly {
+                    guard let start = experiment.baselineStartDate ?? experiment.startDate,
+                          let startDate = ISO8601DateFormatter().date(from: "\(start)T12:00:00Z"),
+                          let dayDate = ISO8601DateFormatter().date(from: "\(day)T12:00:00Z"),
+                          Int(dayDate.timeIntervalSince(startDate) / 86_400) % 7 == 0 else { continue }
+                }
+                let key = "experiment:\(userId.uuidString):\(experiment.id.uuidString):\(day)"
+                intents.append(ScheduledIntent(
+                    notification: LifeOSNotification(
+                        id: NotificationScheduleKey.stableUUID(for: key), category: .experiment, priority: .active,
+                        title: String(localized: "notification_experiment_due_title"),
+                        body: String.localizedStringWithFormat(String(localized: "notification_experiment_due_body_format"), experiment.title),
+                        deepLink: "lifeos://experiments/\(experiment.id.uuidString)"
+                    ), scheduledAt: scheduledAt
+                ))
+            }
         }
         return intents
     }
@@ -913,12 +1004,13 @@ actor NotificationScheduleCoordinator {
                 sql: """
                     SELECT *
                     FROM notification_log
-                    WHERE category IN (?, ?)
+                    WHERE category IN (?, ?, ?)
                       AND delivered_at >= ?
                     """,
                 arguments: [
                     NotificationCategory.morningBrief.rawValue,
                     NotificationCategory.supplementReminder.rawValue,
+                    NotificationCategory.experiment.rawValue,
                     now
                 ]
             )
@@ -948,13 +1040,7 @@ actor NotificationScheduleCoordinator {
 
     private func cancelPendingLocalNotifications(_ ids: [UUID]) async {
         guard !ids.isEmpty else { return }
-#if os(iOS)
-        await MainActor.run {
-            PushNotificationManager.shared.cancelPendingNotifications(
-                identifiers: ids.map(\.uuidString)
-            )
-        }
-#endif
+        await cancelLocalNotifications(ids)
     }
 
     private static func makeSupplementScheduleRow(from row: Row) -> SupplementScheduleRow? {
@@ -1091,6 +1177,18 @@ actor NotificationScheduleCoordinator {
 
 #if DEBUG
 extension NotificationScheduleCoordinator {
+    func _testRemoveManagedScheduledNotifications(userId: UUID?, now: Date) async throws -> [UUID] {
+        let ids = try await removeManagedScheduledNotifications(userId: userId, now: now)
+        await cancelPendingLocalNotifications(ids)
+        return ids
+    }
+    nonisolated static func _testBuildExperimentReminders(
+        db: Database, userId: UUID, settings: NotificationSettings, now: Date
+    ) throws -> [(notification: LifeOSNotification, scheduledAt: Date)] {
+        try buildExperimentReminderIntents(db: db, userId: userId, settings: settings, horizonDays: 3, now: now)
+            .map { ($0.notification, $0.scheduledAt) }
+    }
+
     nonisolated static func _testBuildMorningBriefScheduledDates(
         userId: UUID,
         settings: NotificationSettings,

@@ -40,7 +40,7 @@ struct RecoveryTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (RecoveryComplicationEntry) -> Void) {
-        completion(snapshotEntry())
+        completion(context.isPreview ? .placeholder : timelineEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<RecoveryComplicationEntry>) -> Void) {
@@ -55,7 +55,7 @@ struct RecoveryTimelineProvider: TimelineProvider {
     private func snapshotEntry(
         defaults: UserDefaults? = UserDefaults(suiteName: "group.com.lifeos.watchkit")
     ) -> RecoveryComplicationEntry {
-        loadCurrentEntry(defaults: defaults) ?? .placeholder
+        loadCurrentEntry(defaults: defaults) ?? .empty
     }
 
     private func timelineEntry(
@@ -72,14 +72,31 @@ struct RecoveryTimelineProvider: TimelineProvider {
             return nil
         }
 
+        guard let updatedAt = snapshot.lastUpdatedAt.flatMap(Self.parseTimestamp),
+              Calendar.current.isDateInToday(updatedAt),
+              updatedAt.timeIntervalSinceNow <= 300,
+              Date().timeIntervalSince(updatedAt) < 24 * 3600 else { return nil }
+        if let day = snapshot.date {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "yyyy-MM-dd"
+            guard day == formatter.string(from: Date()) else { return nil }
+        }
+        guard let score = snapshot.recoveryScore, score.isFinite, (0...100).contains(score) else { return nil }
         let zone = snapshot.recoveryZone?.lowercased() ?? "critical"
         return RecoveryComplicationEntry(
             date: Date(),
-            score: snapshot.recoveryScore.map { Int($0.rounded()) },
+            score: Int(score.rounded()),
             zone: snapshot.recoveryZone,
             zoneLabel: zoneLabel(for: zone),
             zoneIcon: zoneIcon(for: zone)
         )
+    }
+
+    private static func parseTimestamp(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value) ?? ISO8601DateFormatter().date(from: value)
     }
 
     private func zoneLabel(for zone: String) -> String {
@@ -103,10 +120,14 @@ struct RecoveryTimelineProvider: TimelineProvider {
 
 /// Minimal Codable struct for reading snapshot from shared UserDefaults.
 private struct SnapshotPayload: Codable {
+    var date: String?
+    var lastUpdatedAt: String?
     var recoveryScore: Double?
     var recoveryZone: String?
 
     enum CodingKeys: String, CodingKey {
+        case date
+        case lastUpdatedAt = "last_updated_at"
         case recoveryScore = "recovery_score"
         case recoveryZone = "recovery_zone"
     }

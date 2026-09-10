@@ -2,10 +2,15 @@ import Foundation
 import Observation
 import SwiftUI
 import GRDB
+import os
 
 @MainActor
 @Observable
 final class DiaryViewModel {
+    private static let logger = Logger(subsystem: "com.lifeos.app", category: "DiaryViewModel")
+
+    var recordedDays: Set<String> = []
+    var hideCalories = false
     var caloriesValue = "—"
     var proteinValue = "—"
     var fatValue = "—"
@@ -71,10 +76,77 @@ final class DiaryViewModel {
         let authId = AuthManager.activeAuthId?.uuidString
 
         do {
-            let summary = try await dbQueue.read { db in
+            let month = String(day.prefix(7))
+            let context = try await dbQueue.read { db -> (Set<String>, Bool) in
+                guard let userId = try Self.latestUserId(authId: authId, db: db) else { return ([], false) }
+                let flags = try UserHealthFlags.filter(Column("user_id") == userId.uuidString).fetchOne(db)
+                var sources = [("food_logs", "logged_date", true), ("workout_sessions", "session_date", true),
+                    ("sleep_logs", "date", true), ("physiological_states", "date", false),
+                    ("supplement_logs", "taken_date", true), ("medical_scans", "scan_date", true),
+                    ("hydration_logs", "logged_date", true), ("wellness_checks", "date", true)]
+                if flags?.menstrualTrackingEnabled == true { sources.append(("menstrual_logs", "date", true)) }
+                var days = Set<String>()
+                for (table, column, softDelete) in sources {
+                    let sql = "SELECT DISTINCT \(column) FROM \(table) WHERE (user_id = ? OR user_id = ?) AND \(column) BETWEEN ? AND ?" + (softDelete ? " AND deleted_at IS NULL" : "")
+                    days.formUnion(try String.fetchAll(db, sql: sql, arguments: [userId, userId.uuidString, month + "-01", month + "-31"]))
+                }
+                return (days, flags?.hideCalories ?? false)
+            }
+            recordedDays = context.0
+            hideCalories = context.1
+        } catch {
+            recordedDays = []
+            hideCalories = true
+            Self.logger.error("Diary calendar load failed: \(error.localizedDescription)")
+        }
+
+        // All eight sections are independent reads: run them concurrently so
+        // screen latency is the slowest query, not the sum of all queries.
+        async let summarySection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
                 try Self.loadSummary(day: day, authId: authId, db: db)
             }
+        }
+        async let sleepSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadSleepRecovery(day: day, authId: authId, db: db)
+            }
+        }
+        async let trainingSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadTraining(day: day, authId: authId, db: db)
+            }
+        }
+        async let supplementsSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadSupplements(day: day, authId: authId, db: db)
+            }
+        }
+        async let labsSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadLabs(day: day, authId: authId, db: db)
+            }
+        }
+        async let hydrationSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadHydration(day: day, authId: authId, db: db)
+            }
+        }
+        async let wellnessSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadWellness(day: day, authId: authId, db: db)
+            }
+        }
+        async let menstrualSection = Self.loadSection(Self.logger) {
+            try await self.dbQueue.read { db in
+                try Self.loadMenstrual(day: day, authId: authId, db: db)
+            }
+        }
 
+        let (summary, sleepData, trainingData, suppData, labsData, hydrationData, wellnessData, menstrualData) =
+            await (summarySection, sleepSection, trainingSection, supplementsSection, labsSection, hydrationSection, wellnessSection, menstrualSection)
+
+        if let summary {
             if summary.foodCount > 0 {
                 caloriesValue = "\(Int(summary.calories.rounded()))"
                 proteinValue = "\(Int(summary.protein.rounded()))"
@@ -100,7 +172,7 @@ final class DiaryViewModel {
             } else {
                 targetSummary = nil
             }
-        } catch {
+        } else {
             caloriesValue = "—"
             proteinValue = "—"
             fatValue = "—"
@@ -109,27 +181,21 @@ final class DiaryViewModel {
             targetSummary = nil
         }
 
-        // Load sleep & recovery
-        do {
-            let sleepData = try await dbQueue.read { db in
-                try Self.loadSleepRecovery(day: day, authId: authId, db: db)
-            }
+        // Sleep & recovery
+        if let sleepData {
             sleepSubtitle = sleepData.sleepSubtitle
             recoveryScoreText = sleepData.recoveryScoreText
             recoveryZoneIcon = sleepData.recoveryZoneIcon
             recoveryZoneColor = sleepData.recoveryZoneColor
-        } catch {
+        } else {
             sleepSubtitle = String(localized: "no_sleep_data")
             recoveryScoreText = nil
             recoveryZoneIcon = nil
             recoveryZoneColor = nil
         }
 
-        // Load training
-        do {
-            let trainingData = try await dbQueue.read { db in
-                try Self.loadTraining(day: day, authId: authId, db: db)
-            }
+        // Training
+        if let trainingData {
             workoutCount = trainingData.count
             trainingSubtitle = trainingData.count > 0
                 ? String(format: String(localized: "diary_workouts_format"), trainingData.count)
@@ -141,7 +207,7 @@ final class DiaryViewModel {
             trainingZoneColor = trainingData.zoneColor
             weeklyTrendLabel = trainingData.trendLabel
             weeklyTrendIcon = trainingData.trendIcon
-        } catch {
+        } else {
             workoutCount = 0
             trainingSubtitle = String(localized: "no_workouts_today")
             trainingDetail = ""
@@ -153,77 +219,62 @@ final class DiaryViewModel {
             weeklyTrendIcon = nil
         }
 
-        // Load supplements
-        do {
-            let suppData = try await dbQueue.read { db in
-                try Self.loadSupplements(day: day, authId: authId, db: db)
-            }
+        // Supplements
+        if let suppData {
             supplementsTakenCount = suppData.taken
             supplementsSubtitle = suppData.taken > 0
                 ? String(format: String(localized: "diary_supplements_taken_format"), suppData.taken, suppData.total)
                 : String(localized: "no_supplements_taken")
             supplementsDetail = suppData.names
-        } catch {
+        } else {
             supplementsTakenCount = 0
             supplementsSubtitle = String(localized: "no_supplements_taken")
             supplementsDetail = ""
         }
 
-        // Load labs
-        do {
-            let labsData = try await dbQueue.read { db in
-                try Self.loadLabs(day: day, authId: authId, db: db)
-            }
+        // Labs
+        if let labsData {
             labsSubtitle = labsData.subtitle
             labsDetail = labsData.detail
             labsMarkerCount = labsData.markerCount
-        } catch {
+        } else {
             labsSubtitle = String(localized: "no_recent_labs")
             labsDetail = ""
             labsMarkerCount = 0
         }
 
-        // Load hydration
-        do {
-            let hydrationData = try await dbQueue.read { db in
-                try Self.loadHydration(day: day, authId: authId, db: db)
-            }
+        // Hydration
+        if let hydrationData {
             hydrationSubtitle = hydrationData.subtitle
             hydrationDetail = hydrationData.detail
             hydrationTotalMl = hydrationData.totalMl
             hydrationTargetMl = hydrationData.targetMl
-        } catch {
+        } else {
             hydrationSubtitle = String(localized: "hydration_default_progress")
             hydrationDetail = "0 / 2000 ml"
             hydrationTotalMl = 0
             hydrationTargetMl = 2000
         }
 
-        // Load wellness
-        do {
-            let wellnessData = try await dbQueue.read { db in
-                try Self.loadWellness(day: day, authId: authId, db: db)
-            }
+        // Wellness
+        if let wellnessData {
             wellnessSubtitle = wellnessData.subtitle
             wellnessDetail = wellnessData.detail
             wellnessScoreText = wellnessData.scoreText
             hasCompletedWellnessCheck = wellnessData.completed
-        } catch {
+        } else {
             wellnessSubtitle = String(localized: "not_completed")
             wellnessDetail = ""
             wellnessScoreText = nil
             hasCompletedWellnessCheck = false
         }
 
-        // Load menstrual / cycle tracking
-        do {
-            let menstrualData = try await dbQueue.read { db in
-                try Self.loadMenstrual(day: day, authId: authId, db: db)
-            }
+        // Menstrual / cycle tracking
+        if let menstrualData {
             menstrualSubtitle = menstrualData.subtitle
             menstrualDetail = menstrualData.detail
             hasMenstrualLog = menstrualData.hasLog
-        } catch {
+        } else {
             menstrualSubtitle = String(localized: "menstrual_tracking_off")
             menstrualDetail = String(localized: "menstrual_diary_enable_personalization")
             hasMenstrualLog = false
@@ -231,6 +282,20 @@ final class DiaryViewModel {
 
         let elapsedMs = Date().timeIntervalSince(start) * 1000
         PerformanceMonitor.trackDiaryLoad(durationMs: elapsedMs)
+    }
+
+    /// Runs one diary section query; a failure degrades that section to its
+    /// empty state but is always logged so database issues stay diagnosable.
+    private static func loadSection<T: Sendable>(
+        _ logger: Logger,
+        _ operation: @escaping @Sendable () async throws -> T
+    ) async -> T? {
+        do {
+            return try await operation()
+        } catch {
+            logger.error("Diary section load failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     nonisolated private static func loadSummary(day: String, authId: String?, db: Database) throws -> DiarySummary {
@@ -386,7 +451,7 @@ final class DiaryViewModel {
                 WHERE (user_id = ? OR user_id = ?)
                   AND COALESCE(sleep_date, date) = ?
                   AND deleted_at IS NULL
-                ORDER BY updated_at DESC
+                ORDER BY (source = 'manual') DESC, updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
             arguments: [userId, userId.uuidString, day]
@@ -617,11 +682,12 @@ final class DiaryViewModel {
                 SELECT id, scan_date, status, markers_extracted
                 FROM medical_scans
                 WHERE (user_id = ? OR user_id = ?)
+                  AND scan_date = ?
                   AND deleted_at IS NULL
                 ORDER BY scan_date DESC
                 LIMIT 1
                 """,
-            arguments: [userId, userId.uuidString]
+            arguments: [userId, userId.uuidString, day]
         )
 
         if let latestScan, let scanDate: String = latestScan["scan_date"] {

@@ -261,6 +261,13 @@ Deno.test("ensureExportReady expires stale artifacts and short-circuits expired 
 Deno.test("ensureExportReady builds a fresh export, redacts sensitive fields, and marks the job ready", async () => {
   await withMockedDate("2026-05-29T12:00:00.000Z", async () => {
     const pagedRows: Record<string, Array<Record<string, unknown>>> = {
+      workout_sessions: [{ id: "session-1", user_id: USER_ID }],
+      workout_exercises: [{ id: "exercise-1", session_id: "session-1" }],
+      workout_sets: [{
+        id: "set-1",
+        exercise_entry_id: "exercise-1",
+        reps: 10,
+      }],
       analytics_events: [
         {
           id: "event-1",
@@ -349,6 +356,15 @@ Deno.test("ensureExportReady builds a fresh export, redacts sensitive fields, an
         state.terminal === "then" &&
         state.range
       ) {
+        if (state.table === "workout_sets") {
+          assertEquals(
+            state.filters.some((filter) =>
+              filter.column === "exercise_entry_id" && filter.op === "in" &&
+              JSON.stringify(filter.value) === JSON.stringify(["exercise-1"])
+            ),
+            true,
+          );
+        }
         const rows = pagedRows[state.table] ?? [];
         return {
           data: rows.slice(state.range.from, state.range.to + 1),

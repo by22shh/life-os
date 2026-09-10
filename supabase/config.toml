@@ -1,10 +1,12 @@
 project_id = "life-os"
 
 # Auth contract pinned in code so hosted projects can be configured to match
-# the reviewed baseline. Values below intentionally mirror Supabase defaults;
-# change them deliberately and update the security docs together.
+# the reviewed baseline, including anonymous first-launch authentication.
+# Change them deliberately and update the security docs together.
 [auth]
 site_url = "http://localhost:3000"
+# First launch obtains an anonymous JWT before optional account linking.
+enable_anonymous_sign_ins = true
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
@@ -49,7 +51,8 @@ verify_jwt = true
 entrypoint = "./functions/api/account/delete_worker/index.ts"
 
 [functions.api-account-delete-status]
-verify_jwt = true
+# Status-only receipt is validated inside the handler after auth deletion.
+verify_jwt = false
 entrypoint = "./functions/api/account/delete_status/index.ts"
 
 [functions.api-account-delete-cancel]
@@ -155,6 +158,10 @@ entrypoint = "./functions/api/sleep/calendar/index.ts"
 [functions.api-insights-predict]
 verify_jwt = true
 entrypoint = "./functions/api/insights/predict/index.ts"
+
+[functions.api-vector-memory-worker]
+verify_jwt = true
+entrypoint = "./functions/api/vector_memory/worker/index.ts"
 
 [functions.api-insights-daily]
 verify_jwt = true
@@ -273,4 +280,4 @@ entrypoint = "./functions/api/wellness/check/index.ts"
 
 [functions.api-sleep-log]
 verify_jwt = true
-entrypoint = "./functions/api/sleep/daily/index.ts"
+entrypoint = "./functions/api/sleep/log/index.ts"

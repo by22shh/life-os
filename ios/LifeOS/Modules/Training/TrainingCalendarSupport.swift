@@ -440,6 +440,8 @@ struct TrainingWeekOverviewCard: View {
     let onSelectDay: (String) -> Void
     let onOpenMonth: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     @State private var weekDays: [TrainingCalendarDay] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -484,25 +486,21 @@ struct TrainingWeekOverviewCard: View {
                     action: onOpenMonth
                 )
                 .buttonStyle(.bordered)
+                .tint(LifeOSColors.Semantic.primary)
+                .foregroundStyle(LifeOSColors.Text.primary)
             }
 
             if let errorMessage {
                 Text(errorMessage)
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             } else if !weekDays.isEmpty {
                 let summary = TrainingCalendarWeekSummary(days: weekDays)
-                ViewThatFits {
-                    HStack(spacing: Spacing.s) {
-                        weeklySummaryPills(summary)
-                    }
-
-                    VStack(spacing: Spacing.xs) {
-                        weeklySummaryPills(summary)
-                    }
+                summaryLayout {
+                    weeklySummaryPills(summary)
                 }
 
-                HStack(spacing: Spacing.xs) {
+                weekLayout {
                     ForEach(weekDays) { day in
                         Button {
                             onSelectDay(day.day)
@@ -513,6 +511,9 @@ struct TrainingWeekOverviewCard: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(day.accessibilitySummary)
+                        .accessibilityAddTraits(day.day == selectedDay ? .isSelected : [])
                     }
                 }
             }
@@ -529,6 +530,20 @@ struct TrainingWeekOverviewCard: View {
         .task(id: selectedDay) {
             await loadWeek()
         }
+    }
+
+    private var weekLayout: AnyLayout {
+        if dynamicTypeSize > .large {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xs))
+        }
+        return AnyLayout(HStackLayout(alignment: .top, spacing: Spacing.xs))
+    }
+
+    private var summaryLayout: AnyLayout {
+        if dynamicTypeSize > .large {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xs))
+        }
+        return AnyLayout(HStackLayout(spacing: Spacing.s))
     }
 
     private func loadWeek() async {
@@ -583,12 +598,13 @@ struct TrainingWeekOverviewCard: View {
     private func trainingCalendarPill(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(LifeOSTypography.caption.weight(.semibold))
+                .foregroundStyle(LifeOSColors.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(value)
                 .font(LifeOSTypography.caption)
                 .foregroundStyle(.primary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -596,6 +612,7 @@ struct TrainingWeekOverviewCard: View {
         .padding(.vertical, Spacing.xs)
         .background(LifeOSColors.Semantic.primary.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -606,12 +623,14 @@ private struct TrainingWeekDayChip: View {
     var body: some View {
         VStack(spacing: Spacing.xxs) {
             Text(day.shortWeekday)
-                .font(LifeOSTypography.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(LifeOSTypography.subheadline.weight(.semibold))
+                .foregroundStyle(LifeOSColors.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(day.dayNumber)
                 .font(LifeOSTypography.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 4) {
                 Circle()
@@ -623,12 +642,15 @@ private struct TrainingWeekDayChip: View {
                         .frame(width: 7, height: 7)
                 }
             }
+            .accessibilityHidden(true)
 
-            Text(day.compactMetricLabel ?? " ")
-                .font(LifeOSTypography.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            if let metric = day.compactMetricLabel {
+                Text(metric)
+                    .font(LifeOSTypography.caption)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 92)
         .padding(.vertical, Spacing.xs)
@@ -638,9 +660,6 @@ private struct TrainingWeekDayChip: View {
                 .strokeBorder(border, lineWidth: isSelected ? 1.5 : 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(day.accessibilitySummary)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var background: Color {
@@ -689,7 +708,7 @@ struct TrainingCalendarView: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     Text(
@@ -700,7 +719,7 @@ struct TrainingCalendarView: View {
                         )
                     )
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -765,7 +784,7 @@ struct TrainingCalendarView: View {
             ForEach(symbols, id: \.self) { symbol in
                 Text(symbol)
                     .font(LifeOSTypography.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -874,7 +893,7 @@ private struct TrainingMonthDayCell: View {
             if let compactMetricLabel = day.compactMetricLabel {
                 Text(compactMetricLabel)
                     .font(LifeOSTypography.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .lineLimit(2)
             } else {
                 Text(
@@ -885,7 +904,7 @@ private struct TrainingMonthDayCell: View {
                     )
                 )
                 .font(LifeOSTypography.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(LifeOSColors.Text.tertiary)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)

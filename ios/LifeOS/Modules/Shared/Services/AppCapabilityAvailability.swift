@@ -256,6 +256,13 @@ enum AppCapabilityAvailability {
             return entitlements
         }
 
+        // App Store installs omit the provisioning profile. This signed resource
+        // is generated from CODE_SIGN_ENTITLEMENTS, never a user preference.
+        // It declares build support; each framework still requests actual access.
+        if let url = Bundle.main.url(forResource: "RuntimeCapabilities", withExtension: "plist"),
+           let capabilities = loadPropertyListDictionary(at: url) {
+            return capabilities
+        }
         return [:]
     }
 

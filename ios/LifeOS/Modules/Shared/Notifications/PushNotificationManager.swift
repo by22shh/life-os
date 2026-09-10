@@ -176,14 +176,27 @@ final class PushNotificationManager: NSObject {
         }
     }
 
-    func scheduleLocalNotification(_ notification: LifeOSNotification, at scheduledAt: Date) async {
-        guard !isRunningTests else { return }
+    /// Local reminders do not require an APNs entitlement. Called after a user
+    /// explicitly starts an experiment; the delayed first-insight gate still applies.
+    func requestLocalReminderAuthorizationIfNeeded() async -> Bool {
+        guard !isRunningTests, await notificationDeliveryUnlockedProvider() else { return false }
+        switch await notificationAuthorizationStatusProvider() {
+        case .authorized, .provisional, .ephemeral: return true
+        case .notDetermined: return await requestAuthorizationHandler()
+        case .denied: return false
+        @unknown default: return false
+        }
+    }
+
+    @discardableResult
+    func scheduleLocalNotification(_ notification: LifeOSNotification, at scheduledAt: Date) async -> Bool {
+        guard !isRunningTests else { return false }
 
         let authorizationStatus = await notificationAuthorizationStatusProvider()
         guard authorizationStatus == .authorized
                 || authorizationStatus == .provisional
                 || authorizationStatus == .ephemeral else {
-            return
+            return false
         }
 
         let content = UNMutableNotificationContent()
@@ -217,7 +230,12 @@ final class PushNotificationManager: NSObject {
             content: content,
             trigger: trigger
         )
-        try? await addNotificationRequestHandler(request)
+        do {
+            try await addNotificationRequestHandler(request)
+            return true
+        } catch {
+            return false
+        }
     }
 
     func handleDidRegisterForRemoteNotifications(deviceToken: Data) async {

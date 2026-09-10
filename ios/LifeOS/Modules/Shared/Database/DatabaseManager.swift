@@ -161,6 +161,7 @@ final class DatabaseManager: Sendable {
     /// Reserved for explicit test-only ephemeral stores.
     /// Live app startup no longer falls back to an in-memory database.
     let isUsingInMemoryFallback: Bool
+    let wasRestoredFromBackup: Bool
 
     /// For unit tests: create an in-memory database.
     static func inMemory() throws -> DatabaseManager {
@@ -172,12 +173,14 @@ final class DatabaseManager: Sendable {
 
     private enum DatabaseInitializationError: Error, Equatable {
         case forcedPersistentFailure
+        case corruptedStore
     }
 
     /// Testable init with a pre-configured queue.
-    init(dbQueue: DatabaseQueue, isInMemoryFallback: Bool = false) {
+    init(dbQueue: DatabaseQueue, isInMemoryFallback: Bool = false, wasRestoredFromBackup: Bool = false) {
         self.dbQueue = dbQueue
         self.isUsingInMemoryFallback = isInMemoryFallback
+        self.wasRestoredFromBackup = wasRestoredFromBackup
     }
 
     // MARK: - Configuration
@@ -186,6 +189,7 @@ final class DatabaseManager: Sendable {
         var config = Configuration()
         // WAL mode for concurrent reads
         config.prepareDatabase { db in
+            try db.execute(sql: "PRAGMA secure_delete = ON")
             try db.execute(sql: "PRAGMA journal_mode = WAL")
             try db.execute(sql: "PRAGMA foreign_keys = ON")
         }
@@ -230,12 +234,34 @@ final class DatabaseManager: Sendable {
                 configuration: configuration
             )
             applyDatabaseFileProtection(databaseURL: resolvedLocations.databaseURL)
-            try runMigrations(on: queue)
+            do {
+                let valid = try queue.read { db in
+                    try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"]
+                }
+                guard valid else { throw DatabaseInitializationError.corruptedStore }
+                try runMigrations(on: queue)
+            } catch {
+                try? queue.close()
+                throw error
+            }
             scheduleDailyBackupIfNeeded()
 
             return .available(DatabaseManager(dbQueue: queue))
         } catch {
             logPersistentInitFailure(error: error, forcePersistentFailure: forcePersistentFailure)
+            // Only confirmed corruption permits recovery. Permission, disk-space and
+            // migration errors must not replace a potentially newer healthy store.
+            if classifyPersistentStartupFailure(error) == .corruptedStore, let locations {
+                do {
+                    if try DatabaseBackupManager.restoreBackup(primaryDatabaseURL: locations.databaseURL) {
+                        let queue = try DatabaseQueue(path: locations.databaseURL.path, configuration: configuration)
+                        try runMigrations(on: queue)
+                        applyDatabaseFileProtection(databaseURL: locations.databaseURL)
+                        scheduleDailyBackupIfNeeded()
+                        return .available(DatabaseManager(dbQueue: queue, wasRestoredFromBackup: true))
+                    }
+                } catch { return .unavailable(startupFailure(from: error, locations: locations)) }
+            }
             return .unavailable(startupFailure(from: error, locations: locations))
         }
     }
@@ -284,6 +310,10 @@ final class DatabaseManager: Sendable {
         )
         let dbDirectory = appSupport.appendingPathComponent("LifeOS", isDirectory: true)
         try fileManager.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var protectedDirectory = dbDirectory
+        try protectedDirectory.setResourceValues(values)
         return DatabaseLocations(
             databaseDirectoryURL: dbDirectory,
             databaseURL: dbDirectory.appendingPathComponent("lifeos.db")
@@ -314,6 +344,7 @@ final class DatabaseManager: Sendable {
     }
 
     private static func classifyPersistentStartupFailure(_ error: Error) -> PersistentStartupFailure.Kind {
+        if error as? DatabaseInitializationError == .corruptedStore { return .corruptedStore }
         if let initializationError = error as? DatabaseInitializationError,
            initializationError == .forcedPersistentFailure {
             return .unknown

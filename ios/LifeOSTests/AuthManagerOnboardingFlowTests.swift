@@ -5,6 +5,29 @@ import GRDB
 @MainActor
 final class AuthManagerOnboardingFlowTests: XCTestCase {
 
+    func testSignOutPreservesLocalHistoryAndLocksVaultToOriginalIdentity() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let auth = AuthManager(client: SupabaseConfig.client, db: manager)
+        let authId = UUID()
+        try await manager.dbQueue.write { db in
+            try User(id: authId, authId: authId).insert(db)
+            try HealthMeasurement(userId: authId, biomarkerName: "Ferritin", value: 78.4, unit: "ng/mL").insert(db)
+            try OutboxEvent(httpMethod: .POST, path: "api-food-log", bodyJson: Data("{}".utf8)).insert(db)
+        }
+        auth._testSetState(authState: .authenticated, userId: authId, isAnonymous: false)
+        try await auth.signOut()
+        XCTAssertEqual(auth.authState, .signedOut)
+        let counts = try await manager.dbQueue.read { db in
+            (try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM health_measurements"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox_events"))
+        }
+        XCTAssertEqual(counts.0, 1)
+        XCTAssertEqual(counts.1, 1)
+        auth._testApplyCloudIdentity(UUID())
+        XCTAssertNil(auth.userId, "A different account must not unlock retained local data")
+        auth._testApplyCloudIdentity(authId)
+        XCTAssertEqual(auth.userId, authId)
+    }
+
     override func tearDown() async throws {
         try await super.tearDown()
         await MainActor.run {

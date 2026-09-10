@@ -237,6 +237,7 @@ function createMockService(config: MockServiceConfig = {}) {
     }),
     storage: {
       from: (_bucket: string) => ({
+        list: () => Promise.resolve({ data: [], error: null }),
         remove: (paths: string[]) => {
           calls.removedBatches.push(paths);
           return Promise.resolve(config.storageRemoveResult ?? { error: null });
@@ -942,7 +943,10 @@ Deno.test("cleanupMedicalScanStorage completes jobs with an empty manifest", asy
   assertEquals(result.job.storage_cleanup_completed, true);
   assertEquals(service.__calls.removedBatches, []);
   assertEquals(service.__calls.jobPatches[0].auth_user_id, user.auth_id);
-  assertEquals(service.__calls.jobPatches[1].storage_cleanup_completed, true);
+  assertEquals(
+    service.__calls.jobPatches.at(-1)?.storage_cleanup_completed,
+    true,
+  );
 });
 
 Deno.test("cleanupMedicalScanStorage short-circuits completed jobs and reports storage failures", async () => {
@@ -1011,4 +1015,25 @@ Deno.test("cleanupMedicalScanStorage reports remaining objects after verificatio
     `medical_scan_storage_objects_remaining:${user.auth_id}/scan-1/original.pdf`,
   );
   assertEquals(service.__calls.jobPatches.length, 0);
+});
+
+Deno.test("account deletion verifies storage removal when PostgREST hides the storage schema", async () => {
+  const user = makeUser();
+  const job = makeJob({
+    storage_object_paths: [`${user.auth_id}/scan/original.pdf`],
+  });
+  const service = createMockService({
+    storageObjectsResult: {
+      data: null,
+      error: { message: "Invalid schema: storage" },
+    },
+    jobUpdateResult: {
+      data: { ...job, storage_cleanup_completed: true },
+      error: null,
+    },
+  });
+  const result = await cleanupMedicalScanStorage(service as never, user, job);
+  assertEquals(result.ok, true);
+  assertEquals(result.job.storage_cleanup_completed, true);
+  assertEquals(service.__calls.removedBatches, [job.storage_object_paths]);
 });

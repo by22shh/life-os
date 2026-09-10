@@ -3,6 +3,12 @@ import XCTest
 
 final class SupabaseConfigCoverageTests: XCTestCase {
     func testComputeIsRunningTestsDetectsAllSignals() {
+        XCTAssertTrue(SupabaseConfig._testComputeIsRunningTests(
+            env: ["LIFEOS_UI_TEST_LIVE_BACKEND": "1"], args: []
+        ))
+        XCTAssertFalse(SupabaseConfig._testComputeIsRunningTests(
+            env: ["LIFEOS_UI_TEST_LIVE_BACKEND": "0"], args: []
+        ))
         XCTAssertTrue(
             SupabaseConfig._testComputeIsRunningTests(
                 env: ["XCTestConfigurationFilePath": "/tmp/xctest.xctestconfiguration"],

@@ -221,7 +221,7 @@ async function removeMedicalScanStorageObjects(
   }
 }
 
-async function verifyMedicalScanStorageObjectsRemovedViaStorageApi(
+export async function verifyMedicalScanStorageObjectsRemovedViaStorageApi(
   service: ServiceRoleClient,
   paths: string[],
 ): Promise<void> {
@@ -229,21 +229,25 @@ async function verifyMedicalScanStorageObjectsRemovedViaStorageApi(
 
   for (const path of paths) {
     const { directory, filename } = splitStorageObjectPath(path);
-    const { data, error } = await service.storage
-      .from(MEDICAL_SCANS_BUCKET)
-      .list(directory, { limit: 100, search: filename });
-
-    if (error) {
-      throw new Error(`medical_scan_storage_verify_failed:${error.message}`);
-    }
-
-    // deno-coverage-ignore-start -- null storage list payload fallback is defensive; survivor behavior is covered.
-    const stillExists = (data ?? []).some((row: { name: string | null }) =>
-      row.name === filename
-    );
-    // deno-coverage-ignore-stop
-    if (stillExists) {
-      remainingPaths.push(path);
+    // search is a substring match. Paginate rather than silently missing an
+    // exact filename beyond the first page of similarly named objects.
+    for (let offset = 0;; offset += 100) {
+      const { data, error } = await service.storage
+        .from(MEDICAL_SCANS_BUCKET)
+        .list(directory, {
+          limit: 100,
+          offset,
+          search: filename,
+          sortBy: { column: "name", order: "asc" },
+        });
+      if (error) {
+        throw new Error(`medical_scan_storage_verify_failed:${error.message}`);
+      }
+      if ((data ?? []).some((row) => row.name === filename)) {
+        remainingPaths.push(path);
+        break;
+      }
+      if ((data ?? []).length < 100) break;
     }
   }
 
@@ -268,8 +272,53 @@ function splitStorageObjectPath(path: string): {
   };
 }
 
-function isStorageSchemaUnavailable(error: { message?: string }): boolean {
-  return (error.message ?? "").toLowerCase().includes("invalid schema");
+export function isStorageSchemaUnavailable(
+  error: { message?: string; code?: string },
+): boolean {
+  return error.code === "PGRST106" ||
+    /invalid schema|schema must be one of/i.test(error.message ?? "");
+}
+
+/** Enumerate the entire owned prefix, including uploads with no scan row. */
+export async function listOwnedMedicalScanStorageObjects(
+  service: ServiceRoleClient,
+  authUserId: string,
+): Promise<string[]> {
+  if (
+    !authUserId || /[\/\\]/.test(authUserId) || authUserId === "." ||
+    authUserId === ".."
+  ) {
+    throw new Error("medical_scan_storage_invalid_owner");
+  }
+  const paths: string[] = [];
+  const directories = [authUserId];
+  while (directories.length > 0) {
+    const directory = directories.pop()!;
+    for (let offset = 0;; offset += 100) {
+      const { data, error } = await service.storage.from(MEDICAL_SCANS_BUCKET)
+        .list(directory, {
+          limit: 100,
+          offset,
+          sortBy: { column: "name", order: "asc" },
+        });
+      if (error) {
+        throw new Error(`medical_scans_manifest_list_failed:${error.message}`);
+      }
+      for (const object of data ?? []) {
+        if (
+          !object.name || object.name.includes("/") || object.name === "." ||
+          object.name === ".."
+        ) {
+          throw new Error("medical_scans_manifest_invalid_object");
+        }
+        const path = `${directory}/${object.name}`;
+        if (object.id == null) directories.push(path);
+        else paths.push(path);
+      }
+      if ((data ?? []).length < 100) break;
+    }
+  }
+  return paths.sort();
 }
 
 function normalizeMedicalScanStorageObjectPaths(
@@ -286,7 +335,7 @@ function normalizeMedicalScanStorageObjectPaths(
   return [...normalized].sort();
 }
 
-function normalizeMedicalScanStoragePath(
+export function normalizeMedicalScanStoragePath(
   value: string | null | undefined,
   authUserId: string,
 ): string | null {

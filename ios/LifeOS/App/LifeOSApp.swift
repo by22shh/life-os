@@ -18,6 +18,7 @@ struct LifeOSApp: App {
     private let databaseStartupState: DatabaseManager.PersistentStartupState
     @State private var authManager = AuthManager()
     @State private var deepLinkRouter = DeepLinkRouter()
+    @State private var showRecoveryNotice = false
     /// Atomic flag to prevent double-application of the initial deep link URL.
     /// Uses OSAllocatedUnfairLock instead of @State to guarantee thread safety
     /// if `.onOpenURL` fires concurrently with the bootstrap `MainActor.run {}` block.
@@ -190,8 +191,26 @@ struct LifeOSApp: App {
         }
     }
 
+    /// Reacts to HealthKit change notifications by recomputing the recent
+    /// days. Runs inside a background task held by HealthKitManager, so iOS
+    /// grants us time even when the process was woken in the background.
+    private func installHealthKitChangeHandler() {
+        #if DEBUG
+        if Self.testBootstrapOverride.value != nil { return }
+        #endif
+        let authManager = self.authManager
+        HealthKitManager.setBackgroundChangeHandler { [weak authManager] in
+            guard let authManager, let userId = await authManager.userId else { return }
+            try? await HealthSyncManager.shared.backfillRecentData(days: 3, userId: userId)
+        }
+    }
+
     private func bootstrapAndRunLaunchWork() async {
         guard databaseStartupState.isAvailable else { return }
+        installHealthKitChangeHandler()
+        if !skipBackgroundWork {
+            await HealthKitManager.shared.restoreBackgroundObservers()
+        }
 #if DEBUG
         if let override = Self.testBootstrapOverride.value {
             await override()
@@ -401,6 +420,12 @@ struct LifeOSApp: App {
                 .environment(ForceUpdateManager.shared)
                 .onOpenURL(perform: handleOpenURL)
                 .task(bootstrapAndRunLaunchWork)
+                .onAppear { showRecoveryNotice = databaseStartupState.manager?.wasRestoredFromBackup == true }
+                .alert(String(localized: "database_restored_title", defaultValue: "Backup restored"), isPresented: $showRecoveryNotice) {
+                    Button(String(localized: "ok"), role: .cancel) { }
+                } message: {
+                    Text(String(localized: "database_restored_message", defaultValue: "Life OS recovered your data from a valid backup after detecting database damage. Recent changes may be missing. The original files were preserved for recovery; please check your latest records."))
+                }
 #if os(iOS)
                 .onReceive(
                     NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification),
@@ -795,7 +820,7 @@ private struct DatabaseUnavailableView: View {
                 .frame(maxWidth: 520)
 
                 VStack(alignment: .leading, spacing: Spacing.s) {
-                    Text("Next steps")
+                    Text(String(localized: "startup_recovery_next_steps"))
                         .font(LifeOSTypography.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
 

@@ -16,15 +16,23 @@ private actor PrivacyStatusClientMock: PrivacyStatusAPIClient {
 
     private let responses: [String: Data]
     private let downloadResponses: [String: PrivacyDownloadedExportArchive]
+    private let receiptResponse: ErasureStatusResponse?
     private var invocations: [Invocation] = []
     private var downloadInvocations: [URL] = []
 
     init(
         responses: [String: Data] = [:],
-        downloadResponses: [String: PrivacyDownloadedExportArchive] = [:]
+        downloadResponses: [String: PrivacyDownloadedExportArchive] = [:],
+        receiptResponse: ErasureStatusResponse? = nil
     ) {
         self.responses = responses
         self.downloadResponses = downloadResponses
+        self.receiptResponse = receiptResponse
+    }
+
+    func deletionReceiptStatus(_ receipt: String) async throws -> ErasureStatusResponse {
+        guard receipt.count == 64, let receiptResponse else { throw MockError.missingResponse("receipt") }
+        return receiptResponse
     }
 
     func callPrivacyStatusEdgeFunction<T: Decodable & Sendable>(
@@ -56,6 +64,34 @@ private actor PrivacyStatusClientMock: PrivacyStatusAPIClient {
 }
 
 final class PrivacyGatewayTests: XCTestCase {
+
+    @MainActor
+    func testDeletionReceiptSurvivesLostSessionAndConfirmsCompletionWithoutAuthRequest() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let authId = UUID()
+        try AccountDeletionReceiptStore.clear()
+        defer {
+            try? AccountDeletionReceiptStore.clear()
+            AuthManager.setActiveAuthIdForTests(nil)
+            AuthManager._testSetActiveHasCloudSession(false)
+        }
+        try await manager.dbQueue.write { db in try Self.insertUser(db, userId: authId, authId: authId) }
+        let token = try AccountDeletionReceiptStore.prepare(authId: authId)
+        XCTAssertEqual(token.count, 64)
+        XCTAssertTrue(token.allSatisfy { $0.isHexDigit })
+        XCTAssertEqual(try AccountDeletionReceiptStore.prepare(authId: authId), token, "Retries retain the pre-request receipt")
+        try AccountDeletionReceiptStore.save(.init(token: token, expiresAt: nil, authId: authId, completed: false, localErased: true))
+        AuthManager.setActiveAuthIdForTests(authId)
+        AuthManager._testSetActiveHasCloudSession(false)
+        let client = PrivacyStatusClientMock(receiptResponse: AccountDeletionReceiptStore.status(state: "completed"))
+        let gateway = PrivacyGateway(apiClient: client, dbQueue: manager.dbQueue, isRuntimeConfiguredProvider: { true })
+        let status = try await gateway.erasureStatus()
+        XCTAssertEqual(status.deletionState, "completed")
+        XCTAssertTrue(try XCTUnwrap(AccountDeletionReceiptStore.load()).completed)
+        XCTAssertNil(try AccountDeletionReceiptStore.load()?.token)
+        let authenticatedRequests = await client.allInvocations()
+        XCTAssertTrue(authenticatedRequests.isEmpty)
+    }
 
     private static func insertUser(_ db: Database, userId: UUID, authId: UUID = UUID()) throws {
         var user = User(id: userId, authId: authId, timezone: "UTC", units: .metric)
@@ -404,7 +440,11 @@ final class PrivacyGatewayTests: XCTestCase {
 
         XCTAssertTrue(archiveURL.isFileURL)
         XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
-        XCTAssertEqual(try Data(contentsOf: archiveURL), archivePayload)
+        let bundle = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: archiveURL)) as? [String: Any])
+        XCTAssertEqual((bundle["cloud_snapshot"] as? [String: Any])?["remote"] as? Bool, true)
+        let local = try XCTUnwrap(bundle["local_snapshot"] as? [String: Any])
+        let tables = try XCTUnwrap(local["tables"] as? [String: Any])
+        XCTAssertNotNil(tables["users"])
         XCTAssertEqual(archiveURL.lastPathComponent, "lifeos_export_test.json")
         let downloadInvocations = await client.allDownloadInvocations()
         XCTAssertEqual(downloadInvocations, [remoteURL])

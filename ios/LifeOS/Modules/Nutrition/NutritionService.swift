@@ -438,6 +438,8 @@ struct NutritionMealRemoteDetailResponse: Decodable, Sendable {
 
     struct Item: Decodable, Sendable {
         let id: UUID
+        var createdAt: Date? = nil
+        var updatedAt: Date? = nil
         let name: String
         let brand: String?
         let barcode: String?
@@ -452,6 +454,8 @@ struct NutritionMealRemoteDetailResponse: Decodable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case id
+            case createdAt = "created_at"
+            case updatedAt = "updated_at"
             case name
             case brand
             case barcode
@@ -467,6 +471,7 @@ struct NutritionMealRemoteDetailResponse: Decodable, Sendable {
     }
 
     let id: UUID
+    var createdAt: Date? = nil
     let loggedAt: Date
     let loggedDate: String
     let mealType: MealType?
@@ -477,9 +482,11 @@ struct NutritionMealRemoteDetailResponse: Decodable, Sendable {
     let userCorrected: Bool
     let userNotes: String?
     let items: [Item]
+    var updatedAt: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
+        case createdAt = "created_at"
         case loggedAt = "logged_at"
         case loggedDate = "logged_date"
         case mealType = "meal_type"
@@ -490,6 +497,7 @@ struct NutritionMealRemoteDetailResponse: Decodable, Sendable {
         case userCorrected = "user_corrected"
         case userNotes = "user_notes"
         case items
+        case updatedAt = "updated_at"
     }
 }
 
@@ -907,7 +915,7 @@ actor NutritionService {
                 return localDetail
             }
             try await cacheMealDetail(remoteDetail)
-            return remoteDetail
+            return try await loadLocalMealDetail(id: id)
         } catch {
             if localDetail == nil {
                 throw error
@@ -1697,7 +1705,8 @@ actor NutritionService {
         log.userNotes = response.userNotes
         log.deletedAt = nil
         log.deletedReason = nil
-        log.updatedAt = Date()
+        log.createdAt = response.createdAt ?? .distantPast
+        log.updatedAt = response.updatedAt ?? .distantPast
 
         let items = response.items.map { item in
             var existing = localDetail?.items.first(where: { $0.id == item.id }) ?? FoodItem(
@@ -1728,7 +1737,8 @@ actor NutritionService {
             existing.confidence = item.confidence
             existing.detectedByAi = item.detectedByAi
             existing.userAdjusted = item.userAdjusted
-            existing.updatedAt = Date()
+            existing.createdAt = item.createdAt ?? .distantPast
+            existing.updatedAt = item.updatedAt ?? .distantPast
             return existing
         }
 
@@ -1737,6 +1747,15 @@ actor NutritionService {
 
     private func cacheMealDetail(_ detail: NutritionMealDetail) async throws {
         try await dbQueue.write { db in
+            // Recheck in the write transaction: an edit may occur during the GET.
+            let entityId = detail.log.id
+            let pending = try OutboxEvent.fetchAll(db, sql: "SELECT * FROM outbox_events WHERE status NOT IN (?, ?)", arguments: [OutboxStatus.succeeded.rawValue, OutboxStatus.cancelled.rawValue])
+            guard !pending.contains(where: { event in
+                event.id == entityId || event.path.lowercased().contains(entityId.uuidString.lowercased()) ||
+                String(data: event.bodyJson, encoding: .utf8)?.lowercased().contains(entityId.uuidString.lowercased()) == true
+            }) else { return }
+            if let existing = try FoodLog.fetchOne(db, sql: "SELECT * FROM food_logs WHERE id = ? OR id = ?", arguments: [entityId, entityId.uuidString]),
+               existing.updatedAt > detail.log.updatedAt { return }
             try detail.log.save(db)
             try db.execute(
                 sql: """

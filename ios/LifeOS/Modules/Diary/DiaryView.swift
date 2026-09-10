@@ -51,6 +51,9 @@ struct DiaryView: View {
                         .labelsHidden()
                         .padding(.horizontal, LayoutConstants.contentPadding)
 
+                    DiaryMonthGrid(selection: $selectedDate, recordedDays: viewModel.recordedDays)
+                        .padding(.horizontal, LayoutConstants.contentPadding)
+
                     // Sleep & Recovery Summary
                     sectionCard(
                         title: String(localized: "sleep_recovery"),
@@ -88,7 +91,7 @@ struct DiaryView: View {
                         subtitle: viewModel.nutritionSubtitle
                     ) {
                         macroRow
-                        if let targetSummary = viewModel.targetSummary {
+                        if !viewModel.hideCalories, let targetSummary = viewModel.targetSummary {
                             Text(targetSummary)
                                 .font(LifeOSTypography.caption)
                                 .foregroundStyle(.secondary)
@@ -378,7 +381,9 @@ struct DiaryView: View {
 
     private var macroRow: some View {
         HStack(spacing: Spacing.l) {
-            macroItem(label: String(localized: "calories"), value: viewModel.caloriesValue, unit: "kcal")
+            if !viewModel.hideCalories {
+                macroItem(label: String(localized: "calories"), value: viewModel.caloriesValue, unit: "kcal")
+            }
             macroItem(label: String(localized: "protein"), value: viewModel.proteinValue, unit: "g")
             macroItem(label: String(localized: "fat"), value: viewModel.fatValue, unit: "g")
             macroItem(label: String(localized: "carbs"), value: viewModel.carbsValue, unit: "g")
@@ -2261,4 +2266,67 @@ enum WellnessCheckDayViewTestHarness {
 
 #Preview {
     DiaryView()
+}
+
+
+private struct DiaryMonthGrid: View {
+    @Binding var selection: Date
+    let recordedDays: Set<String>
+    private let calendar = Calendar.current
+
+    private var monthStart: Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: selection)) ?? selection
+    }
+    private var leadingDays: Int {
+        (calendar.component(.weekday, from: monthStart) - calendar.firstWeekday + 7) % 7
+    }
+    private var dayCount: Int { calendar.range(of: .day, in: .month, for: selection)?.count ?? 0 }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Button { moveMonth(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel(String(localized: "diary_previous_month", defaultValue: "Previous month"))
+                Spacer()
+                Text(selection.formatted(.dateTime.month(.wide).year())).font(.headline)
+                Spacer()
+                Button { moveMonth(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel(String(localized: "diary_next_month", defaultValue: "Next month"))
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 4) {
+                ForEach(0..<7, id: \.self) { index in
+                    Text(calendar.veryShortStandaloneWeekdaySymbols[(index + calendar.firstWeekday - 1) % 7])
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(0..<(leadingDays + dayCount), id: \.self) { index in
+                    if index < leadingDays {
+                        Color.clear.frame(height: 44).accessibilityHidden(true)
+                    } else if let date = calendar.date(byAdding: .day, value: index - leadingDays, to: monthStart) {
+                        dayButton(date)
+                    }
+                }
+            }
+        }
+    }
+
+    private func dayButton(_ date: Date) -> some View {
+        let selected = calendar.isDate(date, inSameDayAs: selection)
+        let recorded = recordedDays.contains(DiaryDateFormatter.formatDate(date))
+        return Button { selection = date } label: {
+            VStack(spacing: 3) {
+                Text("\(calendar.component(.day, from: date))").font(.callout)
+                Circle().fill(recorded ? Color.accentColor : Color.clear).frame(width: 5, height: 5)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(selected ? Color.accentColor.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(date.formatted(date: .complete, time: .omitted))
+        .accessibilityValue(recorded ? String(localized: "diary_day_has_records", defaultValue: "Has records") : String(localized: "diary_day_empty", defaultValue: "No records"))
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    private func moveMonth(_ offset: Int) {
+        selection = calendar.date(byAdding: .month, value: offset, to: monthStart) ?? selection
+    }
 }

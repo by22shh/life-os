@@ -542,7 +542,7 @@ struct SettingsAccountManagementView: View {
             isWorking = true
             defer { isWorking = false }
             do {
-                try await authManager.signOut()
+                try await authManager.signOut(removingLocalData: true)
                 if let notificationScheduler = AppContainer.shared?.notificationScheduler {
                     await notificationScheduler.refreshSchedules()
                 }
@@ -557,7 +557,7 @@ struct SettingsAccountManagementView: View {
             isWorking = true
             defer { isWorking = false }
             do {
-                try await authManager.signOut()
+                try await authManager.signOut(removingLocalData: true)
                 await authManager.startLocalProfile()
                 if let notificationScheduler = AppContainer.shared?.notificationScheduler {
                     await notificationScheduler.refreshSchedules()
@@ -1520,6 +1520,8 @@ private final class SettingsHealthFlagsViewModel {
 
             flags = persistedResult.0
             cloudBackupEnabled = persistedResult.1
+            await AppContainer.shared?.widgetSnapshotCoordinator.refreshSnapshot()
+            _ = await WatchSyncManager.shared.pushLatestSnapshotFromLocalStore(syncEngine: syncEngine)
 
             if cloudBackupEnabled {
                 try await enqueue(

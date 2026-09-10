@@ -4,6 +4,8 @@
 
 import Foundation
 import HealthKit
+import UIKit
+import os
 
 /// Manages all HealthKit interactions for Life OS.
 /// Read-only access to HRV, RHR, sleep analysis, wrist temperature, respiratory rate,
@@ -88,7 +90,8 @@ actor HealthKitManager {
         return AppCapabilityAvailability.isHealthKitAvailable
     }
 
-    /// Request read authorization. Returns true if user granted at least partial access.
+    /// Returns true when the system authorization request completes.
+    /// Apple deliberately does not disclose whether read access was granted.
     func requestAuthorization() async throws -> Bool {
 #if DEBUG
         let requestAccess = Self.testRequestAccessOverride.value ?? defaultRequestAccess
@@ -1104,11 +1107,12 @@ actor HealthKitManager {
     ) async throws -> Bool {
         guard isAvailable else { return false }
         try await requestAccess()
-        let count = authorizedTypeCount()
-        if Self.shouldEnableBackgroundDelivery(forAuthorizedTypeCount: count) {
-            await enableBackground()
-        }
-        return Self.shouldEnableBackgroundDelivery(forAuthorizedTypeCount: count)
+        // authorizationStatus(for:) reports WRITE permission, never read access.
+        // Successful request completion permits querying; denied reads return no data.
+        _ = authorizedTypeCount // retained for compatibility with existing test hooks
+        UserDefaults.standard.set(true, forKey: "healthkit_read_request_completed")
+        await enableBackground()
+        return true
     }
 
     private static func shouldPreferSleepSource(_ lhs: SleepSourceSelectionKey, over rhs: SleepSourceSelectionKey) -> Bool {
@@ -1206,7 +1210,12 @@ actor HealthKitManager {
             awakeMinutes: Int(awakeMinutes),
             efficiency: efficiency,
             bedTime: samples.first?.startDate,
-            wakeTime: samples.last?.endDate
+            wakeTime: samples.last?.endDate,
+            hasStages: samples.contains {
+                [HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepCore.rawValue].contains($0.value)
+            }
         )
     }
 
@@ -1328,6 +1337,108 @@ actor HealthKitManager {
         ]
     }
 
+    // MARK: - Background Change Notifications
+    //
+    // enableBackgroundDelivery alone never wakes the app: per HealthKit's
+    // contract, iOS only launches/suspends-resumes the process for a data type
+    // when an HKObserverQuery for that type is installed. Without observers the
+    // registration above is a no-op and data arrives only on foreground or
+    // BGAppRefresh cycles.
+
+    /// Reaction to HealthKit change notifications. Wired at app startup to run
+    /// an incremental sync; defaults to no-op so this data layer stays
+    /// independent of orchestration singletons.
+    private static let backgroundChangeHandler =
+        OSAllocatedUnfairLock<@Sendable () async -> Void>(initialState: {})
+
+    static func setBackgroundChangeHandler(
+        _ handler: @escaping @Sendable () async -> Void
+    ) {
+        backgroundChangeHandler.withLock { $0 = handler }
+    }
+
+    private nonisolated static func currentBackgroundChangeHandler()
+        -> @Sendable () async -> Void {
+        backgroundChangeHandler.withLock { $0 }
+    }
+
+    #if DEBUG
+    private static let testInstallObserverRunner = LockedTestOverride<
+        @Sendable (HKHealthStore, HKSampleType) -> Void
+    >()
+    private static var usesFakeDeliveryRunners: Bool {
+        testStoreEnableBackgroundDeliveryRunner.value != nil ||
+        testDefaultStoreEnableBackgroundDeliveryRunner.value != nil ||
+        testEnableBackgroundDeliveryRunner.value != nil
+    }
+    #endif
+
+    /// HealthKit's callback is not Sendable. Ownership is transferred to this
+    /// locked, single-use holder before crossing the task boundary.
+    private final class ObserverCompletion: @unchecked Sendable {
+        private let lock = NSLock()
+        private var callback: (() -> Void)?
+
+        init(_ callback: @escaping () -> Void) { self.callback = callback }
+
+        func finish() {
+            lock.lock()
+            let action = callback
+            callback = nil
+            lock.unlock()
+            action?()
+        }
+    }
+
+    @MainActor
+    private final class ObserverBackgroundTask {
+        private var identifier: UIBackgroundTaskIdentifier = .invalid
+
+        func begin(onExpiration: @escaping @Sendable () -> Void) {
+            identifier = UIApplication.shared.beginBackgroundTask(withName: "healthkit-observer-sync") { [weak self] in
+                onExpiration()
+                Task { @MainActor in self?.end() }
+            }
+        }
+
+        func end() {
+            guard identifier != .invalid else { return }
+            UIApplication.shared.endBackgroundTask(identifier)
+            identifier = .invalid
+        }
+    }
+
+    /// Installs the long-lived observer query required for background delivery
+    /// to actually wake the process. Called once per registered type.
+    private static func installObserverQuery(store: HKHealthStore, type: HKSampleType) {
+        #if DEBUG
+        if let runner = Self.testInstallObserverRunner.value {
+            runner(store, type)
+            return
+        }
+        // Unit tests fake the delivery path; do not touch real observer
+        // machinery (or UIApplication) from hermetic tests.
+        guard !Self.usesFakeDeliveryRunners else { return }
+        #endif
+
+        let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, error in
+            let completion = ObserverCompletion(completion)
+            guard error == nil else {
+                completion.finish()
+                return
+            }
+            let work = Self.currentBackgroundChangeHandler()
+            Task { @MainActor in
+                let lease = ObserverBackgroundTask()
+                lease.begin { completion.finish() }
+                await work()
+                lease.end()
+                completion.finish()
+            }
+        }
+        store.execute(query)
+    }
+
     private static func enableBackgroundDelivery(
         for types: [HKSampleType],
         deliver: @escaping @Sendable (HKSampleType) async throws -> Bool
@@ -1342,7 +1453,10 @@ actor HealthKitManager {
 
     private static func enableBackgroundDelivery(for types: [HKSampleType], store: HKHealthStore) async throws {
         try await enableBackgroundDelivery(for: types) { type in
-            try await requestBackgroundDelivery(store: store, type: type)
+            let success = try await requestBackgroundDelivery(store: store, type: type)
+            guard success else { return false }
+            installObserverQuery(store: store, type: type)
+            return true
         }
     }
 
@@ -1408,7 +1522,16 @@ actor HealthKitManager {
         return .success(success)
     }
 
+    func restoreBackgroundObservers() async {
+        guard Self.isAvailable,
+              UserDefaults.standard.bool(forKey: "healthkit_read_request_completed") else { return }
+        try? await enableBackgroundDelivery()
+    }
+
+    private var backgroundObserversInstalled = false
+
     private func enableBackgroundDelivery() async throws {
+        guard !backgroundObserversInstalled else { return }
 #if DEBUG
         if let runner = Self.testEnableBackgroundDeliveryRunner.value {
             try await runner(Self.backgroundDeliveryTypes)
@@ -1416,6 +1539,7 @@ actor HealthKitManager {
         }
 #endif
         try await Self.enableBackgroundDelivery(for: Self.backgroundDeliveryTypes, store: store)
+        backgroundObserversInstalled = true
     }
 }
 
@@ -1813,39 +1937,26 @@ struct SleepData: Sendable {
     var efficiency: Double?         // 0-100
     var bedTime: Date?
     var wakeTime: Date?
+    var hasStages: Bool = true
 
-    /// Quality score 0-100 based on duration, deep sleep %, and efficiency.
+    /// Shared sleep algorithm; absent stages and efficiency are reweighted.
     var qualityScore: Double {
-        var score = 0.0
-
-        // Duration component (max 40 points for 7-9 hours)
-        let durationScore: Double
-        switch totalHours {
-        case 7...9: durationScore = 40
-        case 6..<7: durationScore = 30
-        case 9..<10: durationScore = 35
-        default: durationScore = max(0, 40 - abs(totalHours - 8) * 10)
-        }
-        score += durationScore
-
-        // Deep sleep component (max 30 points for 15-25% of total)
-        let totalMinutes = deepMinutes + remMinutes + lightMinutes
-        if totalMinutes > 0 {
-            let deepPct = Double(deepMinutes) / Double(totalMinutes) * 100
-            if deepPct >= 15 && deepPct <= 25 {
-                score += 30
-            } else {
-                score += max(0, 30 - abs(deepPct - 20) * 2)
-            }
-        }
-
-        // Efficiency component (max 30 points for > 85%)
-        if let eff = efficiency {
-            score += min(30, eff / 100 * 35)
-        }
-
-        return min(100, max(0, score))
+        SleepScorer.compositeScore(sleepLog: scoringLog, physiologicalState: nil, age: 30) ?? 0
     }
+
+    var scoringLog: SleepLog {
+        var log = SleepLog(userId: UUID(), date: "")
+        log.totalDurationMinutes = Int((totalHours * 60).rounded())
+        log.deepSleepMinutes = hasStages ? deepMinutes : nil
+        log.remSleepMinutes = hasStages ? remMinutes : nil
+        log.lightSleepMinutes = hasStages ? lightMinutes : nil
+        log.awakeMinutes = hasStages ? awakeMinutes : nil
+        log.sleepEfficiency = efficiency
+        log.bedTime = bedTime
+        log.wakeTime = wakeTime
+        return log
+    }
+
 }
 
 struct HealthKitImportedWorkout: Sendable, Equatable {

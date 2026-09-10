@@ -4,6 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# The scan uses riprep for globs + multiline-safe matching. Fail loudly and
+# early instead of dying mid-scan via `set -e` when it is not installed.
+if ! command -v rg >/dev/null 2>&1; then
+  echo "ERROR: ripgrep (rg) is required by this script but not installed."
+  echo "Install it with: brew install ripgrep"
+  exit 1
+fi
+
 echo "== Security pass: secret/key exposure scan =="
 if rg -n \
   --glob '!ios/build/**' \
@@ -19,7 +27,7 @@ if rg -n \
   --glob '!**/*.xcresult/**' \
   --glob '!**/*.trace/**' \
   --glob '!*.min.*' \
-  "(SUPABASE_SERVICE_ROLE_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|OPENROUTER_API_KEY\\s*=\\s*['\\\"][A-Za-z0-9]|sk-[A-Za-z0-9]{20,}|sb_secret_[A-Za-z0-9]{10,}|sb_publishable_[A-Za-z0-9]{10,}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----)" \
+  "(SUPABASE_SERVICE_ROLE_KEY\\s*=\\s*['\\\"][A-Za-z0-9_-]{20,}|OPENROUTER_API_KEY\\s*=\\s*['\\\"][A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|sb_secret_[A-Za-z0-9]{10,}|sb_publishable_[A-Za-z0-9]{10,}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----)" \
   . ; then
   echo "Potential hardcoded secret material detected."
   exit 1

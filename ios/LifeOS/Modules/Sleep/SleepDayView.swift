@@ -6,11 +6,12 @@ struct SleepDayView: View {
     @State private var selectedDate: Date
     @State private var viewModel: SleepDayViewModel
     @State private var isShowingCalendar = false
+    @State private var isShowingManualEntry = false
 
     init(dateString: String?) {
         let initialDate = Self.initialSelectedDate(from: dateString)
         _selectedDate = State(initialValue: initialDate)
-        _viewModel = State(initialValue: SleepDayViewModel(dateString: dateString))
+        _viewModel = State(initialValue: SleepDayViewModel(dateString: dateString, syncEngine: AppContainer.shared?.syncEngine))
     }
 
 #if DEBUG
@@ -53,6 +54,14 @@ struct SleepDayView: View {
         .background(LifeOSColors.Surface.background)
         .accessibilityIdentifier("sleep.day.screen")
         .navigationTitle(String(localized: "sleep_title"))
+        .toolbar {
+            Button { isShowingManualEntry = true } label: { Image(systemName: "plus") }
+                .accessibilityLabel(String(localized: "sleep_manual_entry", defaultValue: "Log sleep"))
+                .accessibilityIdentifier("sleep.manual.add")
+        }
+        .sheet(isPresented: $isShowingManualEntry) {
+            ManualSleepEntryView(day: selectedDate, model: viewModel)
+        }
         .sheet(isPresented: $isShowingCalendar) {
             SleepCalendarView(selectedDate: $selectedDate)
         }
@@ -151,13 +160,16 @@ final class SleepDayViewModel {
 
     private var day: String
     private let dbQueue: DatabaseQueue
+    private let syncEngine: SyncEngine?
 
     init(
         dateString: String?,
-        dbQueue: DatabaseQueue = DatabaseManager.shared.dbQueue
+        dbQueue: DatabaseQueue = DatabaseManager.shared.dbQueue,
+        syncEngine: SyncEngine? = nil
     ) {
         self.day = dateString ?? DiaryDateFormatter.formatDate(Date())
         self.dbQueue = dbQueue
+        self.syncEngine = syncEngine
     }
 
     func load() async {
@@ -166,6 +178,75 @@ final class SleepDayViewModel {
 
     func load(for date: Date) async {
         await load(forDay: DiaryDateFormatter.formatDate(date))
+    }
+
+    func saveManualSleep(bedTime: Date, wakeTime: Date) async throws {
+        let minutes = Int(wakeTime.timeIntervalSince(bedTime) / 60)
+        guard minutes > 0, minutes <= 24 * 60,
+              DiaryDateFormatter.formatDate(wakeTime) == day else {
+            throw NSError(domain: "SleepEntry", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "sleep_invalid_interval", defaultValue: "Choose a sleep interval up to 24 hours ending on the selected day.")])
+        }
+        let authId = AuthManager.activeAuthId?.uuidString
+        let targetDay = day
+        let engine = self.syncEngine
+        let operation: @Sendable (Database) throws -> (value: Void, event: OutboxEvent) = { db in
+            guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
+                throw NSError(domain: "SleepEntry", code: 2, userInfo: [NSLocalizedDescriptionKey: String(localized: "auth_required")])
+            }
+            var log = try SleepRecordSelection.daily(userId: userId, day: targetDay, includeDeleted: true, db: db)
+                ?? SleepLog(userId: userId, date: targetDay, source: .manual)
+            log.source = .manual
+            log.deletedAt = nil
+            log.date = targetDay
+            log.sleepDate = targetDay
+            log.bedTime = bedTime
+            log.wakeTime = wakeTime
+            log.totalDurationMinutes = minutes
+            log.deepSleepMinutes = nil
+            log.remSleepMinutes = nil
+            log.lightSleepMinutes = nil
+            log.awakeMinutes = nil
+            log.sleepEfficiency = nil
+            log.sleepQualityScore = nil
+            log.timeInBedMinutes = nil
+            log.numberOfAwakenings = nil
+            log.bedtimeActual = bedTime
+            log.waketime = wakeTime
+            log.deviceName = nil
+            log.updatedAt = Date()
+            log.sleepTimezone = TimeZone.current.identifier
+            log.sleepUtcOffsetMinutes = TimeZone.current.secondsFromGMT(for: wakeTime) / 60
+            try log.save(db)
+            try SleepRecordSelection.supersedeOtherRecords(with: log, db: db)
+            var state = try PhysiologicalState
+                .filter((Column("user_id") == userId || Column("user_id") == userId.uuidString) && Column("date") == targetDay)
+                .fetchOne(db) ?? PhysiologicalState(userId: userId, date: targetDay, recoveryScore: 50)
+            SleepRecordSelection.applySleepFields(log, to: &state)
+            state.updatedAt = Date()
+            try state.save(db)
+            let score = try RecoveryEngine.computeScore(userId: userId, date: targetDay, db: db)
+            state.recoveryScore = score.score
+            state.recoveryZone = RecoveryZone.from(score: score.score)
+            state.confidenceScore = score.confidence
+            state.sleepScore = score.components.sleepScore
+            state.sleepQualityPercent = score.components.sleepScore
+            state.hrvScore = score.components.hrvScore
+            state.rhrScore = score.components.rhrScore
+            state.tempScore = score.components.tempScore
+            try state.update(db)
+            var stateEvent = OutboxEvent(httpMethod: .POST, path: "rest/v1/physiological_states", bodyJson: try JSONEncoder.supabase.encode(state), priority: 90)
+            stateEvent.headersJson = try JSONSerialization.data(withJSONObject: ["Prefer": "resolution=merge-duplicates"])
+            if let engine { try engine.enqueueMutation(stateEvent, in: db) }
+            else { try stateEvent.insert(db) }
+            let event = try SleepRecordSelection.outboxEvent(for: log)
+            return ((), event)
+        }
+        if let engine {
+            try await engine.performOptimisticMutation(operation)
+        } else {
+            try await dbQueue.write { db in try operation(db).event.insert(db) }
+        }
+        await load()
     }
 
     func requestHealthKitAccess() async {
@@ -360,3 +441,50 @@ private extension SleepDayView {
     }
 }
 #endif
+
+
+private struct ManualSleepEntryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var bedTime: Date
+    @State private var wakeTime: Date
+    @State private var saving = false
+    @State private var errorMessage: String?
+    let model: SleepDayViewModel
+
+    init(day: Date, model: SleepDayViewModel) {
+        let morning = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: day) ?? day
+        _wakeTime = State(initialValue: morning)
+        _bedTime = State(initialValue: morning.addingTimeInterval(-8 * 3600))
+        self.model = model
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker(String(localized: "sleep_bed_time", defaultValue: "Fell asleep"), selection: $bedTime)
+                DatePicker(String(localized: "sleep_wake_time", defaultValue: "Woke up"), selection: $wakeTime)
+                Text(String(localized: "sleep_manual_duration_note", defaultValue: "Enter your estimated time asleep. Sleep stages are left unknown."))
+                    .font(.caption).foregroundStyle(.secondary)
+                if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+            }
+            .navigationTitle(String(localized: "sleep_manual_entry", defaultValue: "Log sleep"))
+            .accessibilityIdentifier("sleep.manual.form")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(String(localized: "cancel")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "save")) {
+                        saving = true
+                        Task {
+                            defer { saving = false }
+                            do {
+                                try await model.saveManualSleep(bedTime: bedTime, wakeTime: wakeTime)
+                                dismiss()
+                            } catch { errorMessage = error.localizedDescription }
+                        }
+                    }.disabled(saving)
+                        .accessibilityIdentifier("sleep.manual.save")
+                }
+            }
+        }
+    }
+}

@@ -12,10 +12,13 @@ import {
   handleCorsPreflight,
   resolveUserContext,
 } from "../../_shared/user_context.ts";
+import { analyzeExperiment, type ExperimentSample } from "./analysis.ts";
 
 interface ExperimentRow {
   id: string;
   status: string;
+  primary_metric?: string;
+  secondary_metrics?: string[] | null;
   baseline_start_date: string | null;
   baseline_end_date: string | null;
   intervention_start_date: string | null;
@@ -77,6 +80,48 @@ Deno.serve(async (request) => {
 
   if (request.method === "DELETE" && isUUID(route)) {
     return await handleDelete(request, service, userId, route);
+  }
+
+  if (request.method === "POST" && isUUID(route) && tail[1] === "stop") {
+    const { data, error } = await service.from("experiments")
+      .update({ status: "abandoned" }).eq("id", route).eq("user_id", userId)
+      .is("deleted_at", null).in("status", [
+        ...ACTIVE_EXPERIMENT_STATUSES,
+        "design",
+      ])
+      .select("id").maybeSingle();
+    if (error) {
+      return jsonWithRequest(request, { error: "experiment_stop_failed" }, 500);
+    }
+    if (!data) {
+      const { data: existing, error: lookupError } = await service.from(
+        "experiments",
+      )
+        .select("id,status").eq("id", route).eq("user_id", userId).is(
+          "deleted_at",
+          null,
+        ).maybeSingle();
+      if (lookupError) {
+        return jsonWithRequest(
+          request,
+          { error: "experiment_stop_failed" },
+          500,
+        );
+      }
+      if (!existing) {
+        return jsonWithRequest(request, { error: "experiment_not_found" }, 404);
+      }
+      if (existing.status !== "abandoned") {
+        return jsonWithRequest(request, {
+          error: "experiment_already_completed",
+        }, 409);
+      }
+    }
+    return jsonWithRequest(request, {
+      ok: true,
+      status: "abandoned",
+      reminders_scheduled: false,
+    });
   }
 
   if (
@@ -147,6 +192,10 @@ async function handleCreate(
     return jsonWithRequest(request, { error: "invalid_json" }, 400);
   }
 
+  if (!isObject(payload)) {
+    return jsonWithRequest(request, { error: "invalid_payload" }, 400);
+  }
+
   const title = typeof payload.title === "string" ? payload.title.trim() : "";
   const hypothesis = typeof payload.hypothesis === "string"
     ? payload.hypothesis.trim()
@@ -174,8 +223,26 @@ async function handleCreate(
   const washoutDays = clampInt(payload.washout_duration_days, 0, 60, 0);
 
   const today = localDateToday(timezone);
-  const baselineStart = today;
-  const baselineEnd = addDays(today, baselineDays - 1);
+  // A queued create may arrive days after the device began collecting data.
+  // Anchor all phases to that original local date instead of the replay date.
+  const requestedStart = typeof payload.baseline_start_date === "string"
+    ? payload.baseline_start_date.trim()
+    : payload.baseline_start_date;
+  if (
+    requestedStart !== undefined &&
+    (typeof requestedStart !== "string" || !isLocalDate(requestedStart) ||
+      requestedStart > today)
+  ) {
+    return jsonWithRequest(
+      request,
+      { error: "invalid_baseline_start_date" },
+      400,
+    );
+  }
+  const baselineStart = typeof requestedStart === "string"
+    ? requestedStart
+    : today;
+  const baselineEnd = addDays(baselineStart, baselineDays - 1);
   const interventionStart = addDays(baselineEnd, 1);
   const interventionEnd = addDays(interventionStart, interventionDays - 1);
   const washoutStart = washoutDays > 0 ? addDays(interventionEnd, 1) : null;
@@ -191,7 +258,7 @@ async function handleCreate(
   const { data: existing, error: existingError } = await service
     .from("experiments")
     .select(
-      "id,status,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
+      "id,status,primary_metric,secondary_metrics,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
     )
     .eq("id", experimentId)
     .eq("user_id", userId)
@@ -229,7 +296,8 @@ async function handleCreate(
         intervention_end_date: normalizedExperiment.intervention_end_date,
         washout_start_date: normalizedExperiment.washout_start_date,
         washout_end_date: normalizedExperiment.washout_end_date,
-        reminders_scheduled: true,
+        reminders_scheduled: false,
+        reminder_status: "unsupported",
         idempotent_replay: true,
       },
       202,
@@ -241,7 +309,7 @@ async function handleCreate(
     await service
       .from("experiments")
       .select(
-        "id,status,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
+        "id,status,primary_metric,secondary_metrics,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
       )
       .eq("user_id", userId)
       .in("status", Array.from(ACTIVE_EXPERIMENT_STATUSES))
@@ -339,7 +407,8 @@ async function handleCreate(
     intervention_end_date: interventionEnd,
     washout_start_date: washoutStart,
     washout_end_date: washoutEnd,
-    reminders_scheduled: true,
+    reminders_scheduled: false,
+    reminder_status: "unsupported",
   });
 }
 
@@ -359,6 +428,10 @@ async function handleLog(
     return jsonWithRequest(request, { error: "invalid_json" }, 400);
   }
 
+  if (!isObject(payload)) {
+    return jsonWithRequest(request, { error: "invalid_payload" }, 400);
+  }
+
   const logDate = typeof payload.date === "string" ? payload.date.trim() : "";
   if (!isLocalDate(logDate)) {
     return jsonWithRequest(request, { error: "invalid_date" }, 400);
@@ -370,7 +443,7 @@ async function handleLog(
   const { data: experiment, error: experimentError } = await service
     .from("experiments")
     .select(
-      "id,status,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
+      "id,status,primary_metric,secondary_metrics,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
     )
     .eq("id", experimentId)
     .eq("user_id", userId)
@@ -386,6 +459,16 @@ async function handleLog(
   if (!experiment) {
     return jsonWithRequest(request, { error: "experiment_not_found" }, 404);
   }
+  if (experiment.status === "abandoned") {
+    return jsonWithRequest(request, { error: "experiment_abandoned" }, 409);
+  }
+  if (logDate > localDateToday(timezone)) {
+    return jsonWithRequest(
+      request,
+      { error: "measurement_date_in_future" },
+      400,
+    );
+  }
 
   const phase = phaseForDate(experiment, logDate);
   if (!phase) {
@@ -393,8 +476,19 @@ async function handleLog(
       error: "measurement_date_out_of_range",
     }, 409);
   }
+  const allowedMetrics = new Set([
+    experiment.primary_metric,
+    ...(experiment.secondary_metrics ?? []),
+  ]);
+  if (
+    Object.entries(payload.measurements).some(([name, value]) =>
+      !allowedMetrics.has(name) || typeof value !== "number" ||
+      !Number.isFinite(value) || Math.abs(value) >= 1_000_000
+    )
+  ) {
+    return jsonWithRequest(request, { error: "invalid_metric_or_value" }, 400);
+  }
   const entries = Object.entries(payload.measurements)
-    .filter(([, value]) => typeof value === "number" && Number.isFinite(value))
     .map(([metricName, value]) => ({ metricName, value: Number(value) }));
   const protocolFollowed = typeof payload.protocol_followed === "boolean"
     ? payload.protocol_followed
@@ -409,33 +503,33 @@ async function handleLog(
     ? String(payload.id)
     : crypto.randomUUID();
 
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
+  const rows = entries.map((entry, index) => {
     const rowId = index === 0 ? measurementId : crypto.randomUUID();
+    return {
+      id: rowId,
+      experiment_id: experimentId,
+      user_id: userId,
+      measurement_date: logDate,
+      measurement_phase: phase,
+      metric_name: entry.metricName,
+      metric_value: entry.value,
+      metric_unit: metricUnit,
+      protocol_followed: protocolFollowed,
+      notes: optionalString(payload.notes),
+    };
+  });
+  // One PostgREST statement keeps a multi-metric log atomic.
+  const { error: logError } = await service
+    .from("experiment_measurements")
+    .upsert(rows, {
+      onConflict: "experiment_id,measurement_date,metric_name",
+    });
 
-    const { error } = await service
-      .from("experiment_measurements")
-      .upsert({
-        id: rowId,
-        experiment_id: experimentId,
-        user_id: userId,
-        measurement_date: logDate,
-        measurement_phase: phase,
-        metric_name: entry.metricName,
-        metric_value: entry.value,
-        metric_unit: metricUnit,
-        protocol_followed: protocolFollowed,
-        notes: optionalString(payload.notes),
-      }, {
-        onConflict: "experiment_id,measurement_date,metric_name",
-      });
-
-    if (error) {
-      return jsonWithRequest(request, {
-        error: "experiment_log_failed",
-        detail: sanitizedInternalDetail(request, "index", error),
-      }, 500);
-    }
+  if (logError) {
+    return jsonWithRequest(request, {
+      error: "experiment_log_failed",
+      detail: sanitizedInternalDetail(request, "index", logError),
+    }, 500);
   }
 
   const normalized = await normalizeExperimentStatuses(
@@ -513,7 +607,7 @@ async function handleUndo(
     .eq("user_id", userId)
     .gte("deleted_at", undoSince)
     .select(
-      "id,status,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
+      "id,status,primary_metric,secondary_metrics,baseline_start_date,baseline_end_date,intervention_start_date,intervention_end_date,washout_start_date,washout_end_date",
     )
     .maybeSingle<ExperimentRow>();
 
@@ -649,22 +743,50 @@ async function normalizeExperimentStatuses<T extends ExperimentRow>(
 
   for (const experiment of experiments) {
     const nextStatus = deriveExperimentStatus(experiment, currentDate);
+    let results = {};
+    if (nextStatus === "completed" && experiment.primary_metric) {
+      const { data: samples, error: sampleError } = await service
+        .from("experiment_measurements")
+        .select(
+          "measurement_date,measurement_phase,metric_name,metric_value,metric_unit,protocol_followed",
+        )
+        .eq("experiment_id", experiment.id)
+        .eq("user_id", userId)
+        .eq("metric_name", experiment.primary_metric)
+        .returns<ExperimentSample[]>();
+      if (sampleError) {
+        return {
+          experiments: normalized,
+          error: "experiment_analysis_fetch_failed",
+        };
+      }
+      // Ignore corrupt phase tags that disagree with the declared timeline.
+      const scopedSamples = (samples ?? []).filter((sample) =>
+        phaseForDate(experiment, sample.measurement_date) ===
+          sample.measurement_phase
+      );
+      results = analyzeExperiment(experiment.primary_metric, scopedSamples);
+    }
 
-    if (nextStatus !== experiment.status) {
+    if (nextStatus !== experiment.status || Object.keys(results).length > 0) {
       const { error } = await service
         .from("experiments")
-        .update({ status: nextStatus })
+        .update({ status: nextStatus, ...results })
         .eq("id", experiment.id)
         .eq("user_id", userId)
         .is("deleted_at", null);
 
       if (error) {
-        return { experiments: normalized, error: error.message };
+        return {
+          experiments: normalized,
+          error: "experiment_status_update_failed",
+        };
       }
     }
 
     normalized.push({
       ...experiment,
+      ...results,
       status: nextStatus,
     });
   }

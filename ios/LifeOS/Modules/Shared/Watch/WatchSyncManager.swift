@@ -198,13 +198,33 @@ final class WatchSyncManager: NSObject {
         session.activate()
     }
 
+    func clearSnapshot() {
+        if WCSession.isSupported() {
+            for transfer in WCSession.default.outstandingUserInfoTransfers { transfer.cancel() }
+        }
+        let empty = WatchSnapshot(date: nil, lastUpdatedAt: Date(), recoveryScore: nil, recoveryZone: nil, confidenceScore: nil, nextBestAction: nil, sleepDurationHours: nil, sleepQualityPercent: nil, nutritionAdherencePercent: nil, supplementsDueSoon: nil, wasTruncated: false)
+        push(snapshot: empty)
+        writeComplicationData(snapshot: empty)
+    }
+
     func push(snapshot: WatchSnapshot) {
-        let prepared = truncateIfNeeded(snapshot)
+        var safeSnapshot = snapshot
+        if NutritionSafetyPolicy.suppressesTargets {
+            safeSnapshot.nutritionAdherencePercent = nil
+            if safeSnapshot.nextBestAction?.type == "log_meal" || safeSnapshot.nextBestAction?.type == "nutrition_under_target" || safeSnapshot.nextBestAction?.payload?.deepLink?.hasPrefix("lifeos://nutrition") == true {
+                safeSnapshot.nextBestAction = nil
+            }
+        }
+        let prepared = truncateIfNeeded(safeSnapshot)
         lastSnapshot = prepared
 
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
+
+        if NutritionSafetyPolicy.suppressesTargets {
+            for transfer in session.outstandingUserInfoTransfers { transfer.cancel() }
+        }
 
         guard let data = try? encoder.encode(prepared) else { return }
 
@@ -304,7 +324,7 @@ final class WatchSyncManager: NSObject {
         return .local
     }
 
-    private func pushLatestSnapshotFromLocalStore(
+    func pushLatestSnapshotFromLocalStore(
         date: String? = nil,
         syncEngine: SyncEngine,
         now: Date = Date()
@@ -387,7 +407,8 @@ final class WatchSyncManager: NSObject {
                 """,
                 arguments: [user.id, user.id.uuidString, resolvedDate]
             )
-            let finalCalories: Int? = targetRow?["final_calories"]
+            let suppressNutritionTargets = try NutritionSafetyPolicy.suppressesTargets(in: db, userId: user.id)
+            let finalCalories: Int? = suppressNutritionTargets ? nil : targetRow?["final_calories"]
             let finalProteinG: Int? = targetRow?["final_protein_g"]
 
             let supplements = try loadLocalSupplementRows(db: db, userId: user.id)
@@ -472,7 +493,7 @@ final class WatchSyncManager: NSObject {
                 unreadInsightId: unreadInsightId
             )
 
-            let nutritionAdherencePercent = computeNutritionAdherencePercent(
+            let nutritionAdherencePercent = suppressNutritionTargets ? nil : computeNutritionAdherencePercent(
                 currentCalories: currentCalories,
                 targetCalories: finalCalories,
                 currentProteinG: currentProteinG,

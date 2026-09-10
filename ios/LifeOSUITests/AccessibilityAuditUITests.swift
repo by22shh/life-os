@@ -74,6 +74,12 @@ final class AccessibilityAuditUITests: XCTestCase {
             throw XCTSkip("XCUIApplication.performAccessibilityAudit requires iOS 17+.")
         }
 
+        // Audit findings are recorded XCTest issues, not thrown Swift errors.
+        // Keep collecting them and subsequent screens after the first failure.
+        let previousContinueAfterFailure = continueAfterFailure
+        continueAfterFailure = true
+        defer { continueAfterFailure = previousContinueAfterFailure }
+
         let targets: [(name: String, url: String, identifier: String, seed: String?)] = [
             ("Nutrition", "lifeos://nutrition?date=2026-02-24", "nutrition.day.screen", "nutrition"),
             ("Training", "lifeos://workout?date=2026-02-24", "training.day.screen", "training"),
@@ -82,20 +88,39 @@ final class AccessibilityAuditUITests: XCTestCase {
         ]
 
         for target in targets {
-            let app = makeApp(initialURL: target.url, seed: target.seed)
-            app.launch()
-            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-            let screen = app.descendants(matching: .any)[target.identifier]
-            XCTAssertTrue(
-                screen.waitForExistence(timeout: 10),
-                "\(target.name) screen did not appear before accessibility audit"
-            )
-            settleAuditTarget(app, screenName: target.name)
-            try performReleaseBlockingAudit(on: app, screenName: target.name) { _ in
-                relaunchAuthenticatedApp(app)
-                XCTAssertTrue(screen.waitForExistence(timeout: 10))
+            XCTContext.runActivity(named: "Critical accessibility audit: \(target.name)") { activity in
+                let app = makeApp(initialURL: target.url, seed: target.seed)
+                defer {
+                    if app.state != .notRunning { app.terminate() }
+                }
+                app.launch()
+                guard app.wait(for: .runningForeground, timeout: 30) else {
+                    XCTFail("\(target.name) app did not reach foreground before accessibility audit")
+                    return
+                }
+                let screen = app.descendants(matching: .any)[target.identifier]
+                guard screen.waitForExistence(timeout: 10) else {
+                    XCTFail("\(target.name) screen did not appear before accessibility audit")
+                    return
+                }
+                settleAuditTarget(app, screenName: target.name)
+                do {
+                    try performReleaseBlockingAudit(on: app, screenName: target.name) { _ in
+                        relaunchAuthenticatedApp(app)
+                        XCTAssertTrue(
+                            screen.waitForExistence(timeout: 10),
+                            "\(target.name) screen did not reappear before accessibility audit retry"
+                        )
+                    }
+                } catch {
+                    // The audit API throws when the audit could not run. Record
+                    // that failure too, then move to the next independent app.
+                    let attachment = XCTAttachment(string: String(reflecting: error))
+                    attachment.lifetime = .keepAlways
+                    activity.add(attachment)
+                    XCTFail("\(target.name) accessibility audit could not complete: \(error)")
+                }
             }
-            app.terminate()
         }
     }
 

@@ -38,11 +38,12 @@ enum RecoveryEngine {
     static func computeScore(
         userId: UUID,
         date: String,
-        db: Database
+        db: Database,
+        importedSleep: SleepData? = nil
     ) throws -> RecoveryScoreValue {
         // Fetch today's physiological state
         guard let state = try PhysiologicalState
-            .filter(Column("user_id") == userId.uuidString && Column("date") == date)
+            .filter((Column("user_id") == userId || Column("user_id") == userId.uuidString) && Column("date") == date)
             .fetchOne(db)
         else {
             return RecoveryScoreValue(
@@ -61,7 +62,7 @@ enum RecoveryEngine {
 
         // INVARIANT §8: Cardiac conditions MUST disable HRV scoring
         let healthFlags = try UserHealthFlags
-            .filter(Column("user_id") == userId.uuidString)
+            .filter((Column("user_id") == userId || Column("user_id") == userId.uuidString))
             .fetchOne(db)
         let hrvDisabled = healthFlags?.disableHrv ?? false
 
@@ -81,15 +82,9 @@ enum RecoveryEngine {
                 .filter(Column("id") == userId.uuidString)
                 .fetchOne(db)
         }
-        let sleepLog = try SleepLog
-            .filter(Column("user_id") == userId.uuidString && Column("date") == date && Column("deleted_at") == nil)
-            .order(Column("updated_at").desc)
-            .fetchOne(db)
-        let recentSleepLogs = try SleepLog
-            .filter(Column("user_id") == userId.uuidString && Column("date") < date && Column("deleted_at") == nil)
-            .order(Column("date").desc)
-            .limit(7)
-            .fetchAll(db)
+        let storedSleep = try SleepRecordSelection.daily(userId: userId, day: date, db: db)
+        let sleepLog = storedSleep?.overridesImportedSleep == true ? storedSleep : (importedSleep?.scoringLog ?? storedSleep)
+        let recentSleepLogs = try SleepRecordSelection.recent(userId: userId, before: date, limit: 7, db: db)
         if let sleepScore = SleepScorer.compositeScore(
             sleepLog: sleepLog,
             physiologicalState: state,
@@ -219,7 +214,7 @@ enum RecoveryEngine {
     ) throws -> Baseline {
         // Strict 7-day rolling baseline window per canonical algorithm.
         let states = try PhysiologicalState
-            .filter(Column("user_id") == userId.uuidString && Column("date") < currentDate)
+            .filter((Column("user_id") == userId || Column("user_id") == userId.uuidString) && Column("date") < currentDate)
             .order(Column("date").desc)
             .limit(7)
             .fetchAll(db)
@@ -409,3 +404,69 @@ extension RecoveryEngine {
     }
 }
 #endif
+
+
+/// A single authoritative record per local morning date. Handles both legacy
+/// GRDB UUID blobs and text identifiers without duplicating source rows.
+enum SleepRecordSelection {
+    static func daily(userId: UUID, day: String, includeDeleted: Bool = false, db: Database) throws -> SleepLog? {
+        try SleepLog.fetchOne(db, sql: """
+            SELECT * FROM sleep_logs
+            WHERE (user_id = ? OR user_id = ?)
+              AND COALESCE(sleep_date, date) = ?
+              \(includeDeleted ? "" : "AND deleted_at IS NULL")
+            ORDER BY (deleted_at IS NULL) DESC, (source = 'manual') DESC, updated_at DESC, created_at DESC
+            LIMIT 1
+            """, arguments: [userId, userId.uuidString, day])
+    }
+
+    static func recent(userId: UUID, before day: String, limit: Int, db: Database) throws -> [SleepLog] {
+        try SleepLog.fetchAll(db, sql: """
+            SELECT * FROM (
+                SELECT *, ROW_NUMBER() OVER (
+                    PARTITION BY COALESCE(sleep_date, date)
+                    ORDER BY (source = 'manual') DESC, updated_at DESC, created_at DESC
+                ) AS daily_rank
+                FROM sleep_logs
+                WHERE (user_id = ? OR user_id = ?)
+                  AND COALESCE(sleep_date, date) < ? AND deleted_at IS NULL
+            ) WHERE daily_rank = 1
+            ORDER BY COALESCE(sleep_date, date) DESC LIMIT ?
+            """, arguments: [userId, userId.uuidString, day, limit])
+    }
+
+    /// Preserve old source snapshots as tombstones, never as competing active
+    /// days. Their pending imports are handled by the server's manual-first rule.
+    static func supersedeOtherRecords(with log: SleepLog, db: Database) throws {
+        try log.save(db)
+        try db.execute(sql: """
+            UPDATE sleep_logs SET deleted_at = ?, updated_at = ?
+            WHERE (user_id = ? OR user_id = ?) AND COALESCE(sleep_date, date) = ?
+              AND id != ? AND deleted_at IS NULL
+            """, arguments: [log.updatedAt, log.updatedAt, log.userId, log.userId.uuidString, log.sleepDate ?? log.date, log.id])
+    }
+
+    static func applySleepFields(_ log: SleepLog?, to state: inout PhysiologicalState) {
+        // Subjective-only legacy diary entries contain no replacement for the
+        // physiological measurements already synced for this day.
+        if let log, log.deletedAt == nil, log.totalDurationMinutes == nil { return }
+        state.sleepDurationHours = log?.totalDurationMinutes.map { Double($0) / 60 }
+        state.deepSleepPercent = log?.deepSleepPercent
+        state.remSleepPercent = log?.remSleepPercent
+        if let total = log?.totalDurationMinutes, total > 0 {
+            state.lightSleepPercent = log?.lightSleepMinutes.map { Double($0) / Double(total) * 100 }
+            state.awakePercent = log?.awakeMinutes.map { Double($0) / Double(total) * 100 }
+        } else {
+            state.lightSleepPercent = nil
+            state.awakePercent = nil
+        }
+        state.sleepQualityPercent = nil
+        state.sleepScore = nil
+    }
+
+    static func outboxEvent(for log: SleepLog) throws -> OutboxEvent {
+        var event = OutboxEvent(httpMethod: .POST, path: "api-sleep-log", bodyJson: try JSONEncoder.supabase.encode(log), priority: 90)
+        event.headersJson = try JSONSerialization.data(withJSONObject: ["Content-Type": "application/json"])
+        return event
+    }
+}

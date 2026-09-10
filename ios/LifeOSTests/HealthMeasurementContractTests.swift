@@ -99,7 +99,7 @@ final class HealthMeasurementContractTests: XCTestCase {
         }
         """.utf8)
 
-        let normalizedData = await syncEngine._testSanitizeOutboundBody(
+        let normalizedData = try await syncEngine._testSanitizeOutboundBody(
             body,
             path: "rest/v1/health_measurements"
         )

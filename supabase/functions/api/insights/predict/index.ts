@@ -7,6 +7,10 @@ import {
   resolveUserContext,
 } from "../../../_shared/user_context.ts";
 import { enforceAIProcessingConsent } from "../../../_shared/ai_consent.ts";
+import {
+  queryUserVectorMemory,
+  syncUserVectorMemory,
+} from "../../../_shared/vector_memory.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { PredictRequestSchema } from "../../../_shared/payload_schemas.ts";
 import {
@@ -288,6 +292,17 @@ Deno.serve(async (request) => {
     : "";
 
   const explanationLanguage = resolveExplanationLanguage(request);
+  let memory: string[] = [];
+  try {
+    await syncUserVectorMemory(service, userId);
+    memory = await queryUserVectorMemory(service, userId, scenarioText);
+  } catch (error) {
+    return jsonWithRequest(request, {
+      error: error instanceof Error
+        ? error.message
+        : "vector_memory_unavailable",
+    }, 503);
+  }
   const systemPrompt =
     `You are an advanced predictive physiological engine for Life OS. Your task is to simulate the user's next recovery state for the target date using their N=1 history.
 
@@ -320,7 +335,10 @@ SCENARIO:
 <scenario>${scenarioText}</scenario> (Type: ${scenarioType})${envString}
 
 PERSONALIZED N=1 CONTEXT:
-${contextBundle.historicalContextText}`;
+${contextBundle.historicalContextText}
+
+DERIVED PERSONAL MEMORY (historical observations, not medical conclusions):
+${memory.join("\n")}`;
 
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) {

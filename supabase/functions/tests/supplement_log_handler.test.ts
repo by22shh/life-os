@@ -79,17 +79,15 @@ function createSupplementLogDependencies(
   return {
     calls,
     deps: {
-      anonClient: (_authHeader: string) => ({
-        auth: {
-          getUser: () =>
-            Promise.resolve({
-              data: config.authUserId === null
-                ? { user: null }
-                : { user: { id: config.authUserId ?? "auth-user-id" } },
-              error: config.authError ?? null,
-            }),
-        },
-      }),
+      verifyBearerUser: (_authHeader: string) =>
+        Promise.resolve({
+          data: {
+            user: config.authUserId === null
+              ? null
+              : { id: config.authUserId ?? "auth-user-id" },
+          },
+          error: config.authError ? { ...config.authError, status: 401 } : null,
+        }),
       enforceRateLimit: (
         _request: Request,
         userId: string,

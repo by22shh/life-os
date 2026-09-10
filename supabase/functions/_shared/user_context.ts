@@ -1,9 +1,8 @@
 import { handleCors } from "./cors.ts";
 import { enforceRateLimit, type RateLimitTier } from "./rate_limit.ts";
 import {
-  anonClient,
   jsonWithRequest,
-  parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "./supabase.ts";
@@ -28,22 +27,9 @@ export async function resolveUserContext(
   tier: RateLimitTier,
   options: { allowOutboxReplayExemption?: boolean } = {},
 ): Promise<UserContextResult> {
-  const authHeader = parseBearer(request);
-  if (!authHeader.startsWith("Bearer ")) {
-    return {
-      ok: false,
-      response: jsonWithRequest(request, { error: "unauthorized" }, 401),
-    };
-  }
-
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return {
-      ok: false,
-      response: jsonWithRequest(request, { error: "unauthorized" }, 401),
-    };
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated;
+  const authData = authenticated.data;
 
   const service = serviceRoleClient();
   const { data: userRow, error: userLookupError } = await service

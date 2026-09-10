@@ -6,6 +6,8 @@ import GRDB
 @MainActor
 struct InsightsView: View {
     @State private var viewModel = InsightsViewModel()
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(DeepLinkRouter.self) private var router: DeepLinkRouter?
 
     init(viewModel: InsightsViewModel = InsightsViewModel()) {
@@ -14,55 +16,49 @@ struct InsightsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: Spacing.s) {
-                if viewModel.lowConfidenceCount > 0 {
-                    lowConfidenceBanner
-                        .padding(.horizontal, LayoutConstants.contentPadding)
-                        .padding(.top, Spacing.s)
-                }
+            ScrollView {
+                VStack(spacing: Spacing.s) {
+                    if viewModel.lowConfidenceCount > 0 {
+                        lowConfidenceBanner
+                    }
 
-                simulationLauncherCard
-                    .padding(.horizontal, LayoutConstants.contentPadding)
+                    simulationLauncherCard
+                    experimentsLibraryCard
 
-                experimentsLibraryCard
-                    .padding(.horizontal, LayoutConstants.contentPadding)
+                    if let report = viewModel.latestWeeklyStrategyReport {
+                        weeklyStrategyCard(report)
+                    }
 
-                if let report = viewModel.latestWeeklyStrategyReport {
-                    weeklyStrategyCard(report)
-                        .padding(.horizontal, LayoutConstants.contentPadding)
-                }
+                    if shouldShowDomainFilters {
+                        domainFilterBar
+                    }
 
-                if shouldShowDomainFilters {
-                    domainFilterBar
-                        .padding(.horizontal, LayoutConstants.contentPadding)
-                }
-
-                if viewModel.isLoading {
-                    Spacer()
-                    ProgressView(String(localized: "loading"))
-                    Spacer()
-                } else if let loadError = viewModel.loadError {
-                    Spacer()
-                    Text(loadError)
-                        .font(LifeOSTypography.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Spacing.l)
-                    Spacer()
-                } else if viewModel.insights.isEmpty {
-                    currentEmptyState
-                        .padding(.horizontal, LayoutConstants.contentPadding)
-                } else {
-                    ScrollView {
+                    if viewModel.isLoading {
+                        ProgressView(String(localized: "loading"))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Spacing.l)
+                    } else if let loadError = viewModel.loadError {
+                        Text(loadError)
+                            .font(LifeOSTypography.footnote)
+                            .foregroundStyle(LifeOSColors.Text.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(Spacing.l)
+                    } else if viewModel.insights.isEmpty {
+                        currentEmptyState
+                            .padding(.vertical, Spacing.l)
+                    } else {
                         LazyVStack(spacing: Spacing.s) {
                             filterSummary
                             ForEach(viewModel.insights, content: insightNavigationLink)
                         }
-                        .padding(.horizontal, LayoutConstants.contentPadding)
-                        .padding(.bottom, Spacing.l)
                     }
                 }
+                .padding(.horizontal, LayoutConstants.contentPadding)
+                .padding(.top, Spacing.s)
+                .padding(.bottom, Spacing.l)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("insights.screen")
             .background(LifeOSColors.Surface.background)
             .navigationTitle(String(localized: "tab_insights"))
@@ -148,6 +144,7 @@ struct InsightsView: View {
             insightRowLabel(for: insight)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("insights.card.\(insight.title)")
     }
 
@@ -173,13 +170,13 @@ struct InsightsView: View {
 
                 Text("\(report.weekStart) - \(report.weekEnd)")
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
 
-                Text(report.reportMarkdownWithClinicianCaveat)
+                Text(weeklyReportPreview(report))
                     .font(LifeOSTypography.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(5)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.m)
@@ -187,6 +184,7 @@ struct InsightsView: View {
             .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("insights.weekly_strategy")
     }
 
@@ -204,13 +202,22 @@ struct InsightsView: View {
         .accessibilityLabel(String(localized: "insights_confidence_low_badge"))
     }
 
+    private func weeklyReportPreview(_ report: WeeklyStrategyReport) -> String {
+        report.reportMarkdownWithClinicianCaveat
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+            .prefix(3)
+            .map { $0.hasPrefix("- ") ? String($0.dropFirst(2)) : $0 }
+            .joined(separator: "\n")
+    }
+
     private var simulationLauncherCard: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                 Image(systemName: "waveform.path.ecg.rectangle")
 
                 Text(simulationEntryTitle)
-                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .font(LifeOSTypography.headline)
@@ -219,25 +226,32 @@ struct InsightsView: View {
 
             Text(simulationEntrySubtitle)
                 .font(LifeOSTypography.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button(action: simulationButtonAction(onRoute: routeHandler)) {
+            if isSimulationAvailable {
+                Button(action: simulationButtonAction(onRoute: routeHandler)) {
+                    Text(simulationEntryCTA)
+                        .font(LifeOSTypography.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(LifeOSColors.Semantic.primary)
+                .accessibilityIdentifier("insights.simulation.cta")
+            } else {
                 Text(simulationEntryCTA)
                     .font(LifeOSTypography.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
+                    .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget)
+                    .accessibilityIdentifier("insights.simulation.cta")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(LifeOSColors.Semantic.primary)
-            .disabled(!isSimulationAvailable)
-            .accessibilityIdentifier("insights.simulation.cta")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.m)
         .background(LifeOSColors.Surface.card)
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("insights.simulation.launcher")
     }
 
@@ -249,33 +263,40 @@ struct InsightsView: View {
                 Image(systemName: "flask")
                     .font(LifeOSTypography.title3)
                     .foregroundStyle(LifeOSColors.Semantic.primary)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(localized: "experiments_library_title"))
                         .font(LifeOSTypography.headline)
                         .foregroundStyle(.primary)
                     Text(String(localized: "experiments_library_subtitle"))
                         .font(LifeOSTypography.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .multilineTextAlignment(.leading)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
+                    .accessibilityHidden(true)
             }
             .padding(Spacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(LifeOSColors.Surface.card)
             .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "experiments_library_title"))
+        .accessibilityHint(String(localized: "experiments_library_subtitle"))
         .accessibilityIdentifier("insights.experiments.library")
     }
 
     private var emptyState: some View {
         VStack(spacing: Spacing.m) {
-            Spacer()
             Image(systemName: "lightbulb")
                 .font(LifeOSTypography.title)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(LifeOSColors.Text.tertiary)
                 .accessibilityHidden(true)
 
             Text(String(localized: "insights_empty_title"))
@@ -284,19 +305,17 @@ struct InsightsView: View {
 
             Text(String(localized: "insights_empty_subtitle"))
                 .font(LifeOSTypography.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
                 .multilineTextAlignment(.center)
-            Spacer()
         }
         .frame(maxWidth: .infinity)
     }
 
     private var filteredEmptyState: some View {
         VStack(spacing: Spacing.m) {
-            Spacer()
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(LifeOSTypography.title)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(LifeOSColors.Text.tertiary)
                 .accessibilityHidden(true)
 
             Text(String(localized: "insights_filter_empty_title"))
@@ -305,16 +324,22 @@ struct InsightsView: View {
 
             Text(String(localized: "insights_filter_empty_subtitle"))
                 .font(LifeOSTypography.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LifeOSColors.Text.secondary)
                 .multilineTextAlignment(.center)
 
             Button(String(localized: "insights_filter_clear"), action: viewModel.selectAllDomains)
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("insights.filters.clear")
 
-            Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var domainFilterLayout: AnyLayout {
+        if dynamicTypeSize >= .xxLarge {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xs))
+        }
+        return AnyLayout(HStackLayout(alignment: .center, spacing: Spacing.xs))
     }
 
     private var domainFilterBar: some View {
@@ -335,8 +360,7 @@ struct InsightsView: View {
                 }
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.xs) {
+            domainFilterLayout {
                     domainChip(
                         title: String(localized: "insights_filter_all"),
                         count: viewModel.totalInsightCount,
@@ -355,20 +379,20 @@ struct InsightsView: View {
                             viewModel.toggleDomain(domain)
                         }
                     }
-                }
-                .padding(.vertical, Spacing.xxs)
             }
+            .padding(.vertical, Spacing.xxs)
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("insights.filters")
     }
 
     private var filterSummary: some View {
         Text(filterSummaryText)
             .font(LifeOSTypography.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(LifeOSColors.Text.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityIdentifier("insights.filters.summary")
     }
@@ -398,21 +422,25 @@ struct InsightsView: View {
             HStack(spacing: Spacing.xs) {
                 Text(title)
                     .font(LifeOSTypography.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("\(count)")
-                    .font(LifeOSTypography.caption2.weight(.bold))
+                    .font(LifeOSTypography.caption.weight(.bold))
+                    .fixedSize()
                     .padding(.horizontal, Spacing.xs)
                     .padding(.vertical, 2)
                     .background(countBadgeBackground(isSelected: isSelected))
                     .clipShape(Capsule())
             }
-            .foregroundStyle(isSelected ? Color.white : .primary)
+            .foregroundStyle(isSelected ? (colorScheme == .dark ? Color.black : Color.white) : LifeOSColors.Text.primary)
+            .frame(maxWidth: .infinity, minHeight: LayoutConstants.minTouchTarget)
             .padding(.horizontal, Spacing.s)
             .padding(.vertical, Spacing.xs)
             .background(isSelected ? LifeOSColors.Semantic.primary : LifeOSColors.Surface.elevated)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityValue(
             isSelected
@@ -423,7 +451,7 @@ struct InsightsView: View {
 
     private func countBadgeBackground(isSelected: Bool) -> some ShapeStyle {
         if isSelected {
-            return Color.white.opacity(0.2)
+            return Color.clear
         }
         return LifeOSColors.Surface.card
     }
@@ -442,11 +470,11 @@ struct InsightsView: View {
 
                     Text(localizedCategory(insight.category))
                         .font(LifeOSTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
 
                     Text(insight.bodyWithClinicianCaveat)
                         .font(LifeOSTypography.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LifeOSColors.Text.secondary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                 }
@@ -463,7 +491,7 @@ struct InsightsView: View {
 
                 Text("\(String(localized: "insights_confidence_prefix")) \(Int((insight.confidence * 100).rounded()))%")
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -529,7 +557,7 @@ private struct WeeklyStrategyReportDetailView: View {
             VStack(alignment: .leading, spacing: Spacing.m) {
                 Text("\(report.weekStart) - \(report.weekEnd)")
                     .font(LifeOSTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
 
                 Text(report.reportMarkdownWithClinicianCaveat)
                     .font(LifeOSTypography.body)
@@ -698,15 +726,15 @@ struct ExperimentListView: View {
                                 Spacer()
                                 Text(localizedStatus(experiment.status))
                                     .font(LifeOSTypography.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(LifeOSColors.Text.secondary)
                             }
                             Text(experiment.primaryMetric ?? experiment.metric)
                                 .font(LifeOSTypography.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(LifeOSColors.Text.secondary)
                             if let startDate = experiment.startDate {
                                 Text(startDate)
                                     .font(LifeOSTypography.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(LifeOSColors.Text.tertiary)
                             }
                         }
                         .padding(.vertical, Spacing.xxs)
@@ -719,6 +747,7 @@ struct ExperimentListView: View {
         }
         .background(LifeOSColors.Surface.background)
         .navigationTitle(String(localized: "experiments_library_title"))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("experiments.list.screen")
         .task { await loadExperiments(refreshRemote: true) }
     }

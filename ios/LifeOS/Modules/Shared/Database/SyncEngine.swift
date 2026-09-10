@@ -141,85 +141,49 @@ actor SyncEngine {
     /// Uses parallel TaskGroup batches to reduce total sync time (P2 #9).
     func pullAll() async throws {
         guard isRemoteOperationsEnabled else { return }
-
-        // Phase 1: UI-critical tables — highest priority, parallel
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { try await self.pullTable("users", type: User.self) }
-            group.addTask { try await self.pullTable("physiological_states", type: PhysiologicalState.self) }
-            group.addTask { try await self.pullTable("notification_settings", type: NotificationSettings.self) }
-            group.addTask { try await self.pullTable("training_loads", type: TrainingLoad.self) }
-            try await group.waitForAll()
+        guard try await !hasPendingAccountErasure() else { return }
+        if !allowsRemoteOperationsWithoutBundledConfig {
+            guard await MainActor.run(body: { AuthManager.activeHasCloudSession }) else { return }
         }
 
-        // Phase 2: Module-owned tables — parallel per module handler
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for table in NutritionSyncHandler.pullTables {
-                let t = table
-                group.addTask { try await self.pullSyncableTable(t) }
-            }
-            for table in TrainingSyncHandler.pullTables {
-                let t = table
-                group.addTask { try await self.pullSyncableTable(t) }
-            }
-            for table in SupplementsSyncHandler.pullTables {
-                let t = table
-                group.addTask { try await self.pullSyncableTable(t) }
-            }
-            for table in SleepSyncHandler.pullTables {
-                let t = table
-                group.addTask { try await self.pullSyncableTable(t) }
-            }
-            try await group.waitForAll()
+        // Foreign keys require catalogs and parents to exist before their children.
+        // Each await is also a barrier between pages of dependent tables.
+        try await pullTable("users", type: User.self)
+        try await pullTable("food_catalog_items", type: FoodCatalogItem.self)
+        try await pullTable("supplement_catalog", type: SupplementCatalogEntry.self)
+        try await pullTable("exercise_catalog", type: ExerciseCatalogEntry.self)
+        try await pullTable("health_marker_catalog", type: HealthMarkerCatalogEntry.self)
+        try await pullTable("training_templates", type: TrainingTemplate.self)
+        try await pullTable("physiological_states", type: PhysiologicalState.self)
+        try await pullTable("notification_settings", type: NotificationSettings.self)
+        try await pullTable("training_loads", type: TrainingLoad.self)
+        for table in [SyncableTable.userFoods, .mealTemplates, .batchRecipes,
+                      .batchRecipeIngredients, .foodLogs, .foodItems, .userFoodFavorites,
+                      .trainingPlans, .workoutSessions, .workoutExercises, .workoutSets,
+                      .trainingPlanSessions] {
+            try await pullSyncableTable(table)
         }
-
-        // Phase 3: Health + settings tables — parallel
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            // P1 #9: Menstrual cycle sync (opt-in via privacy settings)
-            if try await shouldSyncMenstrualData() {
-                group.addTask { try await self.pullSyncableTable(.menstrualLogs) }
-            }
-
-            let restrictedMedicalAllowed = try await shouldPullRestrictedMedicalData()
-            for table in LabsSyncHandler.pullTables(includeRestrictedMedicalData: restrictedMedicalAllowed) {
-                let t = table
-                group.addTask { try await self.pullSyncableTable(t) }
-            }
-
-            group.addTask { try await self.pullTable("wellness_checks", type: WellnessCheck.self) }
-            group.addTask { try await self.pullTable("body_composition", type: BodyComposition.self) }
-            group.addTask { try await self.pullTable("hydration_logs", type: HydrationLog.self) }
-            group.addTask { try await self.pullTable("experiments", type: Experiment.self) }
-            group.addTask { try await self.pullTable("experiment_measurements", type: ExperimentMeasurement.self) }
-            try await group.waitForAll()
+        for table in SupplementsSyncHandler.pullTables + SleepSyncHandler.pullTables {
+            try await pullSyncableTable(table)
         }
-
-        // Phase 4: Pull-only + reference catalogs — parallel
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { try await self.pullTable("insights", type: Insight.self) }
-            group.addTask { try await self.pullTable("recommendations", type: Recommendation.self) }
-            group.addTask { try await self.pullTable("weekly_strategy_reports", type: WeeklyStrategyReport.self) }
-            group.addTask { try await self.pullTable("daily_nutrition_targets", type: DailyNutritionTarget.self) }
-            group.addTask { try await self.pullTable("training_templates", type: TrainingTemplate.self) }
-            group.addTask { try await self.pullTable("food_catalog_items", type: FoodCatalogItem.self) }
-            group.addTask { try await self.pullTable("supplement_catalog", type: SupplementCatalogEntry.self) }
-            group.addTask { try await self.pullTable("exercise_catalog", type: ExerciseCatalogEntry.self) }
-            group.addTask { try await self.pullTable("health_marker_catalog", type: HealthMarkerCatalogEntry.self) }
-            try await group.waitForAll()
+        if try await shouldSyncMenstrualData() { try await pullSyncableTable(.menstrualLogs) }
+        for table in LabsSyncHandler.pullTables(includeRestrictedMedicalData: try await shouldPullRestrictedMedicalData()) {
+            try await pullSyncableTable(table)
         }
-
-        // Phase 5: Onboarding, settings, opt-in — parallel
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { try await self.pullTable("onboarding_state", type: OnboardingState.self) }
-            group.addTask { try await self.pullTable("user_baselines", type: UserBaseline.self) }
-            group.addTask { try await self.pullTable("privacy_settings", type: PrivacySettings.self) }
-            if try await shouldSyncUserHealthFlags() {
-                group.addTask { try await self.pullTable("user_health_flags", type: UserHealthFlags.self) }
-            }
-            if try await shouldPullVectorMemory() {
-                group.addTask { try await self.pullTable("vector_memory", type: VectorMemoryEntry.self) }
-            }
-            try await group.waitForAll()
-        }
+        try await pullTable("wellness_checks", type: WellnessCheck.self)
+        try await pullTable("body_composition", type: BodyComposition.self)
+        try await pullTable("hydration_logs", type: HydrationLog.self)
+        try await pullTable("experiments", type: Experiment.self)
+        try await pullTable("experiment_measurements", type: ExperimentMeasurement.self)
+        try await pullTable("insights", type: Insight.self)
+        try await pullTable("recommendations", type: Recommendation.self)
+        try await pullTable("weekly_strategy_reports", type: WeeklyStrategyReport.self)
+        try await pullTable("daily_nutrition_targets", type: DailyNutritionTarget.self)
+        try await pullTable("onboarding_state", type: OnboardingState.self)
+        try await pullTable("user_baselines", type: UserBaseline.self)
+        try await pullTable("privacy_settings", type: PrivacySettings.self)
+        if try await shouldSyncUserHealthFlags() { try await pullTable("user_health_flags", type: UserHealthFlags.self) }
+        if try await shouldPullVectorMemory() { try await pullTable("vector_memory", type: VectorMemoryEntry.self) }
 
         try await reconcileParentChildAggregates()
     }
@@ -369,6 +333,13 @@ actor SyncEngine {
                         continue
                     }
 
+                    if let sleep = row as? SleepLog, sleep.source != .manual,
+                       let localSleep = try SleepRecordSelection.daily(userId: sleep.userId, day: sleep.sleepDate ?? sleep.date, includeDeleted: true, db: db),
+                       localSleep.overridesImportedSleep {
+                        // A pull precedes outbox replay. A newer server import
+                        // must not erase a queued manual correction or deletion.
+                        continue
+                    }
                     try row.save(db)
                     try Self.upsertServerTimestampMirror(
                         db: db,
@@ -418,10 +389,10 @@ actor SyncEngine {
         }
         guard validIdentifier else { return false }
 
-        let arguments = StatementArguments(alternateRowId.map { [rowId, $0] } ?? [rowId, rowId])
+        let arguments: StatementArguments = [rowId, alternateRowId ?? rowId, UUID(uuidString: rowId)]
         guard let localUpdatedAt = try? Date.fetchOne(
             db,
-            sql: "SELECT updated_at FROM \(tableName) WHERE id = ? OR id = ? LIMIT 1",
+            sql: "SELECT updated_at FROM \(tableName) WHERE id = ? OR id = ? OR id = ? ORDER BY updated_at DESC LIMIT 1",
             arguments: arguments
         ) else {
             return false
@@ -553,6 +524,10 @@ actor SyncEngine {
     /// Goal: local store converges to server authoritative state within the same sync cycle.
     private func reconcileAfterPush() async throws {
         guard isRemoteOperationsEnabled else { return }
+        guard try await !hasPendingAccountErasure() else { return }
+        if !allowsRemoteOperationsWithoutBundledConfig {
+            guard await MainActor.run(body: { AuthManager.activeHasCloudSession }) else { return }
+        }
 
         // These tables may have server-recomputed totals or derived fields after push:
         try await pullTable("food_logs", type: FoodLog.self)                      // total_* re-derived
@@ -581,9 +556,17 @@ actor SyncEngine {
 
     // MARK: - Push Phase (§6.2)
 
+    /// Enqueues a prepared event in the caller's transaction for multi-record writes.
+    nonisolated func enqueueMutation(_ event: OutboxEvent, in db: Database) throws {
+        try Self.insertPreparedMutation(event, into: db, deviceId: deviceId)
+    }
+
     /// Replay pending outbox events in priority order, respecting `depends_on` chains.
     func pushPendingEvents() async throws {
         guard isRemoteOperationsEnabled else { return }
+        if !allowsRemoteOperationsWithoutBundledConfig {
+            guard await MainActor.run(body: { AuthManager.activeHasCloudSession }) else { return }
+        }
 
         // Force-update invariant: block mutating traffic until app is updated.
         if await apiClient.shouldBlockMutationsForForceUpdate() {
@@ -597,6 +580,11 @@ actor SyncEngine {
         var succeededIds = try await previouslySucceededIds()
 
         for event in events {
+            if try await hasPendingAccountErasure(), !["api-account-delete", "api-account-delete-cancel"].contains(event.path) { continue }
+            if event.path.contains("menstrual"), try await !shouldSyncMenstrualData() {
+                try await cancelEvent(event.id)
+                continue
+            }
             if try await shouldCancelRestrictedMedicalEvent(event) {
                 try await cancelEvent(event.id)
                 continue
@@ -626,6 +614,7 @@ actor SyncEngine {
                 // Mark succeeded
                 try await markSucceeded(event.id)
                 succeededIds.insert(event.id)
+                if event.path == "api-account-delete" { return }
             } catch let error as NSError {
                 // Classify and handle error
                 let category = classifyError(error)
@@ -777,18 +766,38 @@ actor SyncEngine {
     }
 
     private func sendToServer(_ event: OutboxEvent) async throws {
+        if !allowsRemoteOperationsWithoutBundledConfig {
+            guard await MainActor.run(body: { AuthManager.activeHasCloudSession }) else { throw AuthError.sessionExpired }
+        }
         if let pushTransportOverride {
             try await pushTransportOverride(event)
             return
         }
 
         let preparedRequest = try await prepareOutboundRequest(for: event)
-        let sanitizedBody = sanitizeOutboundBody(preparedRequest.body, path: preparedRequest.path)
+        let sanitizedBody = try sanitizeOutboundBody(preparedRequest.body, path: preparedRequest.path)
         var outboundHeaders = Self.decodeHeaders(event.headersJson)
         outboundHeaders["Idempotency-Key"] = event.idempotencyKey
         outboundHeaders["X-Device-Id"] = deviceId
         outboundHeaders["X-Outbox-Replay"] = "true"
         outboundHeaders["X-Correlation-Id"] = outboundHeaders["X-Correlation-Id"] ?? event.id.uuidString.lowercased()
+
+        if preparedRequest.path == "api-account-delete" {
+            guard let authId = await MainActor.run(body: { AuthManager.activeAuthId }) else { throw AuthError.sessionExpired }
+            // Persist before the request: the server may delete auth and then
+            // lose its HTTP response, leaving receipt polling as the only path.
+            outboundHeaders["X-Deletion-Receipt"] = try AccountDeletionReceiptStore.prepare(authId: authId)
+            let accepted: AccountDeletionAcceptedResponse = try await apiClient.callEdgeFunction(preparedRequest.path, body: sanitizedBody, headers: outboundHeaders, maxAttempts: 3)
+            guard accepted.deletionReceipt != nil || accepted.authDeleted == true else { throw SettingsError.deletionFailed }
+            if let token = accepted.deletionReceipt {
+                try AccountDeletionReceiptStore.save(.init(token: token, expiresAt: accepted.deletionReceiptExpiresAt, authId: authId, completed: false))
+            }
+            try await eraseLocalHistoryAfterAcceptedDeletion(event: event)
+            if accepted.authDeleted == true {
+                try AccountDeletionReceiptStore.save(.init(token: nil, expiresAt: nil, authId: authId, completed: true, localErased: true))
+            }
+            return
+        }
 
         // INVARIANT: Idempotency-Key and X-Device-Id MUST be headers per sync spec §6.2.
         if preparedRequest.path.starts(with: "rest/v1/") {
@@ -828,12 +837,67 @@ actor SyncEngine {
                 maxAttempts: 3
             )
         }
+        if preparedRequest.path == "api-account-delete-cancel" {
+            try await dbQueue.write { db in try db.execute(sql: "UPDATE users SET deletion_in_progress = 0") }
+            try AccountDeletionReceiptStore.clear()
+        }
+    }
+
+    private func hasPendingAccountErasure() async throws -> Bool {
+        try await dbQueue.read { db in
+            try Bool.fetchOne(db, sql: "SELECT MAX(deletion_in_progress) FROM users") ?? false
+        }
+    }
+
+    private func eraseLocalHistoryAfterAcceptedDeletion(event: OutboxEvent) async throws {
+        let authId = await MainActor.run { AuthManager.activeAuthId?.uuidString }
+        guard let user = try await dbQueue.read({ db in try UserIdentityLookup.fetchUser(authId: authId, db: db) }) else {
+            throw AuthError.sessionExpired
+        }
+        do {
+            _ = try await LocalPrivacyErasureExecutor.execute(reason: "cloud_deletion_accepted", user: LocalPrivacyUserContext(userId: user.id, authId: user.authId), dbQueue: dbQueue)
+        } catch {
+            try await dbQueue.write { db in
+                try db.execute(sql: "UPDATE users SET deletion_in_progress = 1")
+                try event.save(db)
+            }
+            throw error
+        }
+        // Keep only the minimal accepted request/audit while server deletion is pending.
+        // It is safe to retry with the same idempotency key after an interrupted cleanup.
+        try await dbQueue.write { db in
+            try db.execute(sql: "UPDATE users SET deletion_in_progress = 1, onboarding_completed = 1")
+            try event.save(db)
+        }
+        if var receipt = try AccountDeletionReceiptStore.load() {
+            receipt.localErased = true
+            try AccountDeletionReceiptStore.save(receipt)
+        }
+        await AppContainer.shared?.widgetSnapshotCoordinator.clearSnapshot()
+        await MainActor.run { WatchSyncManager.shared.clearSnapshot() }
     }
 
     private func prepareOutboundRequest(for event: OutboxEvent) async throws -> PreparedOutboundRequest {
         switch event.path {
         case "api-labs", "rest/v1/medical_scans":
             return try await prepareLabScanOutboundRequest(for: event)
+        case "rest/v1/sleep_logs":
+            // Preserve the original request and idempotency key while routing
+            // legacy queued writes through canonical day/source conflict rules.
+            return PreparedOutboundRequest(path: "api-sleep-log", body: event.bodyJson)
+        case "api-experiments/create":
+            var payload = Self.decodeJSONObject(from: event.bodyJson)
+            if payload["baseline_start_date"] == nil,
+               let rawID = Self.stringValue(in: payload, keys: ["id"]), let id = UUID(uuidString: rawID),
+               let startDate = try await dbQueue.read({ db in
+                   try Experiment.filter(sql: "id = ? OR id = ?", arguments: [id, id.uuidString]).fetchOne(db)?.baselineStartDate
+               }) {
+                // Upgrade creates queued by older app versions without moving
+                // their already-recorded baseline measurements to another phase.
+                payload["baseline_start_date"] = startDate
+                return PreparedOutboundRequest(path: event.path, body: try Self.serializeSanitizedBody(payload))
+            }
+            return PreparedOutboundRequest(path: event.path, body: event.bodyJson)
         default:
             return PreparedOutboundRequest(path: event.path, body: event.bodyJson)
         }
@@ -880,7 +944,7 @@ actor SyncEngine {
         }
 
         let uploadedPayload = try await uploadLabScanAssetIfNeeded(payload, scanId: resolvedScanId)
-        let preparedBody = Self.serializeSanitizedBody(uploadedPayload, fallback: event.bodyJson)
+        let preparedBody = try Self.serializeSanitizedBody(uploadedPayload)
         let preparedPath = "api-labs"
 
         if preparedPath != event.path || preparedBody != event.bodyJson {
@@ -1062,7 +1126,9 @@ actor SyncEngine {
 
     /// Removes restricted fields from outbound payloads.
     /// Privacy invariants: no GPS coordinates or raw medical artifacts are synced by default.
-    private func sanitizeOutboundBody(_ data: Data, path: String? = nil) -> Data {
+    /// Throws when a parsed payload cannot be re-serialized after sanitization —
+    /// falling back to the unsanitized bytes would defeat the whole sanitization step.
+    private func sanitizeOutboundBody(_ data: Data, path: String? = nil) throws -> Data {
         guard let object = try? JSONSerialization.jsonObject(with: data) else {
             return data
         }
@@ -1101,7 +1167,7 @@ actor SyncEngine {
         let encrypted = FieldEncryption.encryptSensitiveFields(in: sanitized)
         let normalizedMedicalScans = Self.normalizeMedicalScanPayloadIfNeeded(encrypted, path: path)
         let normalized = Self.normalizeHealthMeasurementPayloadIfNeeded(normalizedMedicalScans, path: path)
-        return Self.serializeSanitizedBody(normalized, fallback: data)
+        return try Self.serializeSanitizedBody(normalized)
     }
 
     /// Keeps legacy medical scan payloads syncable after the contract moved to canonical server values.
@@ -1308,14 +1374,9 @@ actor SyncEngine {
 
     private nonisolated static func serializeSanitizedBody(
         _ sanitized: Any,
-        fallback data: Data,
         serializer: (Any) throws -> Data = { try JSONSerialization.data(withJSONObject: $0) }
-    ) -> Data {
-        do {
-            return try serializer(sanitized)
-        } catch {
-            return data
-        }
+    ) throws -> Data {
+        try serializer(sanitized)
     }
 
     /// Classify an error into the sync engine's error categories.
@@ -1478,6 +1539,22 @@ actor SyncEngine {
         try await dbQueue.write { db in
             let result = try operation(db)
             try Self.insertPreparedMutation(result.event, into: db, deviceId: deviceId)
+            return result.value
+        }
+    }
+
+    /// Variant of ``performOptimisticMutation`` for writes whose outbox event is
+    /// optional (e.g. upserts that may resolve to a no-op). A returned event is
+    /// committed in the SAME transaction as the local write, so a crash can never
+    /// leave a local change without its queued sync event.
+    func performConditionalOptimisticMutation<T: Sendable>(
+        _ operation: @escaping @Sendable (Database) throws -> (value: T, event: OutboxEvent?)
+    ) async throws -> T {
+        try await dbQueue.write { db in
+            let result = try operation(db)
+            if let event = result.event {
+                try Self.insertPreparedMutation(event, into: db, deviceId: deviceId)
+            }
             return result.value
         }
     }
@@ -2092,7 +2169,7 @@ actor SyncEngine {
         let cutoff = Date().addingTimeInterval(TimeInterval(-boundedWindowHours * 3600))
 
         return try await dbQueue.read { db in
-            let row = try Row.fetchOne(
+            guard let row = try Row.fetchOne(
                 db,
                 sql: """
                     SELECT
@@ -2113,7 +2190,14 @@ actor SyncEngine {
                     OutboxStatus.failedPermanent.rawValue,
                     cutoff
                 ]
-            )!
+            ) else {
+                throw NSError(
+                    domain: "SyncEngine",
+                    code: 0,
+                    userInfo: [NSLocalizedDescriptionKey:
+                        "Outbox SLO aggregate returned no row; outbox_events schema may be damaged."]
+                )
+            }
 
             let total: Int = row["total"]
             let pending: Int = row["pending_count"]
@@ -2466,16 +2550,20 @@ extension SyncEngine {
         try await sendToServer(event)
     }
 
-    func _testSanitizeOutboundBody(_ data: Data, path: String? = nil) -> Data {
-        sanitizeOutboundBody(data, path: path)
+    func _testSanitizeOutboundBody(_ data: Data, path: String? = nil) throws -> Data {
+        try sanitizeOutboundBody(data, path: path)
     }
 
-    nonisolated static func _testSerializeSanitizedBodyFallback(
-        sanitized: Any,
-        fallback: Data
-    ) -> Data {
-        serializeSanitizedBody(sanitized, fallback: fallback) { _ in
-            throw NSError(domain: "SyncEngineCoverage", code: 1)
+    nonisolated static func _testSerializeSanitizedBodyFailure(
+        sanitized: Any
+    ) -> Error {
+        struct SerializerError: LocalizedError { var errorDescription: String? { "forced" } }
+        let forcedError = SerializerError()
+        do {
+            _ = try serializeSanitizedBody(sanitized) { _ in throw forcedError }
+            return NSError(domain: "SyncEngineCoverage", code: -1, userInfo: [NSLocalizedDescriptionKey: "expected throw"])
+        } catch {
+            return error
         }
     }
 

@@ -1,0 +1,4 @@
+Test Case '-[LifeOSUITests.EndToEndScenariosUITests testLiveBackendAnonymousBootstrapSmoke]' started.
+Test Case '-[LifeOSUITests.EndToEndScenariosUITests testLiveBackendAnonymousBootstrapSmoke]' passed (4.820 seconds).
+** TEST SUCCEEDED **
+Live-backend UI smoke passed.

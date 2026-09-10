@@ -48,6 +48,8 @@ This repository contains the Life OS application source code and accompanying pr
 
 ## Readiness truth
 
+- September 2026: see the [system audit](audits/system-audit-2026-09-08/REPORT.md) and [repair/verification record](audits/system-audit-2026-09-08/REMEDIATION.md). Earlier readiness reports describe historical snapshots.
+- External release evidence (hosted project, real devices, APNs, providers, App Store artifact, pilot) is tracked in [PRODUCTION_EXTERNAL_CHECKS.md](PRODUCTION_EXTERNAL_CHECKS.md).
 - No single document is the final release truth.
 - Use the repository code, `xcodebuild`/CI release gates, `life_os_functional_matrix.md`, and the QA pack together.
 - `life_os_functional_matrix.md` is now an audited implementation snapshot, not just a spec-gap list.
@@ -140,6 +142,7 @@ If any document conflicts with this section, treat it as a bug and fix the docum
 - Supabase edge soak only: `bash scripts/run_supabase_edge_soak.sh`
 - iOS performance hard-gates only (startup/memory/sync latency): `bash scripts/run_ios_performance_hard_gates.sh`
 - Pre-prod security pass (keys/transport/rate-limit/abuse): `bash scripts/run_preprod_security_pass.sh`
+- Production configuration preflight (env completeness + key/URL format, no secret printing): `bash scripts/check_production_config.sh` (add `--strict` to also fail on missing optional integrations)
 - Include soak phase in full local gate: `RUN_EDGE_SOAK=1 bash scripts/run_release_gate_local.sh`
 - iOS pre-prod real-device smoke (APNs/HealthKit/background prechecks): `bash scripts/run_ios_preprod_real_device_smoke.sh`
 - iOS profiling guide (Settings/Sync): `ios/PROFILING.md`

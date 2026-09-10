@@ -1,0 +1,7 @@
+Source: /tmp/lifeos-fix-20260909/security-complete.log
+== Security pass: secret/key exposure scan ==
+== Security pass: transport hardening checks ==
+== Security pass: server-side rate-limit and abuse-case tests ==
+ok | 42 passed | 0 failed (484ms)
+== Security pass: edge abuse-case integration suite skipped (SECURITY_PASS_SKIP_EDGE_E2E=1) ==
+Pre-prod security pass completed successfully.

@@ -1,7 +1,7 @@
 import {
-  anonClient,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
@@ -10,6 +10,10 @@ import { handleCors } from "../../../_shared/cors.ts";
 import { parseWithSchema } from "../../../_shared/runtime_schema.ts";
 import { PrivacyPayloadSchema } from "../../../_shared/payload_schemas.ts";
 import { enforceMedicalScanPrivacyState } from "../../../_shared/medical_scan_privacy.ts";
+import {
+  assertVectorMemoryConfigured,
+  deleteUserVectorMemory,
+} from "../../../_shared/vector_memory.ts";
 
 interface PrivacyPayload {
   menstrual_local_only?: boolean;
@@ -54,11 +58,9 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "unauthorized" }, 401);
   }
 
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   const service = serviceRoleClient();
   const { data: userRow, error: userError } = await service
@@ -122,6 +124,22 @@ Deno.serve(async (request) => {
   }
   // deno-coverage-ignore-stop
   const normalized = normalizePayload(payload);
+  if (normalized.vector_opt_in === true) {
+    if (!(normalized.ai_processing_consent ?? existing.ai_processing_consent)) {
+      return jsonWithRequest(request, {
+        error: "ai_processing_consent_required",
+      }, 403);
+    }
+    try {
+      assertVectorMemoryConfigured();
+    } catch (error) {
+      return jsonWithRequest(request, {
+        error: error instanceof Error
+          ? error.message
+          : "vector_memory_not_configured",
+      }, 503);
+    }
+  }
 
   const { data: updated, error: upsertError } = await service
     .from("privacy_settings")
@@ -253,6 +271,11 @@ async function applyPrivacySideEffects(
   authUserId: string,
   settings: PrivacyRow,
 ): Promise<void> {
+  if (
+    settings.vector_opt_in === false || settings.ai_processing_consent === false
+  ) {
+    await deleteUserVectorMemory(service, userId);
+  }
   if ((settings.cloud_backup_enabled ?? false) === false) {
     const { error } = await service
       .from("user_health_flags")

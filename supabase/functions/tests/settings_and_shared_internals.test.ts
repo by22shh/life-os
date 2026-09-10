@@ -486,6 +486,13 @@ Deno.test("privacy settings internal hooks cover normalization and side-effect b
           },
         };
       }
+      if (table === "vector_memory") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ count: 0, error: null }),
+          }),
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
     schema() {
@@ -571,6 +578,13 @@ Deno.test("privacy settings internal hooks cover normalization and side-effect b
       }
       if (table === "user_health_flags") {
         throw new Error("cleanup should be skipped");
+      }
+      if (table === "vector_memory") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ count: 0, error: null }),
+          }),
+        };
       }
       throw new Error(`unexpected table ${table}`);
     },

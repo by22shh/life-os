@@ -145,13 +145,17 @@ final class DatabaseBackupManagerTests: XCTestCase {
         )
     }
 
-    func testNewestValidBackupURLPicksNewestNonEmptyFileAndIgnoresOthers() throws {
+    func testNewestValidBackupURLRequiresSQLiteIntegrityAndSkipsCorruptFiles() throws {
         let directory = try makeTempDirectory(named: "lifeos-db-backup-restore")
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        try Data([0x01, 0x02]).write(
-            to: directory.appendingPathComponent("lifeos_backup_2026-08-20_120000.sqlite")
-        )
+        let valid = try DatabaseQueue(path: directory.appendingPathComponent("lifeos_backup_2026-08-20_120000.sqlite").path)
+        try valid.write { db in
+            try db.execute(sql: "CREATE TABLE history (value TEXT)")
+            try db.execute(sql: "INSERT INTO history VALUES (?)", arguments: ["preserved"])
+        }
+        try valid.close()
+        try Data([0x01, 0x02]).write(to: directory.appendingPathComponent("lifeos_backup_2026-08-24_120000.sqlite"))
         try Data().write(to: directory.appendingPathComponent("lifeos_backup_2026-08-25_120000.sqlite"))
         try Data([0x09]).write(to: directory.appendingPathComponent("unrelated.sqlite"))
 
@@ -164,4 +168,28 @@ final class DatabaseBackupManagerTests: XCTestCase {
 
         XCTAssertNil(DatabaseBackupManager.newestValidBackupURL(in: emptyDirectory))
     }
+    func testRestorePreservesDamagedPrimaryAndRecoversCommittedHistory() throws {
+        let directory = try makeTempDirectory(named: "lifeos-recovery")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let backup = directory.appendingPathComponent("lifeos_backup_2026-09-09_120000.sqlite")
+        let queue = try DatabaseQueue(path: backup.path)
+        try queue.write { db in
+            try db.execute(sql: "CREATE TABLE history (value TEXT)")
+            try db.execute(sql: "INSERT INTO history VALUES (?)", arguments: ["valuable history"])
+        }
+        try queue.close()
+        let primary = directory.appendingPathComponent("lifeos.db")
+        let damagedBytes = Data("damaged SQLite evidence".utf8)
+        try damagedBytes.write(to: primary)
+        XCTAssertTrue(try DatabaseBackupManager.restoreBackup(primaryDatabaseURL: primary, backupsDirectory: directory))
+        XCTAssertTrue(DatabaseBackupManager.isValidDatabase(at: primary))
+        let restored = try DatabaseQueue(path: primary.path)
+        XCTAssertEqual(try restored.read { try String.fetchOne($0, sql: "SELECT value FROM history") }, "valuable history")
+        try restored.close()
+        let quarantine = directory.appendingPathComponent("RecoveryQuarantine")
+        let snapshots = try FileManager.default.contentsOfDirectory(at: quarantine, includingPropertiesForKeys: nil)
+        XCTAssertEqual(snapshots.count, 1)
+        XCTAssertEqual(try Data(contentsOf: snapshots[0].appendingPathComponent("lifeos.db")), damagedBytes)
+    }
+
 }

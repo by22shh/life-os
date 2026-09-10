@@ -44,6 +44,7 @@ interface LatencySummary {
   minMs: number;
   errorRate: number;
   statusCounts: Record<string, number>;
+  errorCounts: Record<string, number>;
   totalDurationMs: number;
   throughputRps: number;
 }
@@ -52,6 +53,7 @@ interface Sample {
   latencyMs: number;
   status: number;
   ok: boolean;
+  errorCode?: string;
 }
 
 const LOCAL_FUNCTION_URL = "http://127.0.0.1:8000";
@@ -107,6 +109,7 @@ await runFunctionScenario(
     });
 
     report["api-food-log"] = summary;
+    await persistReport();
     enforceThresholds(
       "api-food-log",
       summary,
@@ -161,6 +164,7 @@ await runFunctionScenario(
     });
 
     report["api-settings-notifications"] = summary;
+    await persistReport();
     enforceThresholds(
       "api-settings-notifications",
       summary,
@@ -170,12 +174,26 @@ await runFunctionScenario(
   },
 );
 
-if (config.reportPath) {
-  await Deno.writeTextFile(config.reportPath, JSON.stringify(report, null, 2));
-  console.log(`load report written to ${config.reportPath}`);
-}
+await persistReport();
 
 console.log("Edge local load test suite completed.");
+
+async function persistReport(): Promise<void> {
+  if (config.reportPath) {
+    await Deno.writeTextFile(
+      config.reportPath,
+      JSON.stringify(report, null, 2),
+    );
+  }
+}
+
+function failureCode(response: HttpResponse): string {
+  // Record only a machine-readable code, never response bodies, tokens or PII.
+  const code = objectString(response.body, "error");
+  return code && /^[a-zA-Z0-9_.-]{1,80}$/.test(code)
+    ? code
+    : `http_${response.status}`;
+}
 
 function loadEnv(): EnvConfig {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
@@ -403,16 +421,19 @@ async function runLoadProfile(
         const requestStart = performance.now();
         let status = 0;
         let ok = false;
+        let errorCode: string | undefined;
         try {
           const response = await requestFactory(index);
           status = response.status;
           ok = expectedStatuses.has(response.status);
+          if (!ok) errorCode = failureCode(response);
         } catch {
           status = 0;
           ok = false;
+          errorCode = "transport_failure";
         }
         const latencyMs = performance.now() - requestStart;
-        samples.push({ latencyMs, status, ok });
+        samples.push({ latencyMs, status, ok, errorCode });
       }
     }),
   );
@@ -501,16 +522,19 @@ async function runSoakProfile(
         const requestStart = performance.now();
         let status = 0;
         let ok = false;
+        let errorCode: string | undefined;
         try {
           const response = await requestFactory(index);
           status = response.status;
           ok = expectedStatuses.has(response.status);
+          if (!ok) errorCode = failureCode(response);
         } catch {
           status = 0;
           ok = false;
+          errorCode = "transport_failure";
         }
         const latencyMs = performance.now() - requestStart;
-        samples.push({ latencyMs, status, ok });
+        samples.push({ latencyMs, status, ok, errorCode });
         if (requestIntervalMs > 0) {
           await delay(requestIntervalMs);
         }
@@ -543,6 +567,13 @@ function summarizeSamples(
     .map((sample) => sample.latencyMs)
     .sort((a, b) => a - b);
 
+  const errorCounts: Record<string, number> = {};
+  for (const sample of samples) {
+    if (sample.errorCode) {
+      errorCounts[sample.errorCode] = (errorCounts[sample.errorCode] ?? 0) + 1;
+    }
+  }
+
   if (successfulLatencies.length === 0) {
     throw new Error(
       `[load] ${name}: no successful responses; statusCounts=${
@@ -574,6 +605,7 @@ function summarizeSamples(
     minMs,
     errorRate,
     statusCounts,
+    errorCounts,
     totalDurationMs,
     throughputRps,
   };
@@ -583,7 +615,9 @@ function summarizeSamples(
       p99Ms.toFixed(1)
     }ms avg=${avgMs.toFixed(1)}ms errors=${(errorRate * 100).toFixed(2)}% rps=${
       throughputRps.toFixed(1)
-    } statuses=${JSON.stringify(statusCounts)} requests=${samples.length}`,
+    } statuses=${JSON.stringify(statusCounts)} errors=${
+      JSON.stringify(errorCounts)
+    } requests=${samples.length}`,
   );
 
   return summary;

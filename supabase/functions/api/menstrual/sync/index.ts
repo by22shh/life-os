@@ -1,7 +1,7 @@
 import {
-  anonClient,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
@@ -38,11 +38,9 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { error: "unauthorized" }, 401);
   }
 
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   let payloadRaw: unknown;
   try {
@@ -126,6 +124,23 @@ Deno.serve(async (request) => {
     return jsonWithRequest(request, { ok: true });
   }
 
+  const { data: privacy, error: privacyError } = await service
+    .from("privacy_settings").select("menstrual_local_only")
+    .eq("user_id", userRow.id)
+    .maybeSingle<{ menstrual_local_only: boolean }>();
+  if (privacyError) {
+    return jsonWithRequest(
+      request,
+      { error: "privacy_settings_lookup_failed" },
+      500,
+    );
+  }
+  if (privacy?.menstrual_local_only !== false) {
+    return jsonWithRequest(request, {
+      error: "menstrual_cloud_consent_required",
+    }, 403);
+  }
+
   const date = typeof payload.date === "string" ? payload.date.trim() : "";
   if (!isIsoDate(date)) {
     return jsonWithRequest(request, { error: "invalid_date" }, 400);
@@ -159,6 +174,11 @@ Deno.serve(async (request) => {
     );
 
   if (upsertError) {
+    if (upsertError.code === "42501") {
+      return jsonWithRequest(request, {
+        error: "menstrual_cloud_consent_required",
+      }, 403);
+    }
     return jsonWithRequest(request, {
       error: "menstrual_sync_failed",
       detail: sanitizedInternalDetail(request, "index", upsertError),

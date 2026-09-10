@@ -27,6 +27,19 @@ __pycache__/
 .env.*
 !.env.example
 
+# Key/certificate material — never commit (defense in depth: one careless
+# `cp AuthKey.p8 .` must not be able to land in a commit)
+*.p8
+*.pem
+*.key
+*.mobileprovision
+*.cer
+*.p12
+*.pfx
+
+# Xcode user-local release configs (LIFEOS_SUPABASE_* secrets live there)
+*.xcconfig.local
+
 # Audit phase logs and traces are heavy regenerable evidence; keep audit reports/screenshots tracked
 audits/*/phase-*-logs/
 audits/*/phase-*-traces/
@@ -39,3 +52,6 @@ audits/*/phase-*-traces/
 
 # nested coverage artifacts
 supabase/.coverage/
+
+# Supabase CLI runtime credentials generated when starting Edge Runtime locally
+supabase/.temp/start-secrets/

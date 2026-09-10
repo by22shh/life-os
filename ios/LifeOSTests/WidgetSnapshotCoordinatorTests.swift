@@ -6,6 +6,34 @@ import XCTest
 
 @MainActor
 final class WidgetSnapshotCoordinatorTests: XCTestCase {
+    func testEatingDisorderSafetyOverridesNutritionWidgetOptIn() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = makeUser(authId: UUID(), timezone: "UTC")
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            var flags = UserHealthFlags(userId: user.id)
+            flags.hasEatingDisorderHistory = true
+            try flags.insert(db)
+            XCTAssertTrue(try NutritionSafetyPolicy.hidesCalories(in: db, userId: user.id))
+            XCTAssertTrue(try NutritionSafetyPolicy.suppressesTargets(in: db, userId: user.id))
+        }
+        let snapshot = try await WidgetSnapshotCoordinator._testBuildSnapshot(dbQueue: manager.dbQueue, authId: user.authId.uuidString, now: Date(), privacy: WidgetPrivacySettings(showNutrition: true))
+        XCTAssertNil(snapshot?.nutrition)
+        XCTAssertEqual(snapshot?.privacy.showNutrition, false)
+    }
+
+    func testPregnancyDisablesGenericNutritionTargetsWithoutHidingFoodHistory() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = makeUser(authId: UUID(), timezone: "UTC")
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            var flags = UserHealthFlags(userId: user.id)
+            flags.isPregnant = true
+            try flags.insert(db)
+            XCTAssertFalse(try NutritionSafetyPolicy.hidesCalories(in: db, userId: user.id))
+            XCTAssertTrue(try NutritionSafetyPolicy.suppressesTargets(in: db, userId: user.id))
+        }
+    }
     private enum SnapshotBuildFailure: Error {
         case simulated
     }
@@ -171,7 +199,9 @@ final class WidgetSnapshotCoordinatorTests: XCTestCase {
         let existingSnapshot = makeStoredSnapshot()
         let now = makeDate(day: "2026-03-15", hour: 9, minute: 0, timeZone: .current)
         WidgetSnapshotStorage.storeSnapshot(existingSnapshot, defaults: storageDefaults)
-        AuthManager.setActiveAuthIdForTests(UUID())
+        let user = makeUser(authId: UUID(), timezone: "UTC")
+        try await manager.dbQueue.write { db in try user.insert(db) }
+        AuthManager.setActiveAuthIdForTests(user.authId)
 
         let reloadCount = OSAllocatedUnfairLock(initialState: 0)
         let coordinator = WidgetSnapshotCoordinator(

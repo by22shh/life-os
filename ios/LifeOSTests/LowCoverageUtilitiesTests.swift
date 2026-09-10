@@ -928,7 +928,7 @@ final class HealthKitManagerCoverageExpansionTests: XCTestCase {
 
         HealthKitManager._testSetAuthorizedTypeCountOverride { 0 }
         let denied = try await manager.requestAuthorization()
-        XCTAssertFalse(denied)
+        XCTAssertTrue(denied) // zero WRITE grants does not imply denied READ access
 
         HealthKitManager._testSetRequestAccessOverride(nil)
         HealthKitManager._testSetDefaultRequestAccessRunner {
@@ -939,7 +939,7 @@ final class HealthKitManagerCoverageExpansionTests: XCTestCase {
             await recorder.append("default_background_override")
         }
         let defaultAuthorization = try await manager.requestAuthorization()
-        XCTAssertFalse(defaultAuthorization)
+        XCTAssertTrue(defaultAuthorization)
 
         HealthKitManager._testSetRequestAccessOverride {
             await recorder.append("request_access_second_pass")
@@ -1110,10 +1110,10 @@ final class HealthKitManagerCoverageExpansionTests: XCTestCase {
             authorizedTypeCount: { 0 },
             enableBackground: { await flags.incrementBackground() }
         )
-        XCTAssertFalse(denied)
+        XCTAssertTrue(denied) // read grants are deliberately undisclosed by HealthKit
         let deniedCounts = await flags.snapshot()
         XCTAssertEqual(deniedCounts.0, 1)
-        XCTAssertEqual(deniedCounts.1, 0)
+        XCTAssertEqual(deniedCounts.1, 1)
 
         let granted = try await manager._testRequestAuthorizationFlow(
             isAvailable: true,
@@ -1124,7 +1124,7 @@ final class HealthKitManagerCoverageExpansionTests: XCTestCase {
         XCTAssertTrue(granted)
         let grantedCounts = await flags.snapshot()
         XCTAssertEqual(grantedCounts.0, 2)
-        XCTAssertEqual(grantedCounts.1, 1)
+        XCTAssertEqual(grantedCounts.1, 2)
 
         do {
             _ = try await manager._testRequestAuthorizationFlow(
@@ -1590,8 +1590,8 @@ final class HealthKitManagerCoverageExpansionTests: XCTestCase {
         XCTAssertTrue(defaultGranted)
         let defaultSnapshot = defaultCounter.snapshot()
         XCTAssertEqual(defaultSnapshot.0, 1)
-        XCTAssertEqual(defaultSnapshot.1.count, HealthKitManager._testBackgroundDeliveryTypesCount())
-        XCTAssertEqual(Set(defaultSnapshot.1).count, HealthKitManager._testBackgroundDeliveryTypesCount())
+        XCTAssertEqual(defaultSnapshot.1.count, 0) // observers already installed on this manager
+        XCTAssertEqual(Set(defaultSnapshot.1).count, 0)
     }
 
     func testHealthKitPrivateHelperCoverageForCategoryAndBackgroundPaths() async throws {
@@ -2607,7 +2607,7 @@ final class HomeViewModelCoverageTests: XCTestCase {
 
         try await insertPhysiologicalState(
             userId: userId,
-            date: "2026-02-24T08:30:00Z",
+            date: DiaryDateFormatter.formatDate(Date()),
             score: 22,
             sleepDurationHours: 5.0
         )
@@ -2624,7 +2624,7 @@ final class HomeViewModelCoverageTests: XCTestCase {
         XCTAssertEqual(components.scheme, "lifeos")
         XCTAssertEqual(components.host, "sleep")
         XCTAssertTrue(
-            components.queryItems?.contains(where: { $0.name == "date" && $0.value == "2026-02-24" }) == true
+            components.queryItems?.contains(where: { $0.name == "date" && $0.value == DiaryDateFormatter.formatDate(Date()) }) == true
         )
     }
 
@@ -2643,13 +2643,8 @@ final class HomeViewModelCoverageTests: XCTestCase {
         let viewModel = HomeViewModel(pushLatestWatchSnapshot: { _ in })
         await viewModel.refresh()
 
-        XCTAssertEqual(viewModel.recoveryZone, .caution)
-        let action = try XCTUnwrap(viewModel.contextualRecoveryAction)
-        let components = try XCTUnwrap(URLComponents(url: action.deepLink, resolvingAgainstBaseURL: false))
-        XCTAssertEqual(components.host, "recovery")
-        XCTAssertTrue(
-            components.queryItems?.contains(where: { $0.name == "date" && $0.value == "not-a-date" }) == true
-        )
+        XCTAssertNil(viewModel.recoveryZone)
+        XCTAssertNil(viewModel.contextualRecoveryAction) // invalid dates must not look current
     }
 
     func testRefreshKeepsActionNilForOptimalZone() async throws {
@@ -2658,7 +2653,7 @@ final class HomeViewModelCoverageTests: XCTestCase {
 
         try await insertPhysiologicalState(
             userId: userId,
-            date: "2026-02-24",
+            date: DiaryDateFormatter.formatDate(Date()),
             score: 93,
             sleepDurationHours: 4.0
         )
@@ -2678,7 +2673,7 @@ final class HomeViewModelCoverageTests: XCTestCase {
 
         try await insertPhysiologicalState(
             userId: userId,
-            date: "2026-02-24",
+            date: DiaryDateFormatter.formatDate(Date()),
             score: 58,
             sleepDurationHours: 6.5
         )
@@ -2702,7 +2697,7 @@ final class HomeViewModelCoverageTests: XCTestCase {
                 arguments: [
                     malformedStateId,
                     userId.uuidString,
-                    "2026-02-25",
+                    DiaryDateFormatter.formatDate(Date()),
                     47.0,
                     "caution",
                     Date(),
@@ -5106,7 +5101,7 @@ final class OnboardingFeatureCoverageTests: XCTestCase {
         let deniedStore = TestStore(initialState: deniedState) {
             OnboardingFeature()
         }
-        HealthKitManager._testSetIsAvailableOverride(true)
+        HealthKitManager._testSetIsAvailableOverride(false)
         HealthKitManager._testSetRequestAccessOverride { }
         HealthKitManager._testSetAuthorizedTypeCountOverride { 0 }
         HealthKitManager._testSetEnableBackgroundOverride { }
@@ -5121,6 +5116,7 @@ final class OnboardingFeatureCoverageTests: XCTestCase {
             $0.errorMessage = expectedMessage
         }
 
+        HealthKitManager._testSetIsAvailableOverride(true)
         var errorState = OnboardingFeature.State()
         errorState.currentStep = .healthKitPermission
         let errorStore = TestStore(initialState: errorState) {
@@ -11058,7 +11054,7 @@ final class HealthSyncManagerFlowTests: XCTestCase {
         let outboxCountAfterInsert = try await manager.dbQueue.read { db in
             try OutboxEvent.fetchCount(db)
         }
-        XCTAssertEqual(outboxCountAfterInsert, 1)
+        XCTAssertEqual(outboxCountAfterInsert, 2)
 
         let updateStub = HealthSyncDataProviderFlowStub(
             config: .init(
@@ -11093,7 +11089,7 @@ final class HealthSyncManagerFlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(updated.updatedAt, inserted.updatedAt)
         XCTAssertEqual(try XCTUnwrap(updated.hrvMs), 4.1, accuracy: 0.0001)
         XCTAssertEqual(updated.restingHeartRateBpm, 60)
-        XCTAssertNil(updated.sleepDurationHours)
+        XCTAssertEqual(updated.sleepDurationHours, 8.0) // retain the saved sleep record when a query has no new data
         XCTAssertNil(updated.steps)
         XCTAssertNil(updated.activeCalories)
         XCTAssertEqual(updated.environmentalContext?.city, "Baku")
@@ -11102,7 +11098,7 @@ final class HealthSyncManagerFlowTests: XCTestCase {
         let outboxCountAfterUpdate = try await manager.dbQueue.read { db in
             try OutboxEvent.fetchCount(db)
         }
-        XCTAssertEqual(outboxCountAfterUpdate, 2)
+        XCTAssertEqual(outboxCountAfterUpdate, 3)
     }
 
     func testSyncDailyStateExitsWhenHealthKitUnavailable() async throws {
@@ -12419,7 +12415,8 @@ final class FinalCoverageContinuationTests: XCTestCase {
                 experiment,
                 event.path,
                 payload["primary_metric"] as? String,
-                payload["title"] as? String
+                payload["title"] as? String,
+                payload["baseline_start_date"] as? String
             )
         }
 
@@ -12431,6 +12428,7 @@ final class FinalCoverageContinuationTests: XCTestCase {
         XCTAssertEqual(snapshot.1, "api-experiments/create")
         XCTAssertEqual(snapshot.2, "sleep_quality")
         XCTAssertEqual(snapshot.3, insight.title)
+        XCTAssertEqual(snapshot.4, snapshot.0.baselineStartDate, "Queued create must preserve the locally started baseline")
     }
 
     @MainActor

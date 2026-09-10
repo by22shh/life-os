@@ -642,6 +642,8 @@ final class NutritionLogViewModel {
         return try await dbQueue.read { db -> (calories: Double, protein: Double, fat: Double, carbs: Double)? in
             guard let userId = try Self.latestUserId(authId: authId, db: db) else { return nil }
 
+            guard try !NutritionSafetyPolicy.suppressesTargets(in: db, userId: userId) else { return nil }
+
             let effectiveWeight = try WeightResolution.getEffectiveWeight(userId: userId, db: db) ?? 70.0
             let recoveryScore = try Double.fetchOne(
                 db,

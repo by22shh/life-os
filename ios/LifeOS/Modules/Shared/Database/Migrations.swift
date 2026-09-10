@@ -8,7 +8,7 @@ import GRDB
 enum Migrations {
 
     /// Keep in sync with the latest registered migration version.
-    static let latestSchemaVersion = 31
+    static let latestSchemaVersion = 33
 
     static func registerAll(migrator: inout DatabaseMigrator) {
         registerV1(migrator: &migrator)
@@ -1827,6 +1827,35 @@ enum Migrations {
 
         migrator.registerMigration("v31_menstrual_local_field_encryption") { db in
             try applyV31MenstrualLocalFieldEncryptionMigration(db: db)
+        }
+
+        // MARK: - V32 Migration: AI processing consent flag
+
+        migrator.registerMigration("v32_ai_processing_consent") { db in
+            try addColumnIfMissing(
+                db: db,
+                table: "privacy_settings",
+                sql: "ALTER TABLE privacy_settings ADD COLUMN ai_processing_consent BOOLEAN NOT NULL DEFAULT 0"
+            )
+        }
+        migrator.registerMigration("v33_explicit_lab_review") { db in
+            try db.execute(sql: "DROP TRIGGER IF EXISTS trg_medical_scans_needs_review_insert")
+            try db.execute(sql: "DROP TRIGGER IF EXISTS trg_medical_scans_needs_review_update")
+            for (suffix, operation) in [("insert", "INSERT"), ("update", "UPDATE OF ai_confidence, manually_verified, user_reviewed, status")] {
+                try db.execute(sql: """
+                    CREATE TRIGGER trg_medical_scans_needs_review_\(suffix)
+                    AFTER \(operation) ON medical_scans
+                    FOR EACH ROW BEGIN
+                      UPDATE medical_scans SET needs_review = CASE
+                        WHEN NEW.manually_verified = 1 OR NEW.user_reviewed = 1 THEN 0
+                        WHEN NEW.needs_review = 1 OR NEW.status = 'review_required'
+                          OR (NEW.ai_confidence IS NOT NULL AND NEW.ai_confidence < 0.65) THEN 1
+                        ELSE 0 END
+                      WHERE id = NEW.id;
+                    END
+                    """)
+            }
+            try db.execute(sql: "UPDATE medical_scans SET needs_review = 1 WHERE status = 'review_required' AND manually_verified = 0 AND user_reviewed = 0")
         }
     }
 

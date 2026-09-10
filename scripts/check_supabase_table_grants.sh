@@ -110,6 +110,7 @@ BEGIN
            AND n.nspname = p.schemaname
          WHERE p.schemaname = 'public'
            AND c.relkind IN ('r', 'p')
+           AND NOT (p.cmd = 'DELETE' AND p.qual = 'false')
            AND (
                p.roles = '{public}'::name[]
                OR 'authenticated'::name = ANY(p.roles)

@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Security
 
 struct PrivacyDownloadedExportArchive: Sendable, Equatable {
     let data: Data
@@ -14,6 +15,83 @@ protocol PrivacyStatusAPIClient: Sendable {
     ) async throws -> T
 
     func downloadPrivacyExport(from url: URL) async throws -> PrivacyDownloadedExportArchive
+    func deletionReceiptStatus(_ receipt: String) async throws -> ErasureStatusResponse
+}
+
+extension PrivacyStatusAPIClient {
+    func deletionReceiptStatus(_ receipt: String) async throws -> ErasureStatusResponse {
+        var request = URLRequest(url: SupabaseConfig.url.appendingPathComponent("functions/v1/api-account-delete-status"))
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
+        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
+        request.setValue(receipt, forHTTPHeaderField: "X-Deletion-Receipt")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let body = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let state = body["deletion_state"] as? String else { throw SettingsError.deletionFailed }
+        return AccountDeletionReceiptStore.status(state: state)
+    }
+}
+
+struct AccountDeletionAcceptedResponse: Decodable, Sendable {
+    let deletionReceipt: String?
+    let deletionReceiptExpiresAt: String?
+    let authDeleted: Bool?
+    enum CodingKeys: String, CodingKey {
+        case deletionReceipt = "deletion_receipt"
+        case deletionReceiptExpiresAt = "deletion_receipt_expires_at"
+        case authDeleted = "auth_deleted"
+    }
+}
+
+/// A minimal, device-only receipt survives erasure of the health DB/encryption key.
+/// It authorizes only deletion-status polling and contains no health history.
+enum AccountDeletionReceiptStore {
+    struct Receipt: Codable, Sendable {
+        var token: String?
+        let expiresAt: String?
+        let authId: UUID
+        var completed: Bool
+        var localErased: Bool? = nil
+    }
+    private static var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.lifeos.deletion-status", kSecAttrAccount as String: "receipt"]
+    }
+    static func prepare(authId: UUID) throws -> String {
+        if let existing = try load(), existing.authId == authId, !existing.completed, let token = existing.token { return token }
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let result = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard result == errSecSuccess else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(result)) }
+        let token = bytes.map { String(format: "%02x", $0) }.joined()
+        try save(.init(token: token, expiresAt: nil, authId: authId, completed: false))
+        return token
+    }
+    static func save(_ receipt: Receipt) throws {
+        let data = try JSONEncoder().encode(receipt)
+        let attributes: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        var result = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if result == errSecItemNotFound {
+            result = SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil)
+        }
+        guard result == errSecSuccess else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(result)) }
+    }
+    static func load() throws -> Receipt? {
+        var lookup = query
+        lookup[kSecReturnData as String] = true
+        lookup[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let code = SecItemCopyMatching(lookup as CFDictionary, &result)
+        if code == errSecItemNotFound { return nil }
+        guard code == errSecSuccess, let data = result as? Data else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(code)) }
+        return try JSONDecoder().decode(Receipt.self, from: data)
+    }
+    static func clear() throws {
+        let code = SecItemDelete(query as CFDictionary)
+        guard code == errSecSuccess || code == errSecItemNotFound else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(code)) }
+    }
+    static func status(state: String, localErased: Bool = false) -> ErasureStatusResponse {
+        ErasureStatusResponse(scheduled: state == "scheduled", deletionDate: nil, deletionInProgress: !["completed", "cancelled", "failed"].contains(state), reason: nil, deletionState: state, deletionMode: localErased && state != "completed" ? "local_erased_cloud_pending" : "cloud", deletionAttemptCount: nil, retryAfterSeconds: nil, idempotencyKey: nil)
+    }
 }
 
 actor PrivacyGateway {
@@ -140,7 +218,22 @@ actor PrivacyGateway {
 
         do {
             let archive = try await apiClient.downloadPrivacyExport(from: url)
-            return try DownloadedPrivacyExportStore.persist(archive: archive)
+            guard let user = try await latestUserContext() else { throw SettingsError.exportFailed }
+            let localURL = try await LocalPrivacyExportWriter.createExport(exportId: exportId, user: user, dbQueue: dbQueue)
+            defer { try? FileManager.default.removeItem(at: localURL) }
+            // Local-only health history must stay on-device throughout export.
+            // Bundle both snapshots at download time; never upload the local archive.
+            let local = try JSONSerialization.jsonObject(with: Data(contentsOf: localURL))
+            let cloud = try JSONSerialization.jsonObject(with: archive.data)
+            let combined = try JSONSerialization.data(withJSONObject: [
+                "export_version": "2.0",
+                "cloud_snapshot": cloud,
+                "local_snapshot": local,
+                "reconciliation": "Local snapshot includes unsent edits and local-only records. Match records by table and id; preserve both snapshots when timestamps conflict."
+            ], options: [.prettyPrinted, .sortedKeys])
+            return try DownloadedPrivacyExportStore.persist(archive: PrivacyDownloadedExportArchive(
+                data: combined, suggestedFilename: archive.suggestedFilename, contentType: "application/json"
+            ))
         } catch {
             if Self.httpStatusCode(error) == 404 {
                 let refreshedStatus = try await exportStatus(exportId: exportId)
@@ -179,6 +272,31 @@ actor PrivacyGateway {
     }
 
     func erasureStatus() async throws -> ErasureStatusResponse {
+        if var receipt = try AccountDeletionReceiptStore.load(),
+           receipt.authId == (try await latestUserContext())?.authId {
+            if receipt.completed { return AccountDeletionReceiptStore.status(state: "completed") }
+            if let token = receipt.token {
+                let status = try await apiClient.deletionReceiptStatus(token)
+                if !["cancelled", "failed"].contains(status.deletionState ?? "failed"), receipt.localErased != true,
+                   let user = try await latestUserContext() {
+                    _ = try await LocalPrivacyErasureExecutor.execute(reason: "cloud_deletion_receipt_confirmed", user: user, dbQueue: dbQueue)
+                    try await dbQueue.write { db in try db.execute(sql: "UPDATE users SET deletion_in_progress = 1, onboarding_completed = 1") }
+                    receipt.localErased = true
+                    try AccountDeletionReceiptStore.save(receipt)
+                    await AppContainer.shared?.widgetSnapshotCoordinator.clearSnapshot()
+                    await MainActor.run { WatchSyncManager.shared.clearSnapshot() }
+                }
+                if status.deletionState == "completed" {
+                    receipt.completed = true
+                    receipt.token = nil
+                    try AccountDeletionReceiptStore.save(receipt)
+                } else if status.deletionState == "cancelled" {
+                    try AccountDeletionReceiptStore.clear()
+                    try await dbQueue.write { db in try db.execute(sql: "UPDATE users SET deletion_in_progress = 0") }
+                }
+                return AccountDeletionReceiptStore.status(state: status.deletionState ?? "pending", localErased: receipt.localErased == true)
+            }
+        }
         if !isRuntimeConfiguredProvider() {
             guard let user = try await latestUserContext(),
                   let response = try await LocalPrivacyErasureExecutor.latestStatus(
@@ -202,10 +320,17 @@ actor PrivacyGateway {
 
         try await ensureActiveCloudSession()
         let body = try JSONSerialization.data(withJSONObject: [:])
-        return try await apiClient.callPrivacyStatusEdgeFunction(
+        let response: ErasureStatusResponse = try await apiClient.callPrivacyStatusEdgeFunction(
             "api-account-delete-status",
             body: body
         )
+        if response.deletionState == "completed", let user = try await latestUserContext() {
+            let localStatus = try await LocalPrivacyErasureExecutor.latestStatus(userId: user.userId, dbQueue: dbQueue)
+            if localStatus?.deletionState != "completed" {
+                _ = try await LocalPrivacyErasureExecutor.execute(reason: "cloud_account_deleted", user: user, dbQueue: dbQueue)
+            }
+        }
+        return response
     }
 
     func cancelScheduledErasure() async throws -> ErasureCancelResponse {
@@ -238,28 +363,33 @@ actor PrivacyGateway {
             ipAddress: ipAddress
         )
 
-        try await dbQueue.write { db in
-            try record.insert(db)
-        }
-
+        // The local record and its outbox event must commit together; a crash
+        // between them would leave a consent decision that never reaches the
+        // server (a compliance gap, not just a sync gap).
         if let syncEngine = AppContainer.shared?.syncEngine {
-            let body = try JSONSerialization.data(withJSONObject: [
-                "id": record.id.uuidString,
-                "user_id": userId.uuidString,
-                "consent_type": consentType.rawValue,
-                "granted": granted,
-                "version": version,
-                "ip_address": ipAddress as Any,
-                "timestamp": ISO8601DateFormatter.supabaseString(from: record.timestamp)
-            ])
-
-            let event = OutboxEvent(
-                httpMethod: .POST,
-                path: "api-settings-consent",
-                bodyJson: body,
-                priority: 70
-            )
-            try await syncEngine.enqueueMutation(event)
+            _ = try await syncEngine.performConditionalOptimisticMutation { db -> (value: Void, event: OutboxEvent?) in
+                try record.insert(db)
+                let body = try JSONSerialization.data(withJSONObject: [
+                    "id": record.id.uuidString,
+                    "user_id": userId.uuidString,
+                    "consent_type": consentType.rawValue,
+                    "granted": granted,
+                    "version": version,
+                    "ip_address": ipAddress as Any,
+                    "timestamp": ISO8601DateFormatter.supabaseString(from: record.timestamp)
+                ])
+                let event = OutboxEvent(
+                    httpMethod: .POST,
+                    path: "api-settings-consent",
+                    bodyJson: body,
+                    priority: 70
+                )
+                return (value: (), event: event)
+            }
+        } else {
+            try await dbQueue.write { db in
+                try record.insert(db)
+            }
         }
     }
 
@@ -618,7 +748,12 @@ private enum DownloadedPrivacyExportStore {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             try FileManager.default.removeItem(at: fileURL)
         }
-        try archive.data.write(to: fileURL, options: .atomic)
+        try archive.data.write(to: fileURL, options: [
+            .atomic,
+            // Full health dump: pin data-at-rest protection explicitly instead
+            // of relying on the tmp directory default.
+            .completeFileProtectionUntilFirstUserAuthentication
+        ])
         return fileURL
     }
 

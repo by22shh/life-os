@@ -13,7 +13,9 @@ run_with_timeout() {
   local safe_label="${label//[^A-Za-z0-9_.-]/_}"
   local log_file="${TMPDIR:-/tmp}/lifeos_${safe_label}_$$.log"
 
-  "$@" >"$log_file" 2>&1 &
+  # Explicitly retain stdin: background commands otherwise receive /dev/null,
+  # silently skipping SQL supplied to docker exec -i by regression checks.
+  "$@" <&0 >"$log_file" 2>&1 &
   local cmd_pid=$!
   local elapsed=0
 
@@ -62,15 +64,26 @@ require_docker
 # Stop only this project stack to avoid impacting other local Supabase workspaces.
 run_with_timeout 45 "supabase stop (preflight)" \
   supabase stop --workdir . --no-backup --yes >/dev/null 2>&1 || true
-run_with_timeout 240 "supabase start" \
-  supabase start --workdir . --exclude edge-runtime
 trap cleanup EXIT
+# Handlers run under Deno below. Logflare/log collection are not dependencies of
+# these API contracts and can fail independently while the tested DB is healthy.
+run_with_timeout 240 "supabase start" \
+  supabase start --workdir . --exclude edge-runtime,logflare,vector
 
 run_with_timeout 180 "supabase db reset" \
   supabase db reset --workdir . --no-seed --yes
 
 run_with_timeout 45 "supabase table grants" \
   bash scripts/check_supabase_table_grants.sh
+
+PROJECT_ID="$(sed -n 's/^project_id = "\([^"]*\)"/\1/p' supabase/config.toml | head -n 1)"
+run_with_timeout 45 "backend integrity transactions" \
+  docker exec -i "supabase_db_${PROJECT_ID}" psql --username postgres --dbname postgres --set ON_ERROR_STOP=1 < scripts/check_backend_integrity.sql
+
+run_with_timeout 45 "backend legacy upgrade" bash scripts/check_backend_upgrade.sh
+
+run_with_timeout 45 "canonical sleep transactions" \
+  docker exec -i "supabase_db_${PROJECT_ID}" psql --username postgres --dbname postgres --set ON_ERROR_STOP=1 < scripts/check_sleep_canonical.sql
 
 if ! STATUS_ENV="$(run_with_timeout 45 "supabase status env" supabase status -o env --workdir .)"; then
   echo "Failed to get Supabase status env output"

@@ -27,10 +27,12 @@ private struct LegacyWatchSnapshotPayload: Codable {
 }
 
 private struct ComplicationSnapshotPayload: Codable {
+    var lastUpdatedAt: String = ISO8601DateFormatter().string(from: Date())
     let recoveryScore: Double?
     let recoveryZone: String?
 
     enum CodingKeys: String, CodingKey {
+        case lastUpdatedAt = "last_updated_at"
         case recoveryScore = "recovery_score"
         case recoveryZone = "recovery_zone"
     }
@@ -82,6 +84,20 @@ private final class TestWatchSession: WatchSessionRouting, @unchecked Sendable {
 final class LifeOSWatchCoverageTests: XCTestCase {
     private let pendingActionsKey = "watch.pending_lightweight_actions"
     private let complicationSnapshotKey = "latestSnapshot"
+
+    func testComplicationDoesNotPresentStaleOrUndatedScoresAsCurrent() throws {
+        let suite = "watch.freshness.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let provider = RecoveryTimelineProvider()
+        var payload = ComplicationSnapshotPayload(recoveryScore: 89, recoveryZone: "optimal")
+        payload.lastUpdatedAt = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-48 * 3600))
+        defaults.set(try JSONEncoder().encode(payload), forKey: "latestSnapshot")
+        XCTAssertNil(provider._testLoadCurrentEntry(defaults: defaults))
+        XCTAssertNil(provider._testSnapshotEntry(defaults: defaults).score)
+        defaults.set(Data("{\"recovery_score\":89,\"recovery_zone\":\"optimal\"}".utf8), forKey: "latestSnapshot")
+        XCTAssertNil(provider._testLoadCurrentEntry(defaults: defaults))
+    }
 
     override func setUp() {
         super.setUp()
@@ -716,7 +732,7 @@ final class LifeOSWatchCoverageTests: XCTestCase {
 
         let provider = RecoveryTimelineProvider()
         XCTAssertNil(provider._testLoadCurrentEntry(defaults: defaults))
-        XCTAssertEqual(provider._testSnapshotEntry(defaults: defaults).score, RecoveryComplicationEntry.placeholder.score)
+        XCTAssertNil(provider._testSnapshotEntry(defaults: defaults).score)
         XCTAssertNil(provider._testTimelineEntry(defaults: defaults).score)
         XCTAssertEqual(RecoveryComplicationEntry.placeholder.zone, "ready")
         XCTAssertNil(RecoveryComplicationEntry.empty.zone)
@@ -743,11 +759,12 @@ final class LifeOSWatchCoverageTests: XCTestCase {
             ComplicationSnapshotPayload(recoveryScore: nil, recoveryZone: nil)
         )
         defaults.set(criticalData, forKey: complicationSnapshotKey)
-        let criticalEntry = try XCTUnwrap(provider._testLoadCurrentEntry(defaults: defaults))
+        XCTAssertNil(provider._testLoadCurrentEntry(defaults: defaults))
+        let criticalEntry = provider._testTimelineEntry(defaults: defaults)
         XCTAssertNil(criticalEntry.score)
         XCTAssertNil(criticalEntry.zone)
         XCTAssertFalse(criticalEntry.zoneLabel.isEmpty)
-        XCTAssertEqual(criticalEntry.zoneIcon, "xmark.circle.fill")
+        XCTAssertEqual(criticalEntry.zoneIcon, "questionmark.circle")
 
         render(CircularComplicationView(entry: entry), size: CGSize(width: 96, height: 96))
         render(RectangularComplicationView(entry: entry), size: CGSize(width: 180, height: 80))

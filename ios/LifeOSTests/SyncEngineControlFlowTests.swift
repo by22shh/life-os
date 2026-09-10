@@ -49,6 +49,7 @@ actor FakeSyncAPIClient: SyncAPIClient {
     private var authenticatedUserId = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
     private var fetchedTables: [String] = []
     private var usersPages: [[User]] = []
+    private var sleepPages: [[SleepLog]] = []
     private var queuedUpsertErrors: [StubbedAPIError] = []
     private var queuedEdgeErrors: [StubbedAPIError] = []
     private var queuedEdgeResponses: [Data] = []
@@ -59,6 +60,8 @@ actor FakeSyncAPIClient: SyncAPIClient {
     func setBlockMutations(_ value: Bool) {
         blockMutations = value
     }
+
+    func setSleepPages(_ pages: [[SleepLog]]) { sleepPages = pages }
 
     func setUsersPages(_ pages: [[User]]) {
         usersPages = pages
@@ -97,6 +100,9 @@ actor FakeSyncAPIClient: SyncAPIClient {
         _ = limit
         _ = activeWindowDays
 
+        if table == "sleep_logs", T.self == SleepLog.self, !sleepPages.isEmpty {
+            return sleepPages.removeFirst() as! [T]
+        }
         if table == "users", T.self == User.self, !usersPages.isEmpty {
             let page = usersPages.removeFirst()
             // swiftlint:disable:next force_cast
@@ -217,6 +223,31 @@ actor FakeSyncAPIClient: SyncAPIClient {
 
 @MainActor
 final class SyncEngineControlFlowTests: XCTestCase {
+
+    func testQueuedMenstrualUploadIsCancelledAfterConsentRevocation() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let event = OutboxEvent(httpMethod: .PUT, path: "api-menstrual-sync", bodyJson: Data("{}".utf8))
+        AuthManager.setActiveAuthIdForTests(userId)
+        defer { AuthManager.setActiveAuthIdForTests(nil) }
+        try await manager.dbQueue.write { db in
+            try User(id: userId, authId: userId).insert(db)
+            var privacy = PrivacySettings(userId: userId)
+            privacy.menstrualLocalOnly = false
+            try privacy.insert(db)
+            try event.insert(db)
+            privacy.menstrualLocalOnly = true
+            try privacy.update(db)
+        }
+        let engine = SyncEngine(dbQueue: manager.dbQueue, apiClient: FakeSyncAPIClient(), pushTransportOverride: { _ in
+            XCTFail("Revoked menstrual data must not reach the transport")
+        })
+        try await engine.pushPendingEvents()
+        let status = try await manager.dbQueue.read { db in
+            try OutboxEvent.fetchOne(db, sql: "SELECT * FROM outbox_events WHERE id = ? OR id = ?", arguments: [event.id, event.id.uuidString])?.status
+        }
+        XCTAssertEqual(status, .cancelled)
+    }
 
     func testRunSyncLoopPullsTablesAndCleansOldSucceededEvents() async throws {
         let manager = try DatabaseManager.inMemory()
@@ -1508,10 +1539,10 @@ final class SyncEngineControlFlowTests: XCTestCase {
         XCTAssertEqual(SyncEngine._testDecodeUUID(from: uuidData), uuid)
         XCTAssertNil(SyncEngine._testDecodeUUID(from: Data([1, 2, 3])))
 
-        let untouched = await engine._testSanitizeOutboundBody(Data("raw-text".utf8))
+        let untouched = try await engine._testSanitizeOutboundBody(Data("raw-text".utf8))
         XCTAssertEqual(untouched, Data("raw-text".utf8))
 
-        let normalizedMedicalScanBody = await engine._testSanitizeOutboundBody(
+        let normalizedMedicalScanBody = try await engine._testSanitizeOutboundBody(
             Data("""
                 {
                   "scan_type": "bloodwork",
@@ -1765,6 +1796,74 @@ final class SyncEngineControlFlowTests: XCTestCase {
 
         let blockerAfterBinaryId = try await engine.userVisibleBlocker()
         XCTAssertNotNil(blockerAfterBinaryId)
+    }
+
+    func testLegacySleepOutboxUsesCanonicalEdgeRoute() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let api = FakeSyncAPIClient()
+        let engine = SyncEngine(dbQueue: manager.dbQueue, apiClient: api)
+        let log = SleepLog(userId: UUID(), date: "2026-03-08", source: .manual)
+        let event = OutboxEvent(httpMethod: .POST, path: "rest/v1/sleep_logs", bodyJson: try JSONEncoder.supabase.encode(log))
+        try await engine._testSendToServer(event)
+        let edgeCall = await api.latestEdgeCall()
+        XCTAssertEqual(edgeCall?.name, "api-sleep-log")
+        let upsertCount = await api.upsertCallCount()
+        XCTAssertEqual(upsertCount, 0)
+        XCTAssertEqual(edgeCall?.headers["Idempotency-Key"], event.idempotencyKey)
+    }
+
+    func testLegacyQueuedExperimentCreateUsesStoredBaselineDate() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let api = FakeSyncAPIClient()
+        let engine = SyncEngine(dbQueue: manager.dbQueue, apiClient: api)
+        let user = User(authId: UUID())
+        var configured = Experiment(userId: user.id, title: "Delayed upload", variable: "Routine", metric: "stress", durationDays: 14)
+        configured.baselineStartDate = "2024-01-01"
+        let experiment = configured
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try experiment.insert(db)
+        }
+        let event = OutboxEvent(httpMethod: .POST, path: "api-experiments/create", bodyJson: try JSONSerialization.data(withJSONObject: ["id": experiment.id.uuidString, "title": experiment.title]))
+        try await engine._testSendToServer(event)
+        let recordedCall = await api.latestEdgeCall()
+        let call = try XCTUnwrap(recordedCall)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: call.body) as? [String: Any])
+        XCTAssertEqual(body["baseline_start_date"] as? String, "2024-01-01")
+        XCTAssertEqual(call.headers["Idempotency-Key"], event.idempotencyKey)
+    }
+
+    func testSleepPullPreservesManualAndRecognizesNewerBlobUUIDLocalEdit() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        var manual = SleepLog(userId: user.id, date: "2026-03-08", source: .manual)
+        manual.totalDurationMinutes = 480
+        manual.updatedAt = Date(timeIntervalSince1970: 1000)
+        var localImport = SleepLog(userId: user.id, date: "2026-03-07")
+        localImport.totalDurationMinutes = 420
+        localImport.updatedAt = Date(timeIntervalSince1970: 3000)
+        let savedManual = manual
+        let savedImport = localImport
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try savedManual.insert(db)
+            try savedImport.insert(db)
+        }
+        var remoteManualDay = manual
+        remoteManualDay.source = .healthkit
+        remoteManualDay.totalDurationMinutes = 360
+        remoteManualDay.updatedAt = Date(timeIntervalSince1970: 2000)
+        var remoteImportDay = localImport
+        remoteImportDay.totalDurationMinutes = 300
+        remoteImportDay.updatedAt = Date(timeIntervalSince1970: 2000)
+        let api = FakeSyncAPIClient()
+        await api.setSleepPages([[remoteManualDay, remoteImportDay]])
+        let engine = SyncEngine(dbQueue: manager.dbQueue, apiClient: api)
+        try await engine._testPullSyncableTable(.sleepLogs)
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try SleepRecordSelection.daily(userId: user.id, day: "2026-03-08", db: db)?.totalDurationMinutes, 480)
+            XCTAssertEqual(try SleepRecordSelection.daily(userId: user.id, day: "2026-03-07", db: db)?.totalDurationMinutes, 420)
+        }
     }
 
     func testSyncEngineDebugSendToServerAndPullSyncableTableSwitches() async throws {
@@ -2156,7 +2255,7 @@ final class SyncEngineControlFlowTests: XCTestCase {
             }
             """.utf8
         )
-        let sanitizedArrayPayload = await engine._testSanitizeOutboundBody(arrayPayload)
+        let sanitizedArrayPayload = try await engine._testSanitizeOutboundBody(arrayPayload)
         let sanitizedObject = try XCTUnwrap(
             try JSONSerialization.jsonObject(with: sanitizedArrayPayload) as? [String: Any]
         )
@@ -2167,7 +2266,7 @@ final class SyncEngineControlFlowTests: XCTestCase {
         XCTAssertEqual(items.last?["safe"] as? Int, 2)
 
         let topLevelScalar = Data("1".utf8)
-        let fallback = await engine._testSanitizeOutboundBody(topLevelScalar)
+        let fallback = try await engine._testSanitizeOutboundBody(topLevelScalar)
         XCTAssertEqual(fallback, topLevelScalar)
     }
 

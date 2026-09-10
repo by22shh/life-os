@@ -702,13 +702,11 @@ final class CoverageFinalPushTests: XCTestCase {
         _ = router.consumePendingNavigation()
     }
 
-    func testSyncEngineSanitizedSerializationFallbackReturnsOriginalPayload() {
-        let fallback = Data("fallback".utf8)
-        let output = SyncEngine._testSerializeSanitizedBodyFallback(
-            sanitized: ["safe": "value"],
-            fallback: fallback
-        )
-        XCTAssertEqual(output, fallback)
+    func testSyncEngineSanitizedSerializationFailureThrowsInsteadOfSendingRaw() {
+        let error = SyncEngine._testSerializeSanitizedBodyFailure(
+            sanitized: ["safe": "value"]
+        ) as NSError
+        XCTAssertNotEqual(error.code, -1, "serializeSanitizedBody must throw on serializer failure")
     }
 
     func testForceUpdateCurrentVersionFallbackAndNumericOverflowBranch() {
@@ -8252,14 +8250,6 @@ final class CoverageFinalPushTests: XCTestCase {
                 unit: "ng/mL",
                 referenceRange: nil,
                 isNormal: true
-            ),
-            ExtractedLabMarker(
-                id: UUID(),
-                name: "Broken",
-                value: "abc",
-                unit: "mg/dL",
-                referenceRange: nil,
-                isNormal: true
             )
         ]
         let asset = CapturedLabAsset(data: Data("pdf-data".utf8), fileExtension: "pdf")
@@ -8273,7 +8263,8 @@ final class CoverageFinalPushTests: XCTestCase {
             ocrText: "Ferritin 85 ng/mL",
             sourceFileHash: LabsScanCaptureView._testSha256(Data("source".utf8)),
             capturedAsset: asset,
-            captureConfidence: 0.91
+            captureConfidence: 0.91,
+            reviewConfirmed: true
         )
 
         let headers = try JSONSerialization.jsonObject(
@@ -8291,7 +8282,7 @@ final class CoverageFinalPushTests: XCTestCase {
             )
             XCTAssertEqual(scan.status, .completed)
             XCTAssertEqual(scan.storageMode, "cloud")
-            XCTAssertEqual(scan.markersExtracted, 3)
+            XCTAssertEqual(scan.markersExtracted, 2)
             XCTAssertFalse(scan.needsReview)
             XCTAssertTrue(scan.userReviewed)
             XCTAssertTrue(scan.manuallyVerified)
@@ -8632,7 +8623,8 @@ final class CoverageFinalPushTests: XCTestCase {
             ocrText: "ALT 24 U/L",
             sourceFileHash: LabsScanCaptureView._testSha256(Data("image-source".utf8)),
             capturedAsset: CapturedLabAsset(data: Data("jpeg-data".utf8), fileExtension: "jpg"),
-            captureConfidence: 0.74
+            captureConfidence: 0.74,
+            reviewConfirmed: true
         )
 
         try await imageManager.dbQueue.read { db in

@@ -382,6 +382,10 @@ struct LabsScanCaptureView: View {
     @State private var sourceFileHash: String?
     @State private var capturedAsset: CapturedLabAsset?
     @State private var captureConfidence = 0.55
+    @State private var measuredDate = Date()
+    @State private var reviewConfirmed = false
+    @State private var duplicateScanIDs: [UUID] = []
+    @State private var allowDuplicate = false
 
     private var isLabOcrAvailable: Bool {
         AIAvailability().labOcrAvailable
@@ -441,7 +445,7 @@ struct LabsScanCaptureView: View {
                             .font(LifeOSTypography.headline)
                             .foregroundStyle(extractedMarkers.isEmpty ? .secondary : LifeOSColors.Recovery.ready)
                             Spacer()
-                            Text("\(Int((captureConfidence * 100).rounded()))%")
+                            Text(String(localized: "labs_verify_with_original"))
                                 .font(LifeOSTypography.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
@@ -529,6 +533,11 @@ struct LabsScanCaptureView: View {
                     markers: $extractedMarkers,
                     isSaving: isSavingReview,
                     errorMessage: captureError,
+                    measuredDate: $measuredDate,
+                    reviewConfirmed: $reviewConfirmed,
+                    duplicateCount: duplicateScanIDs.count,
+                    allowDuplicate: $allowDuplicate,
+                    onKeepExisting: { showReview = false; dismiss() },
                     onSave: { await handleReviewSave() }
                 )
             }
@@ -597,7 +606,7 @@ struct LabsScanCaptureView: View {
 
     @MainActor
     private func handleReviewSave() async {
-        guard !isSavingReview else { return }
+        guard !isSavingReview, reviewConfirmed else { return }
 
         captureError = nil
         isSavingReview = true
@@ -622,10 +631,17 @@ struct LabsScanCaptureView: View {
                 ocrText: ocrText,
                 sourceFileHash: sourceFileHash,
                 capturedAsset: capturedAsset,
-                captureConfidence: captureConfidence
+                captureConfidence: captureConfidence,
+                measuredDate: measuredDate,
+                reviewConfirmed: reviewConfirmed,
+                allowDuplicate: allowDuplicate
             )
             captureError = nil
             return true
+        } catch LabsSaveError.duplicates(let ids) {
+            duplicateScanIDs = ids
+            captureError = String(localized: "labs_duplicate_saved_message")
+            return false
         } catch {
             captureError = error.localizedDescription
             return false
@@ -659,7 +675,11 @@ struct LabsScanCaptureView: View {
             let text = try await MediaRecognitionService.recognizeText(in: image)
             ocrText = text
             extractedMarkers = LabsMarkerCatalog.extractMarkers(from: text)
-            captureConfidence = extractedMarkers.isEmpty ? 0.55 : 0.88
+            measuredDate = LabsMarkerCatalog.documentDate(from: text) ?? Date()
+            reviewConfirmed = false
+            allowDuplicate = false
+            duplicateScanIDs = []
+            captureConfidence = 0
         } catch {
             captureError = error.localizedDescription
         }
@@ -686,7 +706,11 @@ struct LabsScanCaptureView: View {
             let text = try await MediaRecognitionService.recognizeText(inPDFAt: url)
             ocrText = text
             extractedMarkers = LabsMarkerCatalog.extractMarkers(from: text)
-            captureConfidence = extractedMarkers.isEmpty ? 0.5 : 0.84
+            measuredDate = LabsMarkerCatalog.documentDate(from: text) ?? Date()
+            reviewConfirmed = false
+            allowDuplicate = false
+            duplicateScanIDs = []
+            captureConfidence = 0
         } catch {
             captureError = error.localizedDescription
         }
@@ -741,11 +765,17 @@ struct LabsScanCaptureView: View {
         ocrText: String?,
         sourceFileHash: String?,
         capturedAsset: CapturedLabAsset?,
-        captureConfidence: Double
+        captureConfidence: Double,
+        measuredDate: Date? = nil,
+        reviewConfirmed: Bool = false,
+        allowDuplicate: Bool = false
     ) async throws {
-        let day = DiaryDateFormatter.formatDate(now)
-        let needsReview = captureConfidence < 0.65 || extractedMarkers.contains(where: { !$0.isNormal })
-        let shouldAutoVerify = !needsReview
+        guard !extractedMarkers.isEmpty, extractedMarkers.allSatisfy(LabsMarkerCatalog.isValidForSave) else {
+            throw LabsSaveError.invalidMarkers
+        }
+        let resultDate = measuredDate ?? now
+        let day = DiaryDateFormatter.formatDate(resultDate)
+        let needsReview = !reviewConfirmed
         let scheduledDeletionAt = Calendar.current.date(byAdding: .day, value: 90, to: now)
         var storedAssetURLForCleanup: URL?
 
@@ -757,6 +787,23 @@ struct LabsScanCaptureView: View {
                 guard let userId = try Self.resolveUserId(authId: authId, db: db) else {
                     throw LabsSaveError.userUnavailable
                 }
+                // Check in the insertion transaction as well as in the review flow:
+                // local-only/offline imports must have the same duplicate protection.
+                let incoming = Set(extractedMarkers.map { LabsMarkerCatalog.markerIdentifier(for: $0.name) })
+                let candidates = try MedicalScan.fetchAll(db, sql: """
+                    SELECT * FROM medical_scans
+                    WHERE (user_id = ? OR user_id = ?) AND deleted_at IS NULL
+                      AND (scan_date = ? OR (source_file_sha256 IS NOT NULL AND source_file_sha256 = ?))
+                    """, arguments: [userId, userId.uuidString, day, sourceFileHash])
+                let duplicates = try candidates.filter { scan in
+                    if let sourceFileHash, scan.sourceFileSha256 == sourceFileHash { return true }
+                    let existing = try HealthMeasurement.fetchAll(db, sql: """
+                        SELECT * FROM health_measurements WHERE medical_scan_id = ? OR source_scan_id = ?
+                        """, arguments: [scan.id.uuidString, scan.id.uuidString])
+                    let identifiers = Set(existing.map { LabsMarkerCatalog.markerIdentifier(for: $0.biomarkerName) })
+                    return LabsMarkerCatalog.markerOverlap(incoming: incoming, existing: identifiers) >= 0.6
+                }.map(\.id)
+                if !duplicates.isEmpty && !allowDuplicate { throw LabsSaveError.duplicates(duplicates) }
                 let privacySettings = try Self.loadScopedPrivacySettings(userId: userId, db: db)
                 let status = needsReview ? ScanStatus.reviewRequired : ScanStatus.completed
                 let documentLanguage = Locale.current.language.languageCode?.identifier ?? Locale.current.identifier
@@ -769,17 +816,13 @@ struct LabsScanCaptureView: View {
 
                 for marker in extractedMarkers {
                     let reference = LabsMarkerCatalog.bounds(for: marker)
-                    guard let markerValue = Double(marker.value.replacingOccurrences(of: ",", with: ".")) else {
-                        continue
-                    }
+                    guard let markerValue = LabsMarkerCatalog.numericValue(marker.value) else { throw LabsSaveError.invalidMarkers }
                     let canonicalMarkerId = HealthMeasurement.canonicalMarkerId(
                         markerId: LabsMarkerCatalog.markerIdentifier(for: marker.name),
                         biomarkerName: marker.name,
                         originalLabel: marker.name
                     ) ?? LabsMarkerCatalog.markerIdentifier(for: marker.name)
-                    let canonicalStatus = marker.isNormal
-                        ? HealthMeasurementStatus.optimal.rawValue
-                        : HealthMeasurementStatus.canonicalRawValue(
+                    let canonicalStatus = HealthMeasurementStatus.canonicalRawValue(
                             for: nil,
                             value: markerValue,
                             referenceRangeLow: reference.low,
@@ -802,13 +845,13 @@ struct LabsScanCaptureView: View {
                     measurementRecord.status = canonicalStatus
                     measurementRecord.referenceRangeLow = reference.low
                     measurementRecord.referenceRangeHigh = reference.high
-                    measurementRecord.measuredAt = now
+                    measurementRecord.measuredAt = resultDate
                     measurementRecord.measuredDate = day
                     measurementRecord.sourceType = "scan"
-                    measurementRecord.aiConfidence = captureConfidence
-                    measurementRecord.confidence = captureConfidence
+                    // The recognition API returns text, not a calibrated confidence.
+                    measurementRecord.confidence = nil
                     measurementRecord.userCorrected = false
-                    measurementRecord.manuallyVerified = shouldAutoVerify
+                    measurementRecord.manuallyVerified = reviewConfirmed
                     measurementRecord.notes = marker.referenceRange
                     measurementRecords.append(measurementRecord)
                 }
@@ -820,15 +863,15 @@ struct LabsScanCaptureView: View {
                 scanRecord.imageUrl = imageURL
                 scanRecord.imageUploadedAt = nil
                 scanRecord.originalImageUrl = originalImageURL
-                scanRecord.aiConfidence = captureConfidence
-                scanRecord.ocrConfidence = captureConfidence
+                scanRecord.aiConfidence = nil
+                scanRecord.ocrConfidence = nil
                 scanRecord.extractionStatus = status.rawValue
-                scanRecord.markersExtracted = extractedMarkers.count
+                scanRecord.markersExtracted = measurementRecords.count
                 scanRecord.processedData = processedPayload
                 scanRecord.needsReview = needsReview
-                scanRecord.userReviewed = shouldAutoVerify
-                scanRecord.userReviewedAt = shouldAutoVerify ? now : nil
-                scanRecord.manuallyVerified = shouldAutoVerify
+                scanRecord.userReviewed = reviewConfirmed
+                scanRecord.userReviewedAt = reviewConfirmed ? now : nil
+                scanRecord.manuallyVerified = reviewConfirmed
                 scanRecord.pinnedByUser = false
                 scanRecord.scanDate = day
                 scanRecord.documentLanguage = documentLanguage
@@ -866,9 +909,15 @@ struct LabsScanCaptureView: View {
 
     enum LabsSaveError: LocalizedError {
         case userUnavailable
+        case invalidMarkers
+        case duplicates([UUID])
 
         var errorDescription: String? {
-            String(localized: "error.user.unavailable")
+            switch self {
+            case .userUnavailable: String(localized: "error.user.unavailable")
+            case .invalidMarkers: String(localized: "labs_invalid_markers_message")
+            case .duplicates: String(localized: "labs_duplicates_message")
+            }
         }
     }
 }
@@ -1009,7 +1058,10 @@ extension LabsScanCaptureView {
         ocrText: String?,
         sourceFileHash: String?,
         capturedAsset: CapturedLabAsset?,
-        captureConfidence: Double
+        captureConfidence: Double,
+        measuredDate: Date? = nil,
+        reviewConfirmed: Bool = false,
+        allowDuplicate: Bool = false
     ) async throws {
         try await persistMarkers(
             scanId: scanId,
@@ -1020,7 +1072,10 @@ extension LabsScanCaptureView {
             ocrText: ocrText,
             sourceFileHash: sourceFileHash,
             capturedAsset: capturedAsset,
-            captureConfidence: captureConfidence
+            captureConfidence: captureConfidence,
+            measuredDate: measuredDate,
+            reviewConfirmed: reviewConfirmed,
+            allowDuplicate: allowDuplicate
         )
     }
 
@@ -1047,6 +1102,11 @@ struct LabsReviewView: View {
     @Binding var markers: [ExtractedLabMarker]
     let isSaving: Bool
     let errorMessage: String?
+    var measuredDate: Binding<Date> = .constant(Date())
+    var reviewConfirmed: Binding<Bool> = .constant(false)
+    var duplicateCount: Int = 0
+    var allowDuplicate: Binding<Bool> = .constant(false)
+    var onKeepExisting: () -> Void = {}
     let onSave: @MainActor () async -> Void
 
     var body: some View {
@@ -1056,6 +1116,21 @@ struct LabsReviewView: View {
                     Text(String(localized: "labs_review_instructions"))
                         .font(LifeOSTypography.caption)
                         .foregroundStyle(.secondary)
+                    DatePicker(String(localized: "labs_test_date_label"), selection: measuredDate, displayedComponents: .date)
+                        .disabled(isSaving)
+                    Text(String(localized: "labs_test_date_hint"))
+                        .font(LifeOSTypography.caption)
+                    Toggle(String(localized: "labs_review_confirmation_toggle"), isOn: reviewConfirmed)
+                        .disabled(isSaving)
+                }
+
+                if duplicateCount > 0 {
+                    Section(String.localizedStringWithFormat(String(localized: "labs_duplicate_section_format"), duplicateCount)) {
+                        Button(String(localized: "labs_keep_existing_button"), action: onKeepExisting)
+                            .disabled(isSaving)
+                        Toggle(String(localized: "labs_save_as_separate_toggle"), isOn: allowDuplicate)
+                            .disabled(isSaving)
+                    }
                 }
 
                 if isSaving {
@@ -1101,7 +1176,16 @@ struct LabsReviewView: View {
                                 Text(String(localized: "labs_unit"))
                                     .font(LifeOSTypography.caption2)
                                     .foregroundStyle(.secondary)
-                                TextField("mg/dL", text: $marker.unit)
+                                TextField("mg/dL", text: Binding(
+                                    get: { marker.unit },
+                                    set: { newUnit in
+                                        // A reference entered in the old unit cannot survive a unit edit.
+                                        if LabsMarkerCatalog.normalizedUnit(newUnit) != LabsMarkerCatalog.normalizedUnit(marker.unit) {
+                                            marker.referenceRange = nil
+                                        }
+                                        marker.unit = newUnit
+                                    }
+                                ))
                                     .textFieldStyle(.roundedBorder)
                                     .disabled(isSaving)
                             }
@@ -1123,17 +1207,27 @@ struct LabsReviewView: View {
 
                         // Normal indicator
                         HStack {
-                            Image(systemName: marker.isNormal ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundStyle(marker.isNormal ? LifeOSColors.Recovery.ready : LifeOSColors.Recovery.caution)
-                            Text(marker.isNormal
+                            let normality = LabsMarkerCatalog.normality(for: marker)
+                            Image(systemName: normality == true ? "checkmark.circle.fill" : "questionmark.circle")
+                                .foregroundStyle(normality == true ? LifeOSColors.Recovery.ready : LifeOSColors.Recovery.caution)
+                            Text(normality.map { $0
                                 ? String(localized: "labs_within_range")
-                                : String(localized: "labs_out_of_range"))
+                                : String(localized: "labs_out_of_range") } ?? String(localized: "labs_no_confirmed_range"))
                                 .font(LifeOSTypography.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, Spacing.xxs)
                 }
+                .onDelete { indices in markers.remove(atOffsets: indices) }
+            }
+            .onChange(of: markers) { _, _ in
+                reviewConfirmed.wrappedValue = false
+                allowDuplicate.wrappedValue = false
+            }
+            .onChange(of: measuredDate.wrappedValue) { _, _ in
+                reviewConfirmed.wrappedValue = false
+                allowDuplicate.wrappedValue = false
             }
             .navigationTitle(String(localized: "labs_review_title"))
             .interactiveDismissDisabled(isSaving)
@@ -1171,8 +1265,10 @@ struct LabsReviewView: View {
                     }
                     .disabled(
                         isSaving ||
+                        !reviewConfirmed.wrappedValue ||
                         markers.isEmpty ||
-                        markers.contains(where: { $0.name.isEmpty || $0.value.isEmpty || $0.unit.isEmpty })
+                        !markers.allSatisfy(LabsMarkerCatalog.isValidForSave) ||
+                        (duplicateCount > 0 && !allowDuplicate.wrappedValue)
                     )
                 }
             }
@@ -1181,159 +1277,135 @@ struct LabsReviewView: View {
 }
 
 enum LabsMarkerCatalog {
-    private static let knownMarkers: [String: (aliases: [String], unit: String, low: Double?, high: Double?)] = [
-        "Hemoglobin": (["hemoglobin", "hgb"], "g/dL", 12.0, 17.5),
-        "WBC": (["wbc", "white blood cells", "leukocytes"], "10^3/uL", 4.0, 11.0),
-        "RBC": (["rbc", "red blood cells"], "10^6/uL", 4.0, 6.0),
-        "Platelets": (["platelets", "plt"], "10^3/uL", 150.0, 450.0),
-        "Glucose": (["glucose"], "mg/dL", 70.0, 100.0),
-        "Creatinine": (["creatinine"], "mg/dL", 0.6, 1.3),
-        "ALT": (["alt"], "U/L", 0.0, 55.0),
-        "AST": (["ast"], "U/L", 0.0, 40.0),
-        "Ferritin": (["ferritin"], "ng/mL", 30.0, 400.0),
-        "TSH": (["tsh"], "uIU/mL", 0.4, 4.0),
-        "Vitamin D": (["vitamin d", "25-oh vitamin d"], "ng/mL", 30.0, 100.0),
-        "Vitamin B12": (["vitamin b12", "b12"], "pg/mL", 200.0, 900.0),
-        "HbA1c": (["hba1c", "hb a1c"], "%", 4.0, 5.6),
-        "CRP": (["crp", "c-reactive protein"], "mg/L", 0.0, 5.0),
+    // Aliases identify markers only. Reference intervals depend on the laboratory,
+    // method, age and sex; never infer them or units from a marker's name.
+    private static let aliases: [String: [String]] = [
+        "Hemoglobin": ["hemoglobin", "hgb", "гемоглобин"],
+        "WBC": ["wbc", "white blood cells", "leukocytes", "лейкоциты"],
+        "RBC": ["rbc", "red blood cells", "эритроциты"],
+        "Platelets": ["platelets", "plt", "тромбоциты"],
+        "Glucose": ["glucose", "глюкоза"],
+        "Creatinine": ["creatinine", "креатинин"],
+        "ALT": ["alt", "алт", "аланинаминотрансфераза"],
+        "AST": ["ast", "аст", "аспартатаминотрансфераза"],
+        "Ferritin": ["ferritin", "ферритин"],
+        "TSH": ["tsh", "ттг", "тиреотропный гормон"],
+        "Vitamin D": ["vitamin d", "25-oh vitamin d", "витамин d", "25-он витамин d"],
+        "Vitamin B12": ["vitamin b12", "b12", "витамин b12", "витамин в12"],
+        "HbA1c": ["hba1c", "hb a1c", "гликированный гемоглобин"],
+        "CRP": ["crp", "c-reactive protein", "срб", "с-реактивный белок"]
     ]
 
-    private static let lineRegex: NSRegularExpression? = {
-        do {
-            return try NSRegularExpression(
-                pattern: #"(?i)^([a-z][a-z0-9 %()/+\-._]{1,50}?)[:\s]+([<>]?\d+(?:[.,]\d+)?)\s*([a-zµμ%/^0-9]+(?:/[a-zµμ^0-9]+)?)?(?:\s*\(?(\d+(?:[.,]\d+)?\s*[-–]\s*\d+(?:[.,]\d+)?)\)?)?$"#,
-                options: []
-            )
-        } catch {
-            assertionFailure("Invalid lab marker regex: \(error)")
-            return nil
-        }
-    }()
+    static func normalizedUnit(_ unit: String) -> String {
+        let key = unit.lowercased().replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "μ", with: "µ")
+        return [
+            "mmol/l": "mmol/L", "ммоль/л": "mmol/L",
+            "µmol/l": "µmol/L", "umol/l": "µmol/L", "мкмоль/л": "µmol/L",
+            "mg/dl": "mg/dL", "мг/дл": "mg/dL",
+            "mg/l": "mg/L", "мг/л": "mg/L",
+            "g/l": "g/L", "г/л": "g/L", "g/dl": "g/dL", "г/дл": "g/dL",
+            "ng/ml": "ng/mL", "нг/мл": "ng/mL",
+            "pg/ml": "pg/mL", "пг/мл": "pg/mL",
+            "u/l": "U/L", "ед/л": "U/L",
+            "uiu/ml": "µIU/mL", "µiu/ml": "µIU/mL", "мкме/мл": "µIU/mL",
+            "10^3/ul": "10^3/µL", "10^3/µl": "10^3/µL",
+            "10^6/ul": "10^6/µL", "10^6/µl": "10^6/µL",
+            "10^9/l": "10^9/L", "10^12/l": "10^12/L", "%": "%"
+        ][key] ?? unit.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func numericValue(_ value: String) -> Double? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        guard normalized.range(of: #"^[+-]?\d+(?:\.\d+)?$"#, options: .regularExpression) != nil,
+              let number = Double(normalized), number.isFinite else { return nil }
+        return number
+    }
+
+    static func isValidForSave(_ marker: ExtractedLabMarker) -> Bool {
+        !marker.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !marker.unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        numericValue(marker.value) != nil &&
+        (marker.referenceRange?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false ||
+         bounds(for: marker).low != nil)
+    }
 
     static func extractMarkers(from text: String) -> [ExtractedLabMarker] {
-        let separators = CharacterSet.newlines.union(CharacterSet(charactersIn: ";"))
-        let lines = text
-            .components(separatedBy: separators)
-            .flatMap { $0.components(separatedBy: ",") }
-            .map { $0.replacingOccurrences(of: "\t", with: " ").trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { $0.count > 3 }
-
-        var markers: [ExtractedLabMarker] = []
+        // A comma inside a decimal is data, never a record separator.
+        let lines = text.components(separatedBy: CharacterSet.newlines.union(CharacterSet(charactersIn: ";")))
+        guard let regex = try? NSRegularExpression(
+            pattern: #"(?i)^([\p{L}][\p{L}\p{N} %()/+\-._]{0,80}?)[:\s]+([<>≤≥]?[+-]?\d+(?:[.,]\d+)?)\s*([\p{L}µμ%/^*×\p{N}⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(?:\s+\(?([+-]?\d+(?:[.,]\d+)?\s*[-–—]\s*[+-]?\d+(?:[.,]\d+)?)\)?)?$"#
+        ) else { return [] }
         var seen = Set<String>()
-
-        for line in lines {
-            guard let marker = parseMarker(from: line) else { continue }
-            let key = "\(marker.name)|\(marker.value)|\(marker.unit)"
-            guard seen.insert(key).inserted else { continue }
-            markers.append(marker)
+        return lines.compactMap { rawLine in
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            let ns = line as NSString
+            guard let match = regex.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) else { return nil }
+            func field(_ index: Int) -> String? {
+                let range = match.range(at: index)
+                return range.location == NSNotFound ? nil : ns.substring(with: range)
+            }
+            guard let name = field(1), let value = field(2) else { return nil }
+            var marker = ExtractedLabMarker(
+                id: UUID(), name: canonicalName(for: name),
+                value: value.replacingOccurrences(of: ",", with: "."),
+                unit: normalizedUnit(field(3) ?? ""), referenceRange: field(4), isNormal: false
+            )
+            marker.isNormal = normality(for: marker) == true
+            let key = "\(markerIdentifier(for: marker.name))|\(marker.value)|\(marker.unit)"
+            guard seen.insert(key).inserted else { return nil }
+            return marker
         }
+    }
 
-        return markers
+    static func canonicalName(for name: String) -> String {
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // Exact matching prevents e.g. HbA1c from becoming hemoglobin.
+        return aliases.first { $0.value.contains(normalized) }?.key ??
+            name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func markerIdentifier(for name: String) -> String {
-        name
-            .lowercased()
+        canonicalName(for: name).lowercased()
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: "/", with: "_")
     }
 
     static func bounds(for marker: ExtractedLabMarker) -> (low: Double?, high: Double?) {
-        if let referenceRange = marker.referenceRange {
-            let parts = referenceRange
-                .replacingOccurrences(of: "–", with: "-")
-                .components(separatedBy: "-")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            if parts.count == 2,
-               let low = Double(parts[0].replacingOccurrences(of: ",", with: ".")),
-               let high = Double(parts[1].replacingOccurrences(of: ",", with: ".")) {
-                return (low, high)
-            }
+        guard !marker.unit.isEmpty, let text = marker.referenceRange,
+              let regex = try? NSRegularExpression(pattern: #"^\s*([+-]?\d+(?:[.,]\d+)?)\s*[-–—]\s*([+-]?\d+(?:[.,]\d+)?)\s*$"#),
+              let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)),
+              let low = numericValue((text as NSString).substring(with: match.range(at: 1))),
+              let high = numericValue((text as NSString).substring(with: match.range(at: 2))), low <= high else {
+            return (nil, nil)
         }
-
-        if let catalogEntry = matchedCatalogEntry(for: marker.name) {
-            return (catalogEntry.low, catalogEntry.high)
-        }
-        return (nil, nil)
+        return (low, high)
     }
 
-    private static func parseMarker(from line: String) -> ExtractedLabMarker? {
-        guard let lineRegex else { return nil }
-        let nsLine = line as NSString
-        let matchRange = NSRange(location: 0, length: nsLine.length)
-        if let match = lineRegex.firstMatch(in: line, options: [], range: matchRange) {
-            let rawName = nsLine.substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-            let rawValue = nsLine.substring(with: match.range(at: 2)).replacingOccurrences(of: ",", with: ".")
-            let catalogEntry = matchedCatalogEntry(for: rawName)
-            let rawUnit = match.range(at: 3).location == NSNotFound
-                ? (catalogEntry?.unit ?? "")
-                : nsLine.substring(with: match.range(at: 3))
-            let reference = match.range(at: 4).location == NSNotFound
-                ? catalogEntry.flatMap { entry in
-                    if let low = entry.low, let high = entry.high {
-                        return "\(low)-\(high)"
-                    }
-                    return nil
-                }
-                : nsLine.substring(with: match.range(at: 4))
-
-            guard Double(rawValue) != nil else { return nil }
-
-            let markerName = canonicalName(for: rawName)
-            let marker = ExtractedLabMarker(
-                id: UUID(),
-                name: markerName,
-                value: rawValue,
-                unit: rawUnit,
-                referenceRange: reference,
-                isNormal: isNormal(value: rawValue, markerName: markerName, referenceRange: reference)
-            )
-            return marker
-        }
-
-        return nil
+    static func normality(for marker: ExtractedLabMarker) -> Bool? {
+        let range = bounds(for: marker)
+        guard let value = numericValue(marker.value), let low = range.low, let high = range.high else { return nil }
+        return value >= low && value <= high
     }
 
-    private static func canonicalName(for rawName: String) -> String {
-        matchedCatalogEntry(for: rawName).map(\.name) ?? rawName.capitalized
+    static func documentDate(from text: String) -> Date? {
+        // Only explicitly labelled collection/test dates, never an incidental birth date.
+        let pattern = #"(?im)^\s*(?:дата(?:\s+(?:анализа|исследования|забора(?:\s+крови)?))?|(?:sample|collection|test|report)\s+date|date)\s*[:\-]?\s*(\d{4}-\d{2}-\d{2}|\d{2}[./]\d{2}[./]\d{4})\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)) else { return nil }
+        let token = (text as NSString).substring(with: match.range(at: 1))
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.isLenient = false
+        formatter.dateFormat = token.contains("-") ? "yyyy-MM-dd" : (token.contains("/") ? "dd/MM/yyyy" : "dd.MM.yyyy")
+        guard let date = formatter.date(from: token), formatter.string(from: date) == token else { return nil }
+        return date
     }
 
-    private static func isNormal(value: String, markerName: String, referenceRange: String?) -> Bool {
-        guard let numericValue = Double(value.replacingOccurrences(of: ",", with: ".")) else { return true }
-        let parsedRange: (Double, Double)? = {
-            guard let referenceRange else { return nil }
-            let parts = referenceRange
-                .replacingOccurrences(of: "–", with: "-")
-                .components(separatedBy: "-")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            guard parts.count == 2,
-                  let low = Double(parts[0].replacingOccurrences(of: ",", with: ".")),
-                  let high = Double(parts[1].replacingOccurrences(of: ",", with: ".")) else {
-                return nil
-            }
-            return (low, high)
-        }()
-
-        if let parsedRange {
-            return numericValue >= parsedRange.0 && numericValue <= parsedRange.1
-        }
-
-        if let catalogEntry = matchedCatalogEntry(for: markerName),
-           let low = catalogEntry.low,
-           let high = catalogEntry.high {
-            return numericValue >= low && numericValue <= high
-        }
-
-        return true
-    }
-
-    private static func matchedCatalogEntry(for name: String) -> (name: String, unit: String, low: Double?, high: Double?)? {
-        let normalized = name.lowercased()
-        for (canonicalName, entry) in knownMarkers {
-            if normalized.contains(canonicalName.lowercased()) || entry.aliases.contains(where: normalized.contains) {
-                return (canonicalName, entry.unit, entry.low, entry.high)
-            }
-        }
-        return nil
+    static func markerOverlap(incoming: Set<String>, existing: Set<String>) -> Double {
+        guard !incoming.isEmpty, !existing.isEmpty else { return 0 }
+        return Double(incoming.intersection(existing).count) / Double(min(incoming.count, existing.count))
     }
 }

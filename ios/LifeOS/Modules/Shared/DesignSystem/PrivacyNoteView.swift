@@ -22,15 +22,15 @@ struct PrivacyNoteView: View {
     }
 
     var body: some View {
-        Label {
-            Text(note.text)
-                .font(LifeOSTypography.caption2)
-                .foregroundStyle(.tertiary)
-        } icon: {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
             Image(systemName: note.icon)
-                .font(LifeOSTypography.caption2)
-                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+            Text(note.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .font(LifeOSTypography.footnote)
+        .foregroundStyle(LifeOSColors.Text.secondary)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(note.accessibilityText)
     }
@@ -49,6 +49,8 @@ enum PrivacyNote {
     case medicalScanRetention
     /// AI-generated insights: cached for 7 days only
     case aiCacheExpiry
+    /// AI features: health context is processed by an external provider
+    case aiProcessing
     /// HealthKit: read-only access, no writes
     case healthKitReadOnly
     /// General on-device note
@@ -64,6 +66,8 @@ enum PrivacyNote {
             return "iphone"
         case .aiCacheExpiry:
             return "timer"
+        case .aiProcessing:
+            return "sparkles.shield"
         case .healthKitReadOnly:
             return "lock.shield"
         case .custom(let icon, _):
@@ -83,6 +87,8 @@ enum PrivacyNote {
             return String(localized: "privacy_note_medical_retention")
         case .aiCacheExpiry:
             return String(localized: "privacy_note_ai_cache")
+        case .aiProcessing:
+            return String(localized: "privacy_note_ai_processing")
         case .healthKitReadOnly:
             return String(localized: "privacy_note_healthkit_readonly")
         case .onDeviceOnly:

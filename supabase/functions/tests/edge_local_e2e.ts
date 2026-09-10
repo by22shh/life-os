@@ -37,6 +37,33 @@ const stressPublicUserId = await waitForPublicUser(
   stressAuth.email,
 );
 const watchScenario = createWatchScenarioState();
+const immediateReceiptToken = crypto.randomUUID().replaceAll("-", "") +
+  crypto.randomUUID().replaceAll("-", "");
+
+await runFunctionScenario(
+  "api-vector-memory-worker",
+  "../api/vector_memory/worker/index.ts",
+  async () => {
+    const rejected = await requestJson(LOCAL_FUNCTION_URL, "/", {
+      method: "POST",
+      headers: jsonAuthHeaders(auth.accessToken),
+      body: "{}",
+    });
+    assertEquals(rejected.status, 401);
+    const idle = await requestJson(LOCAL_FUNCTION_URL, "/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.serviceRoleKey}`,
+        apikey: env.serviceRoleKey,
+        "Content-Type": "application/json",
+        "X-Vector-Memory-Worker": "scheduled",
+      },
+      body: "{}",
+    });
+    assertEquals(idle.status, 200);
+    assertEquals(objectValue(idle.body, "processed"), 0);
+  },
+);
 
 await runFunctionScenario(
   "api-settings-notifications",
@@ -721,6 +748,10 @@ await runFunctionScenario(
   "api-menstrual-sync",
   "../api/menstrual/sync/index.ts",
   async () => {
+    await upsertRestRows(env, "privacy_settings", {
+      user_id: publicUserId,
+      menstrual_local_only: false,
+    }, { onConflict: "user_id" });
     const id = crypto.randomUUID();
 
     const upsert = await requestJson(
@@ -885,6 +916,7 @@ await runFunctionScenario(
         headers: {
           ...jsonAuthHeaders(immediateAuth.accessToken),
           "Idempotency-Key": immediateKey,
+          "X-Deletion-Receipt": immediateReceiptToken,
         },
         body: JSON.stringify({
           immediate: true,
@@ -894,6 +926,14 @@ await runFunctionScenario(
     );
     assertEquals(immediateDelete.status, 200);
     assertEquals(objectValue(immediateDelete.body, "success"), true);
+    assertEquals(
+      objectValue(immediateDelete.body, "deletion_receipt"),
+      immediateReceiptToken,
+    );
+    assertEquals(
+      objectValue(immediateDelete.body, "deletion_state"),
+      "completed",
+    );
 
     const immediateReplay = await requestJson(
       LOCAL_FUNCTION_URL,
@@ -918,6 +958,19 @@ await runFunctionScenario(
   "api-account-delete-status",
   "../api/account/delete_status/index.ts",
   async () => {
+    const receiptStatus = await requestJson(LOCAL_FUNCTION_URL, "/", {
+      method: "GET",
+      headers: {
+        apikey: env.anonKey,
+        "X-Deletion-Receipt": immediateReceiptToken,
+      },
+    });
+    assertEquals(receiptStatus.status, 200);
+    assertEquals(objectValue(receiptStatus.body, "completed"), true);
+    assertEquals(
+      Object.keys(receiptStatus.body as Record<string, JsonValue>).sort(),
+      ["completed", "deletion_state"],
+    );
     const statusRes = await requestJson(
       LOCAL_FUNCTION_URL,
       "/",
@@ -1215,6 +1268,7 @@ await runFunctionScenario(
       vector_opt_in: false,
       analytics_consent: true,
       cloud_ocr_enabled: true,
+      ai_processing_consent: true,
       cloud_backup_enabled: true,
     }, { onConflict: "user_id" });
 
@@ -1274,6 +1328,7 @@ await runFunctionScenario(
       vector_opt_in: false,
       analytics_consent: true,
       cloud_ocr_enabled: true,
+      ai_processing_consent: true,
       cloud_backup_enabled: false,
     }, { onConflict: "user_id" });
 
@@ -1323,6 +1378,7 @@ await runFunctionScenario(
       vector_opt_in: false,
       analytics_consent: true,
       cloud_ocr_enabled: true,
+      ai_processing_consent: true,
       cloud_backup_enabled: true,
     }, { onConflict: "user_id" });
 
@@ -2165,6 +2221,7 @@ await runFunctionScenario(
       vector_opt_in: false,
       analytics_consent: true,
       cloud_ocr_enabled: true,
+      ai_processing_consent: true,
       cloud_backup_enabled: true,
     }, { onConflict: "user_id" });
 
@@ -2246,18 +2303,69 @@ await runFunctionScenario(
 
 await runFunctionScenario(
   "api-sleep-log",
-  "../api/sleep/daily/index.ts",
+  "../api/sleep/log/index.ts",
   async () => {
-    const daily = await requestJson(
-      LOCAL_FUNCTION_URL,
-      `/?date=${coverageScenarioDate}`,
-      {
-        method: "GET",
+    await deleteRestRows(env, "sleep_logs", {
+      user_id: `eq.${publicUserId}`,
+      sleep_date: `eq.${coverageScenarioDate}`,
+    });
+    const firstID = crypto.randomUUID();
+    const postSleep = (body: unknown) =>
+      requestJson(LOCAL_FUNCTION_URL, "/", {
+        method: "POST",
         headers: authHeaders(auth.accessToken),
-      },
+        body: JSON.stringify(body),
+      });
+    const base = {
+      id: firstID,
+      sleep_date: coverageScenarioDate,
+      source: "healthkit",
+      total_duration_minutes: 360,
+      deep_sleep_minutes: 60,
+      updated_at: `${coverageScenarioDate}T08:00:00Z`,
+    };
+    assertEquals((await postSleep(base)).status, 200);
+    const manual = await postSleep({
+      ...base,
+      id: crypto.randomUUID(),
+      source: "manual",
+      total_duration_minutes: 480,
+      deep_sleep_minutes: null,
+      updated_at: `${coverageScenarioDate}T09:00:00Z`,
+    });
+    assertEquals(manual.status, 200);
+    assertEquals(
+      objectValue(objectValue(manual.body, "sleep_log"), "id"),
+      firstID,
     );
-    assertEquals(daily.status, 200);
-    assertEquals(objectValue(daily.body, "date"), coverageScenarioDate);
+    const imported = await postSleep({
+      ...base,
+      id: crypto.randomUUID(),
+      updated_at: `${coverageScenarioDate}T10:00:00Z`,
+    });
+    assertEquals(imported.status, 200);
+    assertEquals(
+      objectValue(objectValue(imported.body, "sleep_log"), "source"),
+      "manual",
+    );
+    assertEquals(
+      objectValue(
+        objectValue(imported.body, "sleep_log"),
+        "total_duration_minutes",
+      ),
+      480,
+    );
+    assertEquals(
+      objectValue(
+        objectValue(imported.body, "sleep_log"),
+        "deep_sleep_minutes",
+      ),
+      null,
+    );
+    assertEquals(
+      (await postSleep({ ...base, total_duration_minutes: -1 })).status,
+      400,
+    );
   },
 );
 

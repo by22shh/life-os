@@ -968,7 +968,7 @@ struct NutritionLabelReviewFormView: View {
                     Text(String(localized: "nutrition_macros"))
                         .font(LifeOSTypography.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    numericField(String(localized: "nutrition_unit_kcal"), value: $draft.caloriesPer100g)
+                    if !NutritionSafetyPolicy.hidesCalories { numericField(String(localized: "nutrition_unit_kcal"), value: $draft.caloriesPer100g) }
                     HStack(spacing: Spacing.s) {
                         numericField(String(localized: "nutrition_macro_label_protein"), value: $draft.proteinPer100g)
                         numericField(String(localized: "nutrition_macro_label_fat"), value: $draft.fatPer100g)

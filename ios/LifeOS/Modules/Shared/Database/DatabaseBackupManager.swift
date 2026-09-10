@@ -23,6 +23,7 @@ actor DatabaseBackupManager {
     private let dbQueueProvider: @Sendable () -> DatabaseQueue?
     private let defaultsProvider: @Sendable () -> UserDefaults?
     private let backupsDirectoryProvider: @Sendable () -> URL?
+    private var erasureInProgress = false
     private let now: @Sendable () -> Date
 
     init(
@@ -42,6 +43,7 @@ actor DatabaseBackupManager {
     /// Copies the SQLite store plus its WAL sidecar files into the backup
     /// directory at most once per calendar day.
     func performBackupIfDue() async {
+        guard !erasureInProgress else { return }
         guard let dbQueue = dbQueueProvider() else {
             Self.logger.info("Database backup skipped: persistent store unavailable")
             return
@@ -60,15 +62,16 @@ actor DatabaseBackupManager {
         let today = Self.dayString(for: currentDate)
         guard defaults.string(forKey: Self.lastBackupDayDefaultsKey) != today else { return }
 
-        await Self.checkpointWal(on: dbQueue)
 
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let backupURL = try Self.copyDatabase(
-                at: URL(fileURLWithPath: databasePath),
-                timestamp: currentDate,
-                into: directory
-            )
+            Self.excludeFromDeviceBackups(directory)
+            let backupURL = directory.appendingPathComponent("\(Self.backupFilePrefix)\(Self.backupTimestampString(for: currentDate)).sqlite")
+            // SQLite online backup takes a consistent snapshot, including committed WAL pages.
+            let destination = try DatabaseQueue(path: backupURL.path)
+            try dbQueue.backup(to: destination)
+            try destination.close()
+            guard Self.isValidDatabase(at: backupURL) else { throw CocoaError(.fileReadCorruptFile) }
             Self.applyFileProtection(toFilesMatching: backupURL)
             try Self.pruneBackups(in: directory)
             defaults.set(today, forKey: Self.lastBackupDayDefaultsKey)
@@ -93,12 +96,77 @@ actor DatabaseBackupManager {
     nonisolated static func newestValidBackupURL(in backupsDirectory: URL) -> URL? {
         let backupURLs = (try? sortedBackupFileURLs(in: backupsDirectory)) ?? []
         for backupURL in backupURLs where !isSidecar(backupURL) {
-            let attributes = try? FileManager.default.attributesOfItem(atPath: backupURL.path)
-            if let fileSize = attributes?[.size] as? Int, fileSize > 0 {
-                return backupURL
-            }
+            if isValidDatabase(at: backupURL) { return backupURL }
         }
         return nil
+    }
+
+    nonisolated static func isValidDatabase(at url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        do {
+            // SQLite considers a zero-byte file a new empty database, which is
+            // not a recoverable snapshot of an existing user's history.
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard let size = attributes[.size] as? NSNumber, size.int64Value >= 100 else { return false }
+            let handle = try FileHandle(forReadingFrom: url)
+            let header = try handle.read(upToCount: 16)
+            try handle.close()
+            guard header == Data("SQLite format 3\0".utf8) else { return false }
+            var config = Configuration()
+            config.readonly = true
+            let queue = try DatabaseQueue(path: url.path, configuration: config)
+            defer { try? queue.close() }
+            return try queue.read { db in
+                let integrity = try String.fetchAll(db, sql: "PRAGMA integrity_check")
+                let foreignKeys = try Row.fetchAll(db, sql: "PRAGMA foreign_key_check")
+                return integrity == ["ok"] && foreignKeys.isEmpty
+            }
+        } catch { return false }
+    }
+
+    /// Never overwrite damaged evidence: preserve it in a protected quarantine first.
+    @discardableResult
+    nonisolated static func restoreBackup(primaryDatabaseURL: URL, backupsDirectory: URL? = nil) throws -> Bool {
+        guard let directory = backupsDirectory ?? defaultBackupsDirectory(),
+              let backup = newestValidBackupURL(in: directory) else { return false }
+        let fm = FileManager.default
+        let quarantine = primaryDatabaseURL.deletingLastPathComponent()
+            .appendingPathComponent("RecoveryQuarantine", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: quarantine, withIntermediateDirectories: true)
+        excludeFromDeviceBackups(quarantine)
+        // Prepare and validate a standalone copy before touching the primary files.
+        let staging = quarantine.appendingPathComponent("restored.sqlite")
+        let source = try DatabaseQueue(path: backup.path)
+        let destination = try DatabaseQueue(path: staging.path)
+        try source.backup(to: destination)
+        try source.close()
+        try destination.close()
+        guard isValidDatabase(at: staging) else { throw CocoaError(.fileReadCorruptFile) }
+        for suffix in [""] + sidecarSuffixes {
+            let original = URL(fileURLWithPath: primaryDatabaseURL.path + suffix)
+            if fm.fileExists(atPath: original.path) {
+                try fm.copyItem(at: original, to: quarantine.appendingPathComponent(original.lastPathComponent))
+            }
+        }
+        for suffix in sidecarSuffixes {
+            let original = URL(fileURLWithPath: primaryDatabaseURL.path + suffix)
+            if fm.fileExists(atPath: original.path) { try fm.removeItem(at: original) }
+        }
+        // Atomic replacement: a failed write leaves the primary itself intact.
+        try Data(contentsOf: staging).write(to: primaryDatabaseURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        try fm.removeItem(at: staging)
+        applyFileProtection(toFilesMatching: primaryDatabaseURL)
+        return true
+    }
+
+    func removeAllBackupsForErasure() throws {
+        erasureInProgress = true
+        if let directory = backupsDirectoryProvider(), FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.removeItem(at: directory)
+            guard !FileManager.default.fileExists(atPath: directory.path) else { throw CocoaError(.fileWriteUnknown) }
+        }
+        defaultsProvider()?.removeObject(forKey: Self.lastBackupDayDefaultsKey)
     }
 
     // MARK: - Retention
@@ -156,6 +224,23 @@ actor DatabaseBackupManager {
             }
         } catch {
             logger.error("WAL checkpoint before backup failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Keeps raw health database copies out of iCloud/iTunes device backups.
+    /// Field-encrypted columns stay ciphertext regardless (the key never
+    /// leaves the Keychain), but plaintext health columns must not leave the
+    /// sandbox via a backup channel the user does not associate with Life OS.
+    private static func excludeFromDeviceBackups(_ directory: URL) {
+        do {
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            var mutableDirectory = directory
+            try mutableDirectory.setResourceValues(resourceValues)
+        } catch {
+            logger.error(
+                "Failed to exclude backups directory from device backups: \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 

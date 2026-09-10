@@ -5,7 +5,7 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Authorization, Content-Type, X-Device-Id, Idempotency-Key, X-Outbox-Replay, X-Correlation-Id, X-Client-Info, apikey",
+    "Authorization, Content-Type, X-Device-Id, Idempotency-Key, X-Outbox-Replay, X-Correlation-Id, X-Client-Info, X-Deletion-Receipt, apikey",
   "Access-Control-Expose-Headers":
     "X-Correlation-Id, Retry-After, X-Idempotent-Replay, X-Min-App-Version, X-Soft-Update-Version, X-App-Store-URL",
   "Access-Control-Max-Age": "86400",

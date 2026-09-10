@@ -54,7 +54,7 @@ DECLARE
     v_caller_role TEXT := COALESCE(current_setting('role', TRUE), current_user);
     v_is_trusted BOOLEAN := FALSE;
 BEGIN
-    v_auth_uid := NULLIF(current_setting('request.jwt.claim.sub', TRUE), '')::UUID;
+    v_auth_uid := auth.uid();
 
     IF v_auth_uid IS NOT NULL THEN
         SELECT u.id INTO v_effective_user_id
@@ -63,13 +63,10 @@ BEGIN
         LIMIT 1;
     END IF;
 
-    SELECT COALESCE(
-            bool_or(r.rolname IN ('service_role', 'postgres')),
-            FALSE
-           )
-      INTO v_is_trusted
-      FROM pg_roles r
-     WHERE r.rolname = current_user;
+    -- current_user is the function owner in SECURITY DEFINER. The active
+    -- role and auth.uid() describe the actual PostgREST caller.
+    v_is_trusted := v_caller_role = 'service_role'
+        OR (v_caller_role IN ('none', 'postgres') AND session_user = 'postgres');
 
     IF v_effective_user_id IS NULL THEN
         IF v_is_trusted THEN
@@ -286,9 +283,14 @@ ALTER TABLE public.deletion_failures
 -- Artifacts with invalidated tokens are re-tokenized on the next export
 -- status poll (rotate path in _shared/export_builder.ts).
 
+ALTER TABLE public.export_artifacts ALTER COLUMN download_token DROP DEFAULT;
+ALTER TABLE public.export_artifacts ALTER COLUMN download_token TYPE TEXT
+    USING download_token::TEXT;
+
 UPDATE public.export_artifacts
 SET download_token = 'invalidated-legacy-plaintext-' || md5(random()::TEXT)
-WHERE download_token NOT LIKE 'invalidated-legacy-plaintext-%';
+WHERE download_token NOT LIKE 'invalidated-legacy-plaintext-%'
+  AND download_token !~ '^[0-9a-f]{64}$';
 
 -- ============================================================
 -- 6. Ops alert dispatcher cron

@@ -1438,6 +1438,9 @@ struct OnboardingView: View {
 
     private func quickWinMacroSummaryText(_ result: OnboardingFeature.QuickWinResult) -> String? {
         guard result.hasMacroSummary else { return nil }
+        if NutritionSafetyPolicy.hidesCalories {
+            return localizedNutritionMacroTotals(protein: result.proteinG, fat: result.fatG, carbs: result.carbsG, fiber: result.fiberG)
+        }
         let calories = Int(result.calories.rounded())
         let protein = Int(result.proteinG.rounded())
         let fat = Int(result.fatG.rounded())

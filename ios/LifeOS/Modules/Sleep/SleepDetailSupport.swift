@@ -11,17 +11,9 @@ enum SleepPermissionState: Equatable {
     @MainActor
     static func current() -> SleepPermissionState {
         guard HealthKitManager.isAvailable else { return .unavailable }
-        let status = HKHealthStore().authorizationStatus(for: HKCategoryType(.sleepAnalysis))
-        switch status {
-        case .sharingAuthorized:
-            return .authorized
-        case .sharingDenied:
-            return .denied
-        case .notDetermined:
-            return .notDetermined
-        @unknown default:
-            return .notDetermined
-        }
+        // HealthKit conceals read authorization. This state means the request
+        // completed, not a claim that the user granted access to their data.
+        return UserDefaults.standard.bool(forKey: "healthkit_read_request_completed") ? .authorized : .notDetermined
     }
 
     var canRequestAccess: Bool {
@@ -116,7 +108,7 @@ struct SleepDetailSnapshot: Equatable {
     let stageFeedback: String?
 
     var bedtime: Date? {
-        sleepLog?.bedtimeActual ?? sleepLog?.bedTime ?? sleepLog?.bedtimeIntended
+        sleepLog?.bedTime ?? sleepLog?.bedtimeActual ?? sleepLog?.bedtimeIntended
     }
 
     var wakeTime: Date? {
@@ -445,19 +437,7 @@ enum SleepDetailLoader {
 
     private static func fetchLatestSleepLog(day: String, userId: UUID?, db: Database) throws -> SleepLog? {
         guard let userId else { return nil }
-        return try SleepLog.fetchOne(
-            db,
-            sql: """
-                SELECT *
-                FROM sleep_logs
-                WHERE (user_id = ? OR user_id = ?)
-                  AND COALESCE(sleep_date, date) = ?
-                  AND deleted_at IS NULL
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-            arguments: [userId, userId.uuidString, day]
-        )
+        return try SleepRecordSelection.daily(userId: userId, day: day, db: db)
     }
 
     private static func fetchPhysiologicalState(day: String, userId: UUID?, db: Database) throws -> PhysiologicalState? {
@@ -491,7 +471,7 @@ enum SleepDetailLoader {
                 WHERE (user_id = ? OR user_id = ?)
                   AND COALESCE(sleep_date, date) BETWEEN ? AND ?
                   AND deleted_at IS NULL
-                ORDER BY updated_at DESC
+                ORDER BY (source = 'manual') DESC, updated_at DESC, created_at DESC
                 """,
             arguments: [userId, userId.uuidString, fromDay, toDay]
         )

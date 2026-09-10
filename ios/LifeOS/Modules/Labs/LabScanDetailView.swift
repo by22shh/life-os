@@ -1084,8 +1084,16 @@ enum LabScanAssetStore {
     static func persistAsset(scanId: UUID, asset: CapturedLabAsset) throws -> URL {
         let directory = try assetsDirectory()
         let filename = "\(scanId.uuidString.lowercased()).\(asset.fileExtension.lowercased())"
-        let fileURL = directory.appendingPathComponent(filename, isDirectory: false)
-        try asset.data.write(to: fileURL, options: .atomic)
+        var fileURL = directory.appendingPathComponent(filename, isDirectory: false)
+        try asset.data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        do {
+            try fileURL.setResourceValues(values)
+        } catch {
+            try? FileManager.default.removeItem(at: fileURL)
+            throw error
+        }
         return fileURL
     }
 
@@ -1096,10 +1104,17 @@ enum LabScanAssetStore {
             appropriateFor: nil,
             create: true
         )
-        let directory = appSupport
+        var directory = appSupport
             .appendingPathComponent("LifeOS", isDirectory: true)
             .appendingPathComponent("MedicalScans", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.complete]
+        )
+        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: directory.path)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try directory.setResourceValues(values)
         return directory
     }
 }

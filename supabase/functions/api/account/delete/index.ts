@@ -1,7 +1,7 @@
 import {
-  anonClient,
   jsonWithRequest,
   parseBearer,
+  resolveAuthenticatedUser,
   sanitizedInternalDetail,
   serviceRoleClient,
 } from "../../../_shared/supabase.ts";
@@ -30,6 +30,8 @@ import {
   type UserRow,
   verifyVectorDeletion,
 } from "../../../_shared/account_deletion.ts";
+import { deleteUserVectorMemory } from "../../../_shared/vector_memory.ts";
+import { issueDeletionReceipt } from "../../../_shared/deletion_receipt.ts";
 
 interface DeletionBody {
   immediate?: boolean;
@@ -62,11 +64,9 @@ Deno.serve(async (request) => {
     }, 400);
   }
 
-  const userClient = anonClient(authHeader);
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) {
-    return jsonWithRequest(request, { error: "unauthorized" }, 401);
-  }
+  const authenticated = await resolveAuthenticatedUser(request);
+  if (!authenticated.ok) return authenticated.response;
+  const authData = authenticated.data;
 
   let body: DeletionBody = {};
   try {
@@ -146,32 +146,59 @@ Deno.serve(async (request) => {
     }, 409);
   }
 
+  let receipt: Awaited<ReturnType<typeof issueDeletionReceipt>>;
+  try {
+    receipt = await issueDeletionReceipt(
+      service,
+      job,
+      request.headers.get("X-Deletion-Receipt"),
+    );
+  } catch {
+    return jsonWithRequest(
+      request,
+      { error: "deletion_receipt_issue_failed" },
+      500,
+    );
+  }
+  const attachReceipt = async (response: Response) => {
+    const payload = await response.json();
+    return jsonWithRequest(
+      request,
+      { ...payload, ...receipt },
+      response.status,
+    );
+  };
+
   if (mode === "scheduled") {
     try {
-      return await handleScheduledDeletion(
-        service,
-        user.id,
-        reason,
-        job,
-        request,
+      return await attachReceipt(
+        await handleScheduledDeletion(
+          service,
+          user.id,
+          reason,
+          job,
+          request,
+        ),
       );
     } catch (error) {
-      return deletionUnhandledFailure(
+      return await attachReceipt(deletionUnhandledFailure(
         request,
         "deletion_schedule_flow_failed",
         error,
-      );
+      ));
     }
   }
 
   try {
-    return await handleImmediateDeletion(service, user, reason, job, request);
+    return await attachReceipt(
+      await handleImmediateDeletion(service, user, reason, job, request),
+    );
   } catch (error) {
-    return deletionUnhandledFailure(
+    return await attachReceipt(deletionUnhandledFailure(
       request,
       "deletion_immediate_flow_failed",
       error,
-    );
+    ));
   }
 });
 
@@ -358,6 +385,19 @@ async function handleImmediateDeletion(
     });
   }
 
+  try {
+    await deleteUserVectorMemory(service, user.id);
+  } catch (error) {
+    return await handleImmediateFailure(service, user.id, reason, job, {
+      request,
+      failureType: "pinecone",
+      error: error instanceof Error ? error.message : "vector_delete_failed",
+      storageDeleted: true,
+      authDeleted: false,
+      postgresDeleted: false,
+      vectorsDeleted: false,
+    });
+  }
   const postgresDelete = await deletePostgresData(service, user.id);
   if (!postgresDelete.ok) {
     return await handleImmediateFailure(service, user.id, reason, job, {
@@ -464,10 +504,12 @@ async function handleImmediateDeletion(
     postgres_deleted: true,
     auth_deleted: true,
     audit_log_id: auditLogId,
-    deletion_state: job.state,
     attempt_count: job.attempt_count,
     idempotency_key: job.idempotency_key,
     idempotent_replay: false,
+    // The job may have cascaded away with users before its final update.
+    // All four deletion checks and the compliance audit above succeeded.
+    deletion_state: "completed",
   });
 }
 

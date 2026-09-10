@@ -13,6 +13,7 @@
 		0574C51D94E0D02C9A1FF27E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAC4C99D5F268782B53AA99 /* OnboardingView.swift */; };
 		06D3284D15438930F18B64DB /* DailyInsightsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4766CC6359DE68D6E1EF79 /* DailyInsightsServiceTests.swift */; };
 		074D34D08B002F59AE1956DB /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 905E205C950C619B3FCCEC7F /* ComposableArchitecture */; };
+		08F7D201E790DA0C465BAFE5 /* SupabaseSessionKeychainStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26D2DFBC6D08312D330E394 /* SupabaseSessionKeychainStorage.swift */; };
 		096D85F04B1DD98B76B52CB9 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 88C805B317D30432F1565950 /* PrivacyInfo.xcprivacy */; };
 		0A9B8E878B82579118639FAC /* NotificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F7F087E15B0F2C855D357F /* NotificationEngine.swift */; };
 		0B632EF743440EA2BB912596 /* NutritionCleanupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5376714F4C35D2808CB123F /* NutritionCleanupService.swift */; };
@@ -62,6 +63,7 @@
 		2FF534AB116A6AE2A944FC53 /* GuardianMonitorIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDFA43EB22195A5605D65EC /* GuardianMonitorIdentifiers.swift */; };
 		30D16DE2B35D233F533E8AFE /* OnboardingFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11220B7DB6C493F348E88368 /* OnboardingFeature.swift */; };
 		3110E79BB9F0A0A99E470BB5 /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D37B12C3CA9B12F009466667 /* Migrations.swift */; };
+		31C565FFA2D0F3ABDFB92B31 /* LifeOSWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7BEEDF6EEAE093F4977687EF /* LifeOSWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3239C02FCEB9AEE62CB43F11 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6AE6B362001B509FC53D4E3 /* SyncEngine.swift */; };
 		328062024D9613DB5AED9DEA /* batch_recipe.json in Resources */ = {isa = PBXBuildFile; fileRef = 045CDFCB85E3E4ADAD192488 /* batch_recipe.json */; };
 		3393FA5DAE1A26308AD8DC00 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5DB17F9CB194B64AA68A3CEE /* Supabase */; };
@@ -303,6 +305,13 @@
 			remoteGlobalIDString = 20BB86C8C788F078806A43FE;
 			remoteInfo = LifeOSWidgets;
 		};
+		42D671A02FE3D4E0C6504390 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 238DE0A7A746E0273AAFBB97;
+			remoteInfo = LifeOSWatch;
+		};
 		9D7AF965B9AEBD1673B589F2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 98645262B9197BD6057E1C1C /* Project object */;
@@ -334,6 +343,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		376CC6EB5230322C578F2539 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				31C565FFA2D0F3ABDFB92B31 /* LifeOSWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C5C7ECB6566B855718BF5537 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -535,6 +555,7 @@
 		9A5C113CE2969EFD6D2576E0 /* GuardianMonitorExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GuardianMonitorExtension.entitlements; sourceTree = "<group>"; };
 		9C123DECF9371D95A2EF344A /* AuthManagerOnboardingFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManagerOnboardingFlowTests.swift; sourceTree = "<group>"; };
 		9CB759595C79FC22F110B905 /* PredictiveModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictiveModelsTests.swift; sourceTree = "<group>"; };
+		A26D2DFBC6D08312D330E394 /* SupabaseSessionKeychainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseSessionKeychainStorage.swift; sourceTree = "<group>"; };
 		A3B831458BCBD35AD50E6D14 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A5376714F4C35D2808CB123F /* NutritionCleanupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionCleanupService.swift; sourceTree = "<group>"; };
 		A62F588BD4715E4BCC6AD7E1 /* NutritionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionService.swift; sourceTree = "<group>"; };
@@ -953,6 +974,7 @@
 				53763637903345F3AA05B024 /* RateLimitPolicy.swift */,
 				5BDB3FAF0DBF5C8CA3E8B18A /* RateLimitTracker.swift */,
 				83FAAEACA5D7A8F36885929B /* SupabaseConfig.swift */,
+				A26D2DFBC6D08312D330E394 /* SupabaseSessionKeychainStorage.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -1385,14 +1407,17 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CF739040176A16175E0B5AE2 /* Build configuration list for PBXNativeTarget "LifeOS" */;
 			buildPhases = (
+				E3A2B5B084B949EF89306260 /* Bundle runtime capability declarations */,
 				FC4407E4CCF14240FD08AF3D /* Sources */,
 				A5B7CA9DF3738241124E2135 /* Resources */,
 				8139E3C33608AB564F113C57 /* Frameworks */,
 				E5D4C75E3F96682C3C2D10AF /* Embed Foundation Extensions */,
+				376CC6EB5230322C578F2539 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C5F841F2EEC06948D1F97417 /* PBXTargetDependency */,
 				4C2D49483D2C0A9324454CAB /* PBXTargetDependency */,
 				EABEE0441A46AA3DE0D2EAE9 /* PBXTargetDependency */,
 			);
@@ -1627,6 +1652,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		E3A2B5B084B949EF89306260 /* Bundle runtime capability declarations */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/$(CODE_SIGN_ENTITLEMENTS)",
+				"$(SRCROOT)/../scripts/write_runtime_capabilities.py",
+			);
+			name = "Bundle runtime capability declarations";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/RuntimeCapabilities.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "python3 \"$SRCROOT/../scripts/write_runtime_capabilities.py\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		004398219E48BA7DD9C8661C /* Sources */ = {
@@ -1869,6 +1918,7 @@
 				3A2A67706B598416B9C721D5 /* SleepSyncHandler.swift in Sources */,
 				630F7CE237A2382F35A06DEE /* SleepTargetEngine.swift in Sources */,
 				672942822A4DA9FF72B29D92 /* SupabaseConfig.swift in Sources */,
+				08F7D201E790DA0C465BAFE5 /* SupabaseSessionKeychainStorage.swift in Sources */,
 				137D8A395B64BE92D04E6B93 /* SupplementModels.swift in Sources */,
 				81001221D5CFC5891ABE65E2 /* SupplementsDayView.swift in Sources */,
 				A5CE37EA28A8E032698B1EA7 /* SupplementsSyncHandler.swift in Sources */,
@@ -1921,6 +1971,11 @@
 			isa = PBXTargetDependency;
 			target = 20BB86C8C788F078806A43FE /* LifeOSWidgets */;
 			targetProxy = 3BA38AB5638F3FA58CB725F8 /* PBXContainerItemProxy */;
+		};
+		C5F841F2EEC06948D1F97417 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 238DE0A7A746E0273AAFBB97 /* LifeOSWatch */;
+			targetProxy = 42D671A02FE3D4E0C6504390 /* PBXContainerItemProxy */;
 		};
 		CCEEA3F472B0DA6ACDEE6BB7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -2035,7 +2090,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.widgets;
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -2052,7 +2107,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.guardianmonitor;
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -2107,7 +2162,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.guardianmonitor;
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -2124,7 +2179,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.watch.complications;
 				SDKROOT = watchos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 			};
 			name = Release;
@@ -2154,7 +2209,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.widgets;
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -2309,7 +2364,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.app.watch.complications;
 				SDKROOT = watchos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 			};
 			name = Debug;

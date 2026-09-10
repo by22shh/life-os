@@ -60,7 +60,7 @@ Omitting the function name deploys every function declared in
 
 ```bash
 supabase secrets set \
-  OPENROUTER_API_KEY="sk-or-..." \
+  OPENROUTER_API_KEY="${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in your shell}" \
   OPENROUTER_REFERER="https://lifeos.app" \
   OPENROUTER_APP_NAME="Life OS" \
   APNS_TEAM_ID="..." APNS_KEY_ID="..." \
@@ -137,3 +137,80 @@ Vault secrets and re-run the matching `cron.schedule(...)` block from
 - To shield users from a bad backend instead of rolling back schema, raise
   `MIN_SUPPORTED_APP_VERSION` via `supabase secrets set` so stale clients are
   force-updated while you fix forward.
+
+### Vector memory and deletion receipts
+
+Vector memory is optional and requires both AI-processing consent and the user's
+vector opt-in. Configure `OPENROUTER_API_KEY`, `PINECONE_API_KEY`, and
+`PINECONE_INDEX_HOST` (the HTTPS data-plane host for your index). The default
+`VECTOR_EMBEDDING_MODEL` is `openai/text-embedding-3-small`; the Pinecone index
+must match the model's embedding dimensions. Changing model/index requires
+clearing old vectors before rebuilding the derived memory. Only allowlisted
+numeric/boolean summaries are embedded; raw scans and notes are excluded.
+
+Migration `20260909000002_vector_memory_lifecycle.sql` installs the server-only
+lease/cleanup state. Its `sync_vector_memory` cron runs every ten minutes when
+pg_cron, pg_net and the existing worker Vault credentials are available. If
+those credentials are provisioned later, install the same cron statement from
+the migration after provisioning and check `cron.job`/`cron.job_run_details`.
+Do not assume a successful schema migration implies that cron is enabled.
+`api-vector-memory-worker` requires the internal worker authorization headers.
+Missing provider configuration causes opt-in to fail explicitly; it does not
+produce a fake successful memory state. Provider calls are covered with mocked
+transports locally and still need a deployment smoke test with an empty test user.
+
+Account deletion accepts a client-generated 64-hex-character random receipt in
+`X-Deletion-Receipt`. The client must store it in device-only Keychain before
+submitting deletion. Only a SHA-256 hash is retained server-side. The same header
+allows status polling after the auth identity is removed; it grants access only
+to that deletion's minimal status and expires. `api-account-delete-status` has
+JWT gateway verification disabled for this receipt path; requests without a
+receipt still require a valid authenticated user. An HTTP 401 is never evidence
+that erasure completed. Apply `20260909000003_deletion_receipts.sql` together
+with the matching client and account endpoints.
+
+### Sleep writes and offline experiments (September 2026 repair)
+
+Apply `20260909000004_sleep_canonical.sql` and deploy the updated function map
+before distributing the matching iOS client. `api-sleep-log` now points to the
+POST/PATCH/DELETE writer under `api/sleep/log`; `api-sleep-daily` remains the GET
+reader. Sleep writes retain one server UUID per user/day, preserve explicit
+manual duration edits and deletion tombstones against delayed imports, and use
+client timestamps to reject stale replay. Legacy subjective-only rows can be
+enriched with HealthKit measurements without losing their diary context.
+
+Experiment creation accepts the client's validated `baseline_start_date`, so an
+offline start does not shift its phases when the outbox reaches the server later.
+The updated client also fills this date into older pending create events.
+
+All authenticated handlers use the shared JWT verifier. Only concurrently pending
+verification for the same token is coalesced; completed responses are not cached.
+Each request still applies its own endpoint rate limit. Auth transport/429/5xx
+failures return retryable 503, while invalid or revoked credentials return 401.
+
+First-launch Auth also requires **Allow anonymous sign-ins** on the hosted
+project. The local config pins `auth.enable_anonymous_sign_ins = true`; Supabase
+otherwise defaults it to false ([CLI config reference](https://supabase.com/docs/guides/local-development/cli/config#auth.enable_anonymous_sign_ins)).
+This matches the app's anonymous-JWT bootstrap; an offline fallback screen alone
+is not evidence that cloud authentication succeeded. The local live-UI smoke uses
+explicit `TEST_RUNNER_` variables so XCTest runs it instead of silently skipping.
+
+## Preflight verification
+
+Before pushing migrations or archiving the app, validate the operator environment
+so a misconfiguration fails loudly instead of silently degrading to offline-local
+mode:
+
+```bash
+set -a; source .env; set +a            # or export the variables directly
+bash scripts/check_production_config.sh            # required checks
+bash scripts/check_production_config.sh --strict   # also require APNs/Pinecone/App Store
+```
+
+The script checks that hosted Supabase URL/keys are present and well-formed
+(`https`, JWT or `sb_publishable_`/`sb_secret_` prefixes), that the service-role
+key differs from the anon key, that OpenRouter/APNs metadata is shaped correctly,
+and that the iOS `LIFEOS_SUPABASE_*` Release settings resolve. It never prints
+secret values. A Release archive must additionally pass
+`LIFEOS_REQUIRE_RESOLVED_RELEASE_CONFIG=1 bash scripts/check_ios_release_config.sh`
+and, once built, `LIFEOS_BUILT_APP_PATH=/path/to/LifeOS.app bash scripts/check_ios_release_config.sh`.

@@ -1,0 +1,131 @@
+--- ios/LifeOS/Modules/Shared/Network/SupabaseSessionKeychainStorage.swift
++++ diagnostic-copy/ios/LifeOS/Modules/Shared/Network/SupabaseSessionKeychainStorage.swift
+@@ -25,14 +25,14 @@
+     }
+ 
+     func store(key: String, value: Data) throws {
+-        let addStatus = SecItemAdd(Self.query(key: key, data: value) as CFDictionary, nil)
++        let addStatus = SecItemAdd(query(key: key, data: value) as CFDictionary, nil)
+         if addStatus == errSecDuplicateItem {
+             let updateAttributes: [String: Any] = [
+                 kSecValueData as String: value,
+                 kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+             ]
+             let updateStatus = SecItemUpdate(
+-                Self.baseQuery(key: key) as CFDictionary,
++                baseQuery(key: key) as CFDictionary,
+                 updateAttributes as CFDictionary
+             )
+             try Self.assertSuccess(updateStatus)
+@@ -42,7 +42,7 @@
+     }
+ 
+     func retrieve(key: String) throws -> Data? {
+-        var query = Self.baseQuery(key: key)
++        var query = baseQuery(key: key)
+         query[kSecReturnData as String] = kCFBooleanTrue
+         query[kSecMatchLimit as String] = kSecMatchLimitOne
+ 
+@@ -61,7 +61,7 @@
+             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+         ]
+         _ = SecItemUpdate(
+-            Self.baseQuery(key: key) as CFDictionary,
++            baseQuery(key: key) as CFDictionary,
+             migrateAttributes as CFDictionary
+         )
+ 
+@@ -69,7 +69,7 @@
+     }
+ 
+     func remove(key: String) throws {
+-        let status = SecItemDelete(Self.baseQuery(key: key) as CFDictionary)
++        let status = SecItemDelete(baseQuery(key: key) as CFDictionary)
+         if status == errSecItemNotFound {
+             return
+         }
+--- ios/LifeOS/Modules/Shared/HealthKit/HealthKitManager.swift
++++ diagnostic-copy/ios/LifeOS/Modules/Shared/HealthKit/HealthKitManager.swift
+@@ -3,7 +3,8 @@
+ // RULE: Read-only access. No client-side API keys. All health data stays on device.
+ 
+ import Foundation
+-import HealthKit
++@preconcurrency import HealthKit
++import os
+ import UIKit
+ 
+ /// Manages all HealthKit interactions for Life OS.
+@@ -1378,7 +1379,7 @@
+         guard !Self.usesFakeDeliveryRunners else { return }
+         #endif
+ 
+-        let query = HKObserverQuery(sampleType: type, predicate: nil) { completion in
++        let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, _ in
+             let work = Self.currentBackgroundChangeHandler()
+             Task { @MainActor in
+                 let taskID = UIApplication.shared.beginBackgroundTask(
+--- ios/LifeOS/Modules/Shared/HealthKit/HealthSyncManager.swift
++++ diagnostic-copy/ios/LifeOS/Modules/Shared/HealthKit/HealthSyncManager.swift
+@@ -296,7 +296,7 @@
+ 
+         // The session write and its outbox event must commit together: a crash
+         // between them would leave an imported workout stranded locally forever.
+-        let persist = { (db: Database) -> WorkoutSession? in
++        let persist: @Sendable (Database) throws -> WorkoutSession? = { db in
+             if let existing = try WorkoutSession.fetchOne(
+                 db,
+                 sql: """
+--- ios/LifeOS/Modules/Diary/DiaryViewModel.swift
++++ diagnostic-copy/ios/LifeOS/Modules/Diary/DiaryViewModel.swift
+@@ -76,42 +76,42 @@
+         // All eight sections are independent reads: run them concurrently so
+         // screen latency is the slowest query, not the sum of all queries.
+         async let summarySection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadSummary(day: day, authId: authId, db: db)
+             }
+         }
+         async let sleepSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadSleepRecovery(day: day, authId: authId, db: db)
+             }
+         }
+         async let trainingSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadTraining(day: day, authId: authId, db: db)
+             }
+         }
+         async let supplementsSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadSupplements(day: day, authId: authId, db: db)
+             }
+         }
+         async let labsSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadLabs(day: day, authId: authId, db: db)
+             }
+         }
+         async let hydrationSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadHydration(day: day, authId: authId, db: db)
+             }
+         }
+         async let wellnessSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadWellness(day: day, authId: authId, db: db)
+             }
+         }
+         async let menstrualSection = Self.loadSection(Self.logger) {
+-            try await dbQueue.read { db in
++            try await self.dbQueue.read { db in
+                 try Self.loadMenstrual(day: day, authId: authId, db: db)
+             }
+         }

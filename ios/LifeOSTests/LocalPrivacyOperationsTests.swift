@@ -5,6 +5,46 @@ import XCTest
 
 final class LocalPrivacyOperationsTests: XCTestCase {
 
+    func testPortableExportIncludesWorkoutChildrenAndDecryptedLocalHealthValues() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        let sessionId = UUID()
+        let exerciseId = UUID()
+        let directory = try makeTempExportsDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try await manager.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try WorkoutSession(id: sessionId, userId: userId, startedAt: Date(), sessionDate: "2026-09-09", source: .manual).insert(db)
+            try WorkoutExercise(id: exerciseId, sessionId: sessionId, exerciseId: nil, orderInSession: 1).insert(db)
+            try WorkoutSet(exerciseEntryId: exerciseId, userId: userId, setNumber: 1).insert(db)
+            try HealthMeasurement(userId: userId, biomarkerName: "Ferritin", value: 78.4, unit: "ng/mL").insert(db)
+        }
+        let url = try await LocalPrivacyExportWriter.createExport(exportId: UUID().uuidString, user: LocalPrivacyUserContext(userId: userId, authId: authId), dbQueue: manager.dbQueue, exportsDirectoryOverride: directory)
+        let data = try Data(contentsOf: url)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let tables = try XCTUnwrap(root["tables"] as? [String: [[String: Any]]])
+        XCTAssertEqual(tables["workout_exercises"]?.first?["id"] as? String, exerciseId.uuidString.lowercased())
+        XCTAssertEqual(tables["workout_sets"]?.first?["exercise_entry_id"] as? String, exerciseId.uuidString.lowercased())
+        XCTAssertEqual(tables["health_measurements"]?.first?["value"] as? String, "78.4")
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("enc:v1:"))
+    }
+
+    func testErasureDoesNotCertifyCompletionWhenBackupCleanupFails() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        try await manager.dbQueue.write { db in try Self.insertUser(db, userId: userId, authId: authId) }
+        do {
+            _ = try await LocalPrivacyErasureExecutor.execute(reason: "user_requested", user: LocalPrivacyUserContext(userId: userId, authId: authId), dbQueue: manager.dbQueue, dependencies: .init(removeLocalExports: {}, deleteDeviceKey: {}, removeRawAssetsAndBackups: { throw TestFailure.exportCleanup }))
+            XCTFail("Expected cleanup failure")
+        } catch { XCTAssertEqual(error as? TestFailure, .exportCleanup) }
+        let status = try await LocalPrivacyErasureExecutor.latestStatus(userId: userId, dbQueue: manager.dbQueue)
+        XCTAssertEqual(status?.deletionState, "failed")
+        let count = try await manager.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM users") }
+        XCTAssertEqual(count, 1)
+    }
+
     private enum TestFailure: LocalizedError, Equatable {
         case exportCleanup
         case keyDeletion

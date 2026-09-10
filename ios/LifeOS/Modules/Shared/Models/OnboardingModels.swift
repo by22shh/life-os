@@ -255,6 +255,7 @@ struct PrivacySettings: Codable, Identifiable, Equatable, Sendable {
     var cloudBackupEnabled: Bool
     var vectorOptIn: Bool
     var analyticsConsent: Bool
+    var aiProcessingConsent: Bool
     var cloudOcrEnabled: Bool
     var createdAt: Date
     var updatedAt: Date
@@ -271,6 +272,9 @@ struct PrivacySettings: Codable, Identifiable, Equatable, Sendable {
         self.cloudBackupEnabled = false
         self.vectorOptIn = false
         self.analyticsConsent = false
+        // AI features ship health context to an external subprocessor
+        // (OpenRouter), so this requires its own explicit opt-in.
+        self.aiProcessingConsent = false
         self.cloudOcrEnabled = true
         self.createdAt = Date()
         self.updatedAt = Date()
@@ -284,8 +288,24 @@ struct PrivacySettings: Codable, Identifiable, Equatable, Sendable {
         case cloudBackupEnabled = "cloud_backup_enabled"
         case vectorOptIn = "vector_opt_in"
         case analyticsConsent = "analytics_consent"
+        case aiProcessingConsent = "ai_processing_consent"
         case cloudOcrEnabled = "cloud_ocr_enabled"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        userId = try values.decode(UUID.self, forKey: .userId)
+        menstrualLocalOnly = try values.decodeIfPresent(Bool.self, forKey: .menstrualLocalOnly) ?? true
+        medicalScanLocalOnly = try values.decodeIfPresent(Bool.self, forKey: .medicalScanLocalOnly) ?? true
+        cloudBackupEnabled = try values.decodeIfPresent(Bool.self, forKey: .cloudBackupEnabled) ?? false
+        vectorOptIn = try values.decodeIfPresent(Bool.self, forKey: .vectorOptIn) ?? false
+        analyticsConsent = try values.decodeIfPresent(Bool.self, forKey: .analyticsConsent) ?? false
+        aiProcessingConsent = try values.decodeIfPresent(Bool.self, forKey: .aiProcessingConsent) ?? false
+        cloudOcrEnabled = try values.decodeIfPresent(Bool.self, forKey: .cloudOcrEnabled) ?? false
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        updatedAt = try values.decode(Date.self, forKey: .updatedAt)
     }
 }

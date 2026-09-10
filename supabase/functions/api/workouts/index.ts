@@ -10,6 +10,8 @@ import {
 } from "../../_shared/user_context.ts";
 
 interface WorkoutSessionRow {
+  created_at: string;
+  updated_at: string;
   id: string;
   started_at: string;
   ended_at: string | null;
@@ -32,6 +34,8 @@ interface WorkoutSessionRow {
 }
 
 interface WorkoutExerciseRow {
+  created_at: string;
+  updated_at: string;
   id: string;
   exercise_id: string | null;
   order_in_session: number | null;
@@ -44,6 +48,8 @@ interface WorkoutExerciseRow {
 }
 
 interface WorkoutSetRow {
+  created_at: string;
+  updated_at: string;
   id: string;
   exercise_entry_id: string;
   set_number: number;
@@ -160,7 +166,7 @@ async function handleGetWorkout(
   const { data: session, error: sessionError } = await service
     .from("workout_sessions")
     .select(
-      "id,started_at,ended_at,session_date,started_timezone,started_utc_offset_minutes,workout_type,source,total_volume,total_sets,total_reps,estimated_calories,trimp_score,perceived_exertion_rpe,notes,duration_minutes,location,training_plan_id,post_feeling",
+      "created_at,updated_at,id,started_at,ended_at,session_date,started_timezone,started_utc_offset_minutes,workout_type,source,total_volume,total_sets,total_reps,estimated_calories,trimp_score,perceived_exertion_rpe,notes,duration_minutes,location,training_plan_id,post_feeling",
     )
     .eq("id", sessionId)
     .eq("user_id", userId)
@@ -180,7 +186,7 @@ async function handleGetWorkout(
   const { data: exercises, error: exercisesError } = await service
     .from("workout_exercises")
     .select(
-      "id,exercise_id,order_in_session,total_sets,total_reps,total_volume,max_weight,duration_seconds,notes",
+      "created_at,updated_at,id,exercise_id,order_in_session,total_sets,total_reps,total_volume,max_weight,duration_seconds,notes",
     )
     .eq("session_id", sessionId)
     .order("order_in_session", { ascending: true })
@@ -201,7 +207,7 @@ async function handleGetWorkout(
     const { data: sets, error: setsError } = await service
       .from("workout_sets")
       .select(
-        "id,exercise_entry_id,set_number,weight,reps,rpe,rest_after_seconds,is_warmup,is_failure,is_dropset",
+        "created_at,updated_at,id,exercise_entry_id,set_number,weight,reps,rpe,rest_after_seconds,is_warmup,is_failure,is_dropset",
       )
       .eq("user_id", userId)
       .in("exercise_entry_id", exerciseIds)
@@ -252,6 +258,8 @@ async function handleGetWorkout(
 
   return jsonWithRequest(request, {
     id: session.id,
+    created_at: session.created_at,
+    updated_at: session.updated_at,
     started_at: session.started_at,
     ended_at: session.ended_at,
     session_date: session.session_date,
@@ -272,6 +280,8 @@ async function handleGetWorkout(
     notes: session.notes,
     exercises: exerciseRows.map((exercise) => ({
       id: exercise.id,
+      created_at: exercise.created_at,
+      updated_at: exercise.updated_at,
       exercise_id: exercise.exercise_id,
       name: exercise.exercise_id
         ? exerciseNameMap.get(exercise.exercise_id) ?? null
@@ -288,6 +298,8 @@ async function handleGetWorkout(
       notes: exercise.notes,
       sets: (setsByExercise.get(exercise.id) ?? []).map((set) => ({
         id: set.id,
+        created_at: set.created_at,
+        updated_at: set.updated_at,
         set_number: set.set_number,
         weight: set.weight,
         reps: set.reps,
@@ -626,85 +638,23 @@ async function handlePatchWorkout(
     return jsonWithRequest(request, { error: "no_fields_to_update" }, 400);
   }
 
-  const { error: updateError } = await service
-    .from("workout_sessions")
-    .update(updates)
-    .eq("id", sessionId)
-    .eq("user_id", userId)
-    .is("deleted_at", null);
-
+  const { data: changed, error: updateError } = await service.rpc(
+    "patch_workout_atomic",
+    {
+      p_user_id: userId,
+      p_session_id: sessionId,
+      p_updates: updates,
+      p_exercises: parsedExercises ?? null,
+    },
+  );
   if (updateError) {
     return jsonWithRequest(request, {
       error: "workout_session_update_failed",
       detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
-
-  if (parsedExercises) {
-    const { error: deleteExercisesError } = await service
-      .from("workout_exercises")
-      .delete()
-      .eq("session_id", sessionId);
-
-    if (deleteExercisesError) {
-      return jsonWithRequest(request, {
-        error: "workout_exercises_replace_failed",
-        detail: sanitizedInternalDetail(request, "index", deleteExercisesError),
-      }, 500);
-    }
-
-    for (const exercise of parsedExercises) {
-      const { error: insertExerciseError } = await service
-        .from("workout_exercises")
-        .insert({
-          id: exercise.id,
-          session_id: sessionId,
-          exercise_id: exercise.exercise_id,
-          order_in_session: exercise.order_in_session,
-          total_sets: exercise.total_sets,
-          total_reps: exercise.total_reps,
-          total_volume: exercise.total_volume,
-          max_weight: exercise.max_weight,
-          duration_seconds: exercise.duration_seconds,
-          notes: exercise.notes,
-        });
-
-      if (insertExerciseError) {
-        return jsonWithRequest(request, {
-          error: "workout_exercise_insert_failed",
-          detail: sanitizedInternalDetail(
-            request,
-            "index",
-            insertExerciseError,
-          ),
-        }, 500);
-      }
-
-      for (const set of exercise.sets) {
-        const { error: insertSetError } = await service
-          .from("workout_sets")
-          .insert({
-            id: set.id,
-            exercise_entry_id: exercise.id,
-            user_id: userId,
-            set_number: set.set_number,
-            weight: set.weight,
-            reps: set.reps,
-            rpe: set.rpe,
-            rest_after_seconds: set.rest_after_seconds,
-            is_warmup: set.is_warmup,
-            is_failure: set.is_failure,
-            is_dropset: set.is_dropset,
-          });
-
-        if (insertSetError) {
-          return jsonWithRequest(request, {
-            error: "workout_set_insert_failed",
-            detail: sanitizedInternalDetail(request, "index", insertSetError),
-          }, 500);
-        }
-      }
-    }
+  if (!changed) {
+    return jsonWithRequest(request, { error: "workout_not_found" }, 404);
   }
 
   const planSyncError = await syncTrainingPlanSessionLinkage(

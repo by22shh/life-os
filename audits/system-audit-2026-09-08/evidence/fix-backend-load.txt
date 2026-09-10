@@ -1,0 +1,5 @@
+[load] api-food-log: warmup=10, requests=120, concurrency=16
+[load] api-food-log: p50=40.6ms p95=108.3ms p99=113.5ms avg=47.3ms errors=0.00% rps=308.4 statuses={"202":120} errors={} requests=120
+[load] api-settings-notifications: warmup=10, requests=90, concurrency=16
+[load] api-settings-notifications: p50=50.5ms p95=57.5ms p99=58.9ms avg=50.0ms errors=0.00% rps=299.0 statuses={"200":90} errors={} requests=90
+Edge local load test suite completed.

@@ -433,7 +433,7 @@ final class TrainingServiceTests: XCTestCase {
             _ = try Self.insertSession(db, id: sessionId, userId: userId)
         }
 
-        let remote = WorkoutSessionRemoteDetailResponse(
+        var remote = WorkoutSessionRemoteDetailResponse(
             id: sessionId,
             startedAt: Date(timeIntervalSince1970: 1_773_420_000),
             endedAt: Date(timeIntervalSince1970: 1_773_423_600),
@@ -481,6 +481,7 @@ final class TrainingServiceTests: XCTestCase {
                 )
             ]
         )
+        remote.updatedAt = Date().addingTimeInterval(60)
         let client = WorkoutDetailClientMock(response: remote)
         let service = TrainingService(dbQueue: manager.dbQueue, detailAPIClient: client)
 
@@ -511,6 +512,15 @@ final class TrainingServiceTests: XCTestCase {
             ) ?? -1
             XCTAssertEqual(exerciseCount, 1)
         }
+        // An outbox edit must survive a newer-looking remote response too.
+        try await manager.dbQueue.write { db in
+            try db.execute(sql: "UPDATE workout_sessions SET notes = ? WHERE id = ? OR id = ?", arguments: ["Offline correction", sessionId, sessionId.uuidString])
+            try OutboxEvent(httpMethod: .PATCH, path: "api-edit/\(sessionId.uuidString)", bodyJson: Data("{}".utf8)).insert(db)
+        }
+        let reloaded = try await service.loadWorkoutDetail(id: sessionId, preferRemote: true)
+        let retained = try XCTUnwrap(reloaded)
+        XCTAssertEqual(retained.session.notes, "Offline correction")
+
     }
 
     @MainActor

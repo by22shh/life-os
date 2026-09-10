@@ -65,6 +65,8 @@ interface FoodLogPayload {
 }
 
 interface FoodLogDetailRow {
+  created_at: string;
+  updated_at: string;
   id: string;
   logged_at: string;
   logged_date: string;
@@ -82,6 +84,8 @@ interface FoodLogDetailRow {
 }
 
 interface FoodItemRow {
+  created_at: string;
+  updated_at: string;
   id: string;
   name: string;
   brand: string | null;
@@ -205,7 +209,7 @@ async function handleGetLog(
   const { data: log, error: logError } = await service
     .from("food_logs")
     .select(
-      "id,logged_at,logged_date,meal_type,context,input_method,calories,protein_g,fat_g,carbs_g,fiber_g,ai_confidence,user_corrected,user_notes",
+      "created_at,updated_at,id,logged_at,logged_date,meal_type,context,input_method,calories,protein_g,fat_g,carbs_g,fiber_g,ai_confidence,user_corrected,user_notes",
     )
     .eq("id", logId)
     .eq("user_id", userId)
@@ -225,7 +229,7 @@ async function handleGetLog(
   const { data: items, error: itemsError } = await service
     .from("food_items")
     .select(
-      "id,name,brand,barcode,catalog_item_id,user_food_id,batch_recipe_id,weight_g,calories,protein_g,fat_g,carbs_g,fiber_g,confidence,detected_by_ai,user_adjusted",
+      "created_at,updated_at,id,name,brand,barcode,catalog_item_id,user_food_id,batch_recipe_id,weight_g,calories,protein_g,fat_g,carbs_g,fiber_g,confidence,detected_by_ai,user_adjusted",
     )
     .eq("food_log_id", logId)
     .eq("user_id", userId)
@@ -241,6 +245,8 @@ async function handleGetLog(
 
   return jsonWithRequest(request, {
     id: log.id,
+    created_at: log.created_at,
+    updated_at: log.updated_at,
     logged_at: log.logged_at,
     logged_date: log.logged_date,
     meal_type: log.meal_type,
@@ -258,6 +264,8 @@ async function handleGetLog(
     user_notes: log.user_notes,
     items: (items ?? []).map((item) => ({
       id: item.id,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
       name: item.name,
       brand: item.brand,
       barcode: item.barcode,
@@ -474,65 +482,23 @@ async function handlePatchLog(
     return jsonWithRequest(request, { error: "no_fields_to_update" }, 400);
   }
 
-  const { error: updateError } = await service
-    .from("food_logs")
-    .update(updates)
-    .eq("id", logId)
-    .eq("user_id", userId)
-    .is("deleted_at", null);
-
+  const { data: changed, error: updateError } = await service.rpc(
+    "patch_food_log_atomic",
+    {
+      p_user_id: userId,
+      p_log_id: logId,
+      p_updates: updates,
+      p_items: parsedItems ?? null,
+    },
+  );
   if (updateError) {
     return jsonWithRequest(request, {
       error: "food_log_update_failed",
       detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
   }
-
-  if (parsedItems) {
-    const { error: deleteItemsError } = await service
-      .from("food_items")
-      .delete()
-      .eq("food_log_id", logId)
-      .eq("user_id", userId);
-
-    if (deleteItemsError) {
-      return jsonWithRequest(request, {
-        error: "food_items_replace_failed",
-        detail: sanitizedInternalDetail(request, "index", deleteItemsError),
-      }, 500);
-    }
-
-    const { error: insertItemsError } = await service
-      .from("food_items")
-      .insert(
-        parsedItems.map((item) => ({
-          id: item.id,
-          food_log_id: logId,
-          user_id: userId,
-          name: item.name,
-          brand: item.brand,
-          barcode: item.barcode,
-          catalog_item_id: item.catalog_item_id,
-          user_food_id: item.user_food_id,
-          batch_recipe_id: item.batch_recipe_id,
-          weight_g: item.weight_g,
-          calories: item.calories,
-          protein_g: item.protein_g,
-          fat_g: item.fat_g,
-          carbs_g: item.carbs_g,
-          fiber_g: item.fiber_g,
-          confidence: item.confidence,
-          detected_by_ai: item.detected_by_ai,
-          user_adjusted: item.user_adjusted ?? true,
-        })),
-      );
-
-    if (insertItemsError) {
-      return jsonWithRequest(request, {
-        error: "food_items_insert_failed",
-        detail: sanitizedInternalDetail(request, "index", insertItemsError),
-      }, 500);
-    }
+  if (!changed) {
+    return jsonWithRequest(request, { error: "food_log_not_found" }, 404);
   }
 
   return jsonWithRequest(request, { ok: true });
