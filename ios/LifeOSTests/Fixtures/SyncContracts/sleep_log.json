@@ -1,9 +1,22 @@
 {
-  "id": "00000000-0000-0000-0000-000000000022",
-  "user_id": "00000000-0000-0000-0000-000000000001",
-  "sleep_date": "2026-02-20",
+  "awake_minutes": 15,
+  "bed_time": "2026-09-10T22:30:00.000Z",
+  "caffeine_after_14": true,
+  "client_updated_at": "2026-09-11T07:00:00.000Z",
   "created_at": "2026-02-20T06:39:00Z",
-  "updated_at": "2026-02-20T06:40:00Z",
+  "deep_sleep_minutes": 95,
+  "device_name": "Apple Watch",
+  "id": "00000000-0000-0000-0000-000000000022",
+  "light_sleep_minutes": 275,
+  "number_of_awakenings": 2,
+  "rem_sleep_minutes": 110,
+  "sleep_date": "2026-02-20",
+  "sleep_efficiency": 94.0,
+  "sleep_quality_score": 86,
   "source": "manual",
-  "caffeine_after_14": true
+  "time_in_bed_minutes": 510,
+  "total_duration_minutes": 495,
+  "updated_at": "2026-02-20T06:40:00Z",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "wake_time": "2026-09-11T06:45:00.000Z"
 }

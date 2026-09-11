@@ -122,7 +122,11 @@ export interface FoodsRepository {
     query: string,
     limit: number,
   ): Promise<CustomFoodRow[]>;
-  searchCatalogFoods(query: string, limit: number): Promise<CatalogFoodRow[]>;
+  searchCatalogFoods(
+    userId: string,
+    query: string,
+    limit: number,
+  ): Promise<CatalogFoodRow[]>;
   findCustomFoodByBarcode(
     userId: string,
     barcode: string,
@@ -130,8 +134,11 @@ export interface FoodsRepository {
   findCatalogFoodByBarcode(
     provider: string,
     barcode: string,
+    userId?: string | null,
   ): Promise<CatalogFoodRow | null>;
-  upsertCatalogFood(payload: CatalogFoodUpsertInput): Promise<CatalogFoodRow>;
+  upsertCatalogFood(
+    payload: CatalogFoodUpsertInput,
+  ): Promise<CatalogFoodRow | null>;
 }
 
 export interface FoodsProvider {
@@ -221,11 +228,14 @@ export function createSupabaseFoodsRepository(
       return data ?? [];
     },
 
-    async searchCatalogFoods(query, limit) {
+    async searchCatalogFoods(userId, query, limit) {
+      // Row Level Security deliberately hides user-created catalog entries from
+      // other accounts; the service-role query must apply the same scope.
       const { data, error } = await service
         .from("food_catalog_items")
         .select(CATALOG_SELECT)
         .ilike("name", `%${escapeIlike(query)}%`)
+        .or(`created_by_user_id.is.null,created_by_user_id.eq.${userId}`)
         .order("fetched_at", { ascending: false })
         .limit(limit)
         .returns<CatalogFoodRow[]>();
@@ -250,12 +260,16 @@ export function createSupabaseFoodsRepository(
       return data;
     },
 
-    async findCatalogFoodByBarcode(provider, barcode) {
-      const { data, error } = await service
+    async findCatalogFoodByBarcode(provider, barcode, userId) {
+      let query = service
         .from("food_catalog_items")
         .select(CATALOG_SELECT)
         .eq("provider", provider)
-        .eq("barcode", barcode)
+        .eq("barcode", barcode);
+      query = userId
+        ? query.or(`created_by_user_id.is.null,created_by_user_id.eq.${userId}`)
+        : query.is("created_by_user_id", null);
+      const { data, error } = await query
         .order("fetched_at", { ascending: false })
         .limit(1)
         .maybeSingle<CatalogFoodRow>();
@@ -266,6 +280,26 @@ export function createSupabaseFoodsRepository(
     },
 
     async upsertCatalogFood(payload) {
+      if (payload.barcode) {
+        const { data: existing, error: existingError } = await service
+          .from("food_catalog_items")
+          .select("id,created_by_user_id")
+          .eq("provider", payload.provider)
+          .eq("barcode", payload.barcode)
+          .maybeSingle<{ id: string; created_by_user_id: string | null }>();
+        if (existingError) {
+          throw new FoodsError(
+            500,
+            "catalog_cache_failed",
+            existingError.message,
+          );
+        }
+        if (existing && existing.created_by_user_id !== null) {
+          // The owner-immutability trigger forbids re-attributing a
+          // user-created row to the shared provider cache. Leave it alone.
+          return null;
+        }
+      }
       const { data, error } = await service
         .from("food_catalog_items")
         .upsert({
@@ -324,7 +358,7 @@ export async function searchFoods(args: {
       repository.listFavoriteRefs(userId),
       repository.listRecentRefs(userId),
       repository.searchCustomFoods(userId, query, 60),
-      repository.searchCatalogFoods(query, 60),
+      repository.searchCatalogFoods(userId, query, 60),
     ]);
 
   const favorites = new Set(
@@ -415,6 +449,7 @@ export async function lookupFoodByBarcode(args: {
   const cachedOff = await repository.findCatalogFoodByBarcode(
     OPEN_FOOD_FACTS_PROVIDER,
     barcode,
+    userId,
   );
   if (cachedOff && isCacheFresh(cachedOff.expires_at, now)) {
     return {
@@ -438,10 +473,14 @@ export async function lookupFoodByBarcode(args: {
             throw error;
           },
         );
-        return {
-          status: "found",
-          item: toCatalogBarcodeResponse(cached),
-        };
+        if (cached) {
+          return {
+            status: "found",
+            item: toCatalogBarcodeResponse(cached),
+          };
+        }
+        // A user-owned catalog row blocks shared re-attribution; fall through
+        // to the remaining lookup paths instead of exposing that row.
       }
     } catch (error) {
       if (error instanceof FoodsError) {
@@ -461,6 +500,7 @@ export async function lookupFoodByBarcode(args: {
   const ocrFallback = await repository.findCatalogFoodByBarcode(
     LABEL_OCR_PROVIDER,
     barcode,
+    userId,
   );
   if (ocrFallback) {
     return {
@@ -698,7 +738,10 @@ async function enrichProviderSearch(args: {
   const rows: CatalogFoodRow[] = [];
   for (const item of providerItems) {
     try {
-      rows.push(await args.repository.upsertCatalogFood(item));
+      const cached = await args.repository.upsertCatalogFood(item);
+      if (cached) {
+        rows.push(cached);
+      }
     } catch (error) {
       if (!(error instanceof FoodsError)) {
         throw error;

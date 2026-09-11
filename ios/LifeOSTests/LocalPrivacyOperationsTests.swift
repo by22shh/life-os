@@ -45,6 +45,171 @@ final class LocalPrivacyOperationsTests: XCTestCase {
         XCTAssertEqual(count, 1)
     }
 
+    func testArchiveImportRestoresLocalSnapshotFromEnvelope() async throws {
+        let source = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        let sessionId = UUID()
+        let exerciseId = UUID()
+        let catalogId = UUID()
+        let directory = try makeTempExportsDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try await source.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try WorkoutSession(id: sessionId, userId: userId, startedAt: Date(), sessionDate: "2026-09-10", source: .manual).insert(db)
+            try WorkoutExercise(id: exerciseId, sessionId: sessionId, exerciseId: nil, orderInSession: 1).insert(db)
+            try WorkoutSet(exerciseEntryId: exerciseId, userId: userId, setNumber: 1).insert(db)
+            try db.execute(
+                sql: """
+                    INSERT INTO exercise_catalog
+                        (id, name, category, is_custom, created_by, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [catalogId.uuidString, "Custom Move", "strength", true, userId.uuidString, Date(), Date()]
+            )
+        }
+
+        let exportURL = try await LocalPrivacyExportWriter.createExport(
+            exportId: UUID().uuidString,
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: source.dbQueue,
+            exportsDirectoryOverride: directory
+        )
+        let document = try JSONSerialization.jsonObject(with: Data(contentsOf: exportURL))
+        let envelope = try JSONSerialization.data(withJSONObject: [
+            "export_version": "2.0",
+            "cloud_snapshot": [:],
+            "local_snapshot": document
+        ])
+
+        let destination = try DatabaseManager.inMemory()
+        let summary = try await LocalPrivacyArchiveImporter.importArchive(
+            data: envelope,
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: destination.dbQueue
+        )
+
+        XCTAssertGreaterThan(summary.importedRows, 0)
+        try await destination.dbQueue.read { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM users"), 1)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM workout_sessions"), 1)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM workout_exercises"), 1)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM workout_sets"), 1)
+            XCTAssertEqual(
+                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM exercise_catalog WHERE created_by = ?", arguments: [userId.uuidString]),
+                1
+            )
+        }
+    }
+
+    func testArchiveImportSkipsForeignUsersAndDeviceScopedState() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        let foreignUserId = UUID()
+        let foreignAuthId = UUID()
+        try await manager.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+        }
+
+        let archive: [String: Any] = [
+            "metadata": [
+                "exportId": UUID().uuidString,
+                "generatedAt": "2026-09-10T00:00:00Z",
+                "scope": "local_only",
+                "userId": userId.uuidString,
+                "authId": authId.uuidString
+            ],
+            "tables": [
+                "users": [[
+                    "id": foreignUserId.uuidString,
+                    "auth_id": foreignAuthId.uuidString,
+                    "timezone": "UTC"
+                ]],
+                "food_logs": [[
+                    "id": UUID().uuidString,
+                    "user_id": foreignUserId.uuidString,
+                    "logged_date": "2026-09-10",
+                    "calories": 500
+                ]],
+                "outbox_events": [[
+                    "id": UUID().uuidString,
+                    "status": "pending",
+                    "path": "api-food-log"
+                ]]
+            ]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: archive)
+
+        let summary = try await LocalPrivacyArchiveImporter.importArchive(
+            data: data,
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: manager.dbQueue
+        )
+
+        XCTAssertEqual(summary.importedRows, 0)
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM users"), 1)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM food_logs"), 0)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox_events"), 0)
+        }
+    }
+
+    func testArchiveImportKeepsExistingRows() async throws {
+        let source = try DatabaseManager.inMemory()
+        let destination = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        let logId = UUID()
+        let directory = try makeTempExportsDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try await source.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try db.execute(
+                sql: """
+                    INSERT INTO food_logs
+                        (id, user_id, logged_at, logged_date, input_method, calories, protein_g, fat_g, carbs_g, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [logId.uuidString, userId.uuidString, Date(), "2026-09-10", "manual", 300, 10, 10, 30, Date(), Date()]
+            )
+        }
+        try await destination.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try db.execute(
+                sql: """
+                    INSERT INTO food_logs
+                        (id, user_id, logged_at, logged_date, input_method, calories, protein_g, fat_g, carbs_g, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [logId.uuidString, userId.uuidString, Date(), "2026-09-10", "manual", 777, 10, 10, 30, Date(), Date()]
+            )
+        }
+
+        let exportURL = try await LocalPrivacyExportWriter.createExport(
+            exportId: UUID().uuidString,
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: source.dbQueue,
+            exportsDirectoryOverride: directory
+        )
+        _ = try await LocalPrivacyArchiveImporter.importArchive(
+            data: Data(contentsOf: exportURL),
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: destination.dbQueue
+        )
+
+        let calories = try await destination.dbQueue.read { db in
+            try Double.fetchOne(
+                db,
+                sql: "SELECT calories FROM food_logs WHERE id = ?",
+                arguments: [logId.uuidString]
+            )
+        }
+        XCTAssertEqual(calories, 777)
+    }
+
     private enum TestFailure: LocalizedError, Equatable {
         case exportCleanup
         case keyDeletion
@@ -299,7 +464,7 @@ final class LocalPrivacyOperationsTests: XCTestCase {
                     arguments: [userId.uuidString]
                 )
             )
-            XCTAssertTrue(audit.storageDeleted)
+            XCTAssertFalse(audit.storageDeleted)
             XCTAssertFalse(audit.complianceVerified)
             XCTAssertEqual(audit.notes, "local_only:user_requested")
 

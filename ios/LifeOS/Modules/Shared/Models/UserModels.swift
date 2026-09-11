@@ -201,6 +201,18 @@ struct UserHealthFlags: Codable, Equatable, Sendable, Identifiable {
         hideCalories = hasEatingDisorderHistory
         pregnancyMode = isPregnant
     }
+
+    /// Beta blockers blunt absolute HRV; the z-score baseline adapts, but the
+    /// HRV contribution carries extra uncertainty and lowers confidence.
+    var hrvInterpretationCaveat: Bool {
+        onBetaBlockers && !disableHrv
+    }
+
+    /// Chronic fatigue: standard activity recommendations may be harmful, so
+    /// the app switches to conservative recommendations (PRD §Conditions).
+    var conservativeRecommendations: Bool {
+        hasChronicFatigue
+    }
 }
 
 // MARK: - Notification Settings

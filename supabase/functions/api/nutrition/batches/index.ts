@@ -317,6 +317,7 @@ async function handleCreate(
 
     const ingredientError = await replaceBatchIngredients(
       service,
+      userId,
       batchId,
       draft.ingredients,
     );
@@ -348,6 +349,7 @@ async function handleCreate(
 
   const ingredientError = await replaceBatchIngredients(
     service,
+    userId,
     batchId,
     draft.ingredients,
   );
@@ -485,28 +487,6 @@ async function handlePatch(
     makeBatchDerivedFields(nextTotals),
   );
 
-  const previousIngredientsResponse = parsedIngredients == null
-    ? null
-    : await service
-      .from("batch_recipe_ingredients")
-      .select(
-        "id,batch_recipe_id,name,brand,barcode,catalog_item_id,user_food_id,weight_g,calories,protein_g,fat_g,carbs_g,fiber_g,sort_order",
-      )
-      .eq("batch_recipe_id", batchId)
-      .order("sort_order", { ascending: true })
-      .returns<BatchIngredientRow[]>();
-  if (previousIngredientsResponse?.error) {
-    return jsonWithRequest(request, {
-      error: "batch_ingredients_fetch_failed",
-      detail: sanitizedInternalDetail(
-        request,
-        "index",
-        previousIngredientsResponse.error,
-      ),
-    }, 500);
-  }
-  const previousIngredients = previousIngredientsResponse?.data ?? [];
-
   const previousSnapshot = makeBatchWriteFields({
     name: existing.name,
     description: existing.description,
@@ -545,17 +525,19 @@ async function handlePatch(
   if (parsedIngredients != null) {
     const replaceError = await replaceBatchIngredients(
       service,
+      userId,
       batchId,
       parsedIngredients,
     );
     if (replaceError) {
+      // Ingredients roll back atomically inside the RPC; only the parent row
+      // needs a best-effort restore of the previous values.
       await service
         .from("batch_recipes")
         .update(previousSnapshot)
         .eq("id", batchId)
         .eq("user_id", userId)
         .is("deleted_at", null);
-      await replaceBatchIngredients(service, batchId, previousIngredients);
       return jsonWithRequest(request, {
         error: "batch_ingredients_insert_failed",
         detail: sanitizedInternalDetail(request, "index", replaceError),
@@ -683,68 +665,51 @@ async function handleLog(
     ? override.value
     : derivePortionMacros(batch, portionWeight);
 
-  if (!existingLog) {
-    const { error: foodLogError } = await service
-      .from("food_logs")
-      .insert({
-        id: foodLogId,
-        user_id: userId,
-        logged_at: loggedAt,
-        logged_date: loggedDate,
-        logged_timezone: loggedTimezone,
-        logged_utc_offset_minutes: loggedUtcOffsetMinutes,
-        input_method: "batch",
-        meal_type: mealType || null,
-        context: context || null,
-        calories: macros.calories,
-        protein_g: macros.protein_g,
-        fat_g: macros.fat_g,
-        carbs_g: macros.carbs_g,
-        fiber_g: macros.fiber_g,
-        needs_review: false,
-        user_corrected: false,
-      });
+  const logPayload: Record<string, unknown> = {
+    id: foodLogId,
+    user_id: userId,
+    logged_at: loggedAt,
+    logged_date: loggedDate,
+    logged_timezone: loggedTimezone,
+    logged_utc_offset_minutes: loggedUtcOffsetMinutes,
+    input_method: "batch",
+    meal_type: mealType || null,
+    context: context || null,
+    calories: macros.calories,
+    protein_g: macros.protein_g,
+    fat_g: macros.fat_g,
+    carbs_g: macros.carbs_g,
+    fiber_g: macros.fiber_g,
+    needs_review: false,
+    user_corrected: false,
+  };
+  const itemPayload: Record<string, unknown> = {
+    id: foodItemId,
+    food_log_id: foodLogId,
+    user_id: userId,
+    name: batch.name,
+    batch_recipe_id: batchId,
+    weight_g: portionWeight,
+    calories: macros.calories,
+    protein_g: macros.protein_g,
+    fat_g: macros.fat_g,
+    carbs_g: macros.carbs_g,
+    fiber_g: macros.fiber_g,
+    detected_by_ai: false,
+    user_adjusted: false,
+  };
 
-    if (foodLogError) {
-      return jsonWithRequest(request, {
-        error: "food_log_insert_failed",
-        detail: sanitizedInternalDetail(request, "index", foodLogError),
-      }, 500);
-    }
-  }
-
-  if (!existingItem) {
-    const { error: foodItemError } = await service
-      .from("food_items")
-      .insert({
-        id: foodItemId,
-        food_log_id: foodLogId,
-        user_id: userId,
-        name: batch.name,
-        batch_recipe_id: batchId,
-        weight_g: portionWeight,
-        calories: macros.calories,
-        protein_g: macros.protein_g,
-        fat_g: macros.fat_g,
-        carbs_g: macros.carbs_g,
-        fiber_g: macros.fiber_g,
-        detected_by_ai: false,
-        user_adjusted: false,
-      });
-
-    if (foodItemError) {
-      return jsonWithRequest(request, {
-        error: "food_item_insert_failed",
-        detail: sanitizedInternalDetail(request, "index", foodItemError),
-      }, 500);
-    }
-  }
-
-  const usageError = await syncBatchUsageMetrics(service, userId, batchId);
-  if (usageError) {
+  // Log, item and usage metrics commit or roll back together.
+  const { error: logError } = await service.rpc("log_batch_portion_atomic", {
+    p_user_id: userId,
+    p_batch_id: batchId,
+    p_log: logPayload,
+    p_item: itemPayload,
+  });
+  if (logError) {
     return jsonWithRequest(request, {
-      error: "batch_usage_update_failed",
-      detail: sanitizedInternalDetail(request, "index", usageError),
+      error: "batch_log_failed",
+      detail: sanitizedInternalDetail(request, "index", logError),
     }, 500);
   }
 
@@ -877,6 +842,7 @@ async function handleDuplicate(
 
     const ingredientRepairError = await replaceBatchIngredients(
       service,
+      userId,
       newBatchId,
       (ingredients ?? []).map((ingredient) => ({
         ...ingredient,
@@ -915,6 +881,7 @@ async function handleDuplicate(
 
   const ingredientInsertError = await replaceBatchIngredients(
     service,
+    userId,
     newBatchId,
     (ingredients ?? []).map((ingredient) => ({
       ...ingredient,
@@ -1302,29 +1269,24 @@ async function replaceBatchIngredients(
   service: ReturnType<
     typeof import("../../../_shared/supabase.ts").serviceRoleClient
   >,
+  userId: string,
   batchId: string,
   ingredients: Array<ParsedIngredient | BatchIngredientRow>,
 ): Promise<string | null> {
-  const { error: deleteError } = await service
-    .from("batch_recipe_ingredients")
-    .delete()
-    .eq("batch_recipe_id", batchId);
-
-  if (deleteError) {
-    return deleteError.message;
-  }
-
-  if (ingredients.length === 0) return null;
-
-  const { error: insertError } = await service
-    .from("batch_recipe_ingredients")
-    .insert(
-      ingredients.map((ingredient, index) =>
+  // Delete + insert happen inside one SQL function: a failed insert must keep
+  // the previous ingredient set instead of leaving the batch empty.
+  const { error } = await service.rpc(
+    "replace_batch_recipe_ingredients_atomic",
+    {
+      p_user_id: userId,
+      p_batch_id: batchId,
+      p_ingredients: ingredients.map((ingredient, index) =>
         makeIngredientInsert(batchId, ingredient, index)
       ),
-    );
+    },
+  );
 
-  return insertError?.message ?? null;
+  return error?.message ?? null;
 }
 
 function parseMacrosOverride(value: unknown):
@@ -1401,74 +1363,6 @@ function derivePortionMacros(batch: BatchRecipeRow, portionWeightG: number) {
     carbs_g: carbsPer100g * factor,
     fiber_g: fiberPer100g == null ? null : fiberPer100g * factor,
   };
-}
-
-async function syncBatchUsageMetrics(
-  service: ReturnType<
-    typeof import("../../../_shared/supabase.ts").serviceRoleClient
-  >,
-  userId: string,
-  batchId: string,
-): Promise<string | null> {
-  const { data: items, error: itemsError } = await service
-    .from("food_items")
-    .select("food_log_id")
-    .eq("user_id", userId)
-    .eq("batch_recipe_id", batchId)
-    .returns<Array<{ food_log_id: string }>>();
-  if (itemsError) {
-    return itemsError.message;
-  }
-
-  const foodLogIds = [
-    ...new Set((items ?? []).map((item) => item.food_log_id).filter(Boolean)),
-  ];
-  if (foodLogIds.length === 0) {
-    const { error } = await service
-      .from("batch_recipes")
-      .update({ times_used: 0, last_used_at: null })
-      .eq("id", batchId)
-      .eq("user_id", userId);
-    return error?.message ?? null;
-  }
-
-  const { data: logs, error: logsError } = await service
-    .from("food_logs")
-    .select("id,logged_at,deleted_at")
-    .eq("user_id", userId)
-    .in("id", foodLogIds)
-    .returns<FoodLogUsageRow[]>();
-  if (logsError) {
-    return logsError.message;
-  }
-
-  const activeLogs = new Map(
-    (logs ?? [])
-      .filter((log) => log.deleted_at == null)
-      .map((log) => [log.id, log.logged_at]),
-  );
-
-  let usageCount = 0;
-  let lastUsedAt: string | null = null;
-  for (const item of items ?? []) {
-    const loggedAt = activeLogs.get(item.food_log_id);
-    if (!loggedAt) continue;
-    usageCount += 1;
-    if (!lastUsedAt || Date.parse(loggedAt) > Date.parse(lastUsedAt)) {
-      lastUsedAt = loggedAt;
-    }
-  }
-
-  const { error: updateError } = await service
-    .from("batch_recipes")
-    .update({
-      times_used: usageCount,
-      last_used_at: lastUsedAt,
-    })
-    .eq("id", batchId)
-    .eq("user_id", userId);
-
-  return updateError?.message ?? null;
 }
 
 async function readJsonObject(

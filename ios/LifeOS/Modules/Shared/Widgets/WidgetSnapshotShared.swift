@@ -94,6 +94,7 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
 
     var generatedAt: Date
     var privacy: WidgetPrivacySettings
+    var units: String?
     var recovery: RecoveryPayload?
     var nutrition: NutritionPayload?
     var supplements: SupplementsPayload?

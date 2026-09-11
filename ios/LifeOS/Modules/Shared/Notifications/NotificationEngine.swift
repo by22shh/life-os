@@ -151,6 +151,7 @@ actor NotificationEngine {
                    !notification.isCriticalHealth,
                    !Self.checkDailyCap(
                         db: db,
+                        notification: notification,
                         settings: normalizedSettings,
                         userId: normalizedSettings.userId,
                         scheduledAt: effectiveScheduledAt
@@ -258,6 +259,7 @@ actor NotificationEngine {
 
     nonisolated private static func checkDailyCap(
         db: Database,
+        notification: LifeOSNotification,
         settings: NotificationSettings,
         userId: UUID,
         scheduledAt: Date
@@ -271,13 +273,28 @@ actor NotificationEngine {
         
         // Using raw SQL for speed/simplicity or GRDB query
         do {
-            let count = try NotificationLog
+            let logs = try NotificationLog
                 .filter(NotificationLog.Columns.userId == userId)
                 .filter(NotificationLog.Columns.deliveredAt >= startOfScheduledDay)
                 .filter(NotificationLog.Columns.deliveredAt < endOfScheduledDay)
-                .fetchCount(db)
+                .fetchAll(db)
             
-            return count < settings.maxTotalPerDay
+            guard logs.count < settings.maxTotalPerDay else {
+                return false
+            }
+            let sameGroupCount = logs.filter {
+                notification.category.capGroup == $0.category.capGroup
+            }.count
+            switch notification.category.capGroup {
+            case .nudge:
+                return sameGroupCount < settings.maxNudgesPerDay
+            case .positive:
+                return sameGroupCount < settings.maxPositivePerDay
+            case .celebration:
+                return sameGroupCount < settings.maxCelebrationPerDay
+            case .none:
+                return true
+            }
         } catch {
             // Fail-closed: deny notifications if cap check fails (invariant §3)
             return false
@@ -588,6 +605,30 @@ enum NotificationCategory: String, Codable, Sendable, DatabaseValueConvertible {
     }
 }
 
+/// Groups categories that share one user-configurable daily cap
+/// (`maxNudgesPerDay`, `maxPositivePerDay`, `maxCelebrationPerDay`).
+enum NotificationCapGroup: Sendable {
+    case nudge
+    case positive
+    case celebration
+    case none
+}
+
+extension NotificationCategory {
+    var capGroup: NotificationCapGroup {
+        switch self {
+        case .supplementReminder, .mealReminder:
+            return .nudge
+        case .insight, .experiment:
+            return .positive
+        case .celebration:
+            return .celebration
+        case .morningBrief, .recoveryAlert:
+            return .none
+        }
+    }
+}
+
 enum NotificationPriority: String, Codable, Sendable, DatabaseValueConvertible {
     case passive
     case active
@@ -653,7 +694,9 @@ actor NotificationScheduleCoordinator {
     init(
         dbQueue: DatabaseQueue,
         nowProvider: @escaping @Sendable () -> Date = Date.init,
-        horizonDays: Int = 3,
+        // Seven days at the hard cap of six per day stays below the 64-pending
+        // system limit while surviving a week without opening the app.
+        horizonDays: Int = 7,
         cancelLocalNotifications: @escaping @Sendable ([UUID]) async -> Void = { ids in
 #if os(iOS)
             await MainActor.run {

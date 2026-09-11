@@ -417,11 +417,12 @@ final class DatabaseManager: Sendable {
     private static func runMigrations(on dbQueue: DatabaseQueue) throws {
         var migrator = DatabaseMigrator()
 
-        // In development, wipe DB on schema mismatch for fast iteration.
-        // Remove in production.
-        #if DEBUG
-        migrator.eraseDatabaseOnSchemaChange = true
-        #endif
+        // Schema changes must fail into the recovery path instead of silently
+        // wiping local data. Developers can opt in to a destructive reset:
+        // LIFEOS_RESET_ON_SCHEMA_CHANGE=1.
+        if ProcessInfo.processInfo.environment["LIFEOS_RESET_ON_SCHEMA_CHANGE"] == "1" {
+            migrator.eraseDatabaseOnSchemaChange = true
+        }
 
         Migrations.registerAll(migrator: &migrator)
 

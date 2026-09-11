@@ -73,9 +73,7 @@ struct RecoveryTimelineProvider: TimelineProvider {
         }
 
         guard let updatedAt = snapshot.lastUpdatedAt.flatMap(Self.parseTimestamp),
-              Calendar.current.isDateInToday(updatedAt),
-              updatedAt.timeIntervalSinceNow <= 300,
-              Date().timeIntervalSince(updatedAt) < 24 * 3600 else { return nil }
+              Calendar.current.isDateInToday(updatedAt) else { return nil }
         if let day = snapshot.date {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")

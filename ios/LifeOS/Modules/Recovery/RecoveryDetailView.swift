@@ -45,6 +45,28 @@ struct RecoveryDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
                 }
 
+                if let cycleNote = viewModel.cycleNoteText {
+                    Label(cycleNote, systemImage: "calendar")
+                        .font(LifeOSTypography.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Spacing.m)
+                        .background(LifeOSColors.Surface.card)
+                        .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
+                        .accessibilityIdentifier("recovery.cycle_note")
+                }
+
+                if let hrvCaveat = viewModel.hrvCaveatText {
+                    Label(hrvCaveat, systemImage: "waveform.path.ecg.rectangle")
+                        .font(LifeOSTypography.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Spacing.m)
+                        .background(LifeOSColors.Surface.card)
+                        .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cardCornerRadius))
+                        .accessibilityIdentifier("recovery.hrv_caveat")
+                }
+
                 SleepDetailSections(
                     snapshot: sleepSnapshot,
                     permissionState: viewModel.sleepPermissionState,
@@ -116,6 +138,8 @@ final class RecoveryDetailViewModel {
     private(set) var isLoading = false
     private(set) var isRequestingSleepAccess = false
     private(set) var sleepStatusMessage: String?
+    private(set) var cycleNoteText: String?
+    private(set) var hrvCaveatText: String?
 
     let displayDate: String
     let currentDay: String
@@ -138,9 +162,38 @@ final class RecoveryDetailViewModel {
 
         do {
             let authId = AuthManager.activeAuthId?.uuidString
-            score = try await dbQueue.read { db in
+            let loaded = try await dbQueue.read { db -> (score: RecoverySummary?, phase: MenstrualPhase?) in
                 guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
-                    return nil
+                    return (nil, nil)
+                }
+                var derivedPhase: MenstrualPhase?
+                let trackingEnabled = try Bool.fetchOne(
+                    db,
+                    sql: """
+                        SELECT menstrual_tracking_enabled
+                        FROM user_health_flags
+                        WHERE (user_id = ? OR user_id = ?)
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [userId, userId.uuidString]
+                ) ?? false
+                if trackingEnabled {
+                    let flowDates = try String.fetchAll(
+                        db,
+                        sql: """
+                            SELECT DISTINCT date
+                            FROM menstrual_logs
+                            WHERE (user_id = ? OR user_id = ?)
+                              AND deleted_at IS NULL
+                              AND flow IS NOT NULL
+                              AND flow <> 'spotting'
+                            """,
+                        arguments: [userId, userId.uuidString]
+                    )
+                    derivedPhase = MenstrualCycleAdjustment
+                        .derivePhase(flowDates: flowDates, on: currentDay)?
+                        .phase
                 }
                 guard let row = try Row.fetchOne(
                     db,
@@ -153,12 +206,37 @@ final class RecoveryDetailViewModel {
                         """,
                     arguments: [userId, userId.uuidString, currentDay]
                 ) else {
-                    return nil
+                    return (nil, derivedPhase)
                 }
-                return RecoverySummary(row: row)
+                return (RecoverySummary(row: row), derivedPhase)
             }
+            score = loaded.score
+            cycleNoteText = loaded.phase.map {
+                String(localized: String.LocalizationValue($0.noteKey))
+            }
+            let onBetaBlockers = try await dbQueue.read { db -> Bool in
+                guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
+                    return false
+                }
+                return try Bool.fetchOne(
+                    db,
+                    sql: """
+                        SELECT on_beta_blockers
+                        FROM user_health_flags
+                        WHERE (user_id = ? OR user_id = ?)
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [userId, userId.uuidString]
+                ) ?? false
+            }
+            hrvCaveatText = onBetaBlockers
+                ? String(localized: "recovery_hrv_beta_blocker_note")
+                : nil
         } catch {
             score = nil
+            cycleNoteText = nil
+            hrvCaveatText = nil
         }
 
         do {

@@ -145,10 +145,9 @@ async function handleScanCreate(
   try {
     privacySettings = await loadMedicalScanPrivacySettings(service, userId);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     return jsonWithRequest(request, {
       error: "privacy_settings_lookup_failed",
-      detail,
+      detail: sanitizedInternalDetail(request, "index", error),
     }, 500);
   }
 
@@ -391,6 +390,7 @@ async function handleScanCreate(
   }
 
   const activeMeasurementIds = new Set<string>();
+  const measurementRows: Array<Record<string, unknown>> = [];
   for (const marker of extractedMarkers) {
     if (!marker.marker_id || marker.value == null || !marker.unit) {
       continue;
@@ -403,56 +403,48 @@ async function handleScanCreate(
       crypto.randomUUID();
     activeMeasurementIds.add(measurementId);
 
-    const { error: markerError } = await service
-      .from("health_measurements")
-      .upsert({
-        id: measurementId,
-        user_id: userId,
-        marker_id: marker.marker_id,
-        value: marker.value,
-        unit: marker.unit,
-        original_value: marker.value,
-        original_unit: marker.unit,
-        status: marker.status,
-        reference_range_low: marker.reference_range_low,
-        reference_range_high: marker.reference_range_high,
-        measured_at: measuredAt,
-        source_scan_id: scanId,
-        source_type: "scan",
-        original_label: marker.original_label,
-        confidence: marker.confidence,
-        manually_verified: canonicalManuallyVerified,
-      }, {
-        onConflict: "id",
-      });
-
-    if (markerError) {
-      return jsonWithRequest(request, {
-        error: "scan_markers_upsert_failed",
-        detail: sanitizedInternalDetail(request, "index", markerError),
-      }, 500);
-    }
+    measurementRows.push({
+      id: measurementId,
+      marker_id: marker.marker_id,
+      value: marker.value,
+      unit: marker.unit,
+      original_value: marker.value,
+      original_unit: marker.unit,
+      status: marker.status,
+      reference_range_low: marker.reference_range_low,
+      reference_range_high: marker.reference_range_high,
+      measured_at: measuredAt,
+      source_scan_id: scanId,
+      source_type: "scan",
+      original_label: marker.original_label,
+      confidence: marker.confidence,
+      manually_verified: canonicalManuallyVerified,
+    });
   }
 
-  if (processedData != null) {
-    const staleMeasurementIds = (existingMeasurementsResult.data ?? [])
+  const staleMeasurementIds = processedData != null
+    ? (existingMeasurementsResult.data ?? [])
       .map((row) => row.id)
-      .filter((id) => !activeMeasurementIds.has(id));
+      .filter((id) => !activeMeasurementIds.has(id))
+    : [];
 
-    if (staleMeasurementIds.length > 0) {
-      const { error: deleteError } = await service
-        .from("health_measurements")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", staleMeasurementIds);
+  // Upserts and stale removal commit in one transaction so a mid-list failure
+  // cannot leave a scan with partially replaced markers.
+  const { error: markersError } = await service.rpc(
+    "save_scan_measurements_atomic",
+    {
+      p_user_id: userId,
+      p_scan_id: scanId,
+      p_measurements: measurementRows,
+      p_delete_ids: staleMeasurementIds,
+    },
+  );
 
-      if (deleteError) {
-        return jsonWithRequest(request, {
-          error: "scan_markers_delete_failed",
-          detail: sanitizedInternalDetail(request, "index", deleteError),
-        }, 500);
-      }
-    }
+  if (markersError) {
+    return jsonWithRequest(request, {
+      error: "scan_markers_upsert_failed",
+      detail: sanitizedInternalDetail(request, "index", markersError),
+    }, 500);
   }
 
   return jsonWithRequest(request, {

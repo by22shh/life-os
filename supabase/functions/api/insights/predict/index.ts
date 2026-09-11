@@ -384,7 +384,7 @@ ${memory.join("\n")}`;
     });
 
     if (!aiResponse.ok) {
-      const responseText = await aiResponse.text();
+      await aiResponse.body?.cancel();
       return jsonWithRequest(
         request,
         buildFallbackResponse(
@@ -392,7 +392,6 @@ ${memory.join("\n")}`;
           explanationLanguage,
           {
             fallback_mode: "deterministic",
-            upstream_error: truncate(responseText, 240),
             provider_status: aiResponse.status,
           },
         ),
@@ -420,9 +419,8 @@ ${memory.join("\n")}`;
           contextBundle,
           explanationLanguage,
           {
-            parse_error: true,
             fallback_mode: "deterministic",
-            upstream_error: truncate(contentText, 220),
+            parse_error: true,
           },
         ),
         200,
@@ -506,9 +504,7 @@ ${memory.join("\n")}`;
         explanationLanguage,
         {
           fallback_mode: "deterministic",
-          upstream_error: error instanceof Error
-            ? truncate(error.message, 180)
-            : "simulation_processing_failed",
+          upstream_error: "simulation_processing_failed",
         },
       ),
       200,
@@ -568,11 +564,6 @@ function buildFallbackExplanation(
 function resolveExplanationLanguage(request: Request): "ru" | "en" {
   const header = request.headers.get("Accept-Language")?.toLowerCase() ?? "";
   return header.includes("ru") ? "ru" : "en";
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
 function addDays(date: string, days: number): string {

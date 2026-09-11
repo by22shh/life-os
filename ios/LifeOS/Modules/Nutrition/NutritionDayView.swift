@@ -717,7 +717,9 @@ struct NutritionDayView: View {
         reloadPhotoDrafts()
     }
 
-    private func handleBatchRecipesChanged() {}
+    private func handleBatchRecipesChanged() {
+        Task { await loadMealsForDate() }
+    }
 
     private func handleDisabledBatchRecipeModalAppear() {
         dismissBatchRecipeModalIfDisabled()

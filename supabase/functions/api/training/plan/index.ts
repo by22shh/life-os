@@ -138,30 +138,7 @@ async function handleGenerate(
     session_duration_minutes: sessionDuration,
   };
 
-  const { error: planError } = await service
-    .from("training_plans")
-    .insert({
-      id: planId,
-      user_id: userId,
-      name: planName,
-      goal,
-      status: "active",
-      start_date: today,
-      end_date: endDate,
-      duration_weeks: durationWeeks,
-      days_per_week: availableDays.length,
-      current_week: 1,
-      ai_generated: true,
-      plan_json: planJson,
-      adaptive_rules: {},
-    });
-
-  if (planError) {
-    return jsonWithRequest(request, {
-      error: "training_plan_create_failed",
-      detail: sanitizedInternalDetail(request, "index", planError),
-    }, 500);
-  }
+  // Plan and planned sessions are created atomically below.
 
   const sessionTypes = ["strength", "cardio", "mobility", "recovery"];
   const sessionRows: Array<Record<string, unknown>> = [];
@@ -186,17 +163,33 @@ async function handleGenerate(
     }
   }
 
-  if (sessionRows.length > 0) {
-    const { error: sessionsError } = await service
-      .from("training_plan_sessions")
-      .insert(sessionRows);
+  const { error: planError } = await service.rpc(
+    "create_training_plan_atomic",
+    {
+      p_user_id: userId,
+      p_plan: {
+        id: planId,
+        name: planName,
+        goal,
+        status: "active",
+        start_date: today,
+        end_date: endDate,
+        duration_weeks: durationWeeks,
+        days_per_week: availableDays.length,
+        current_week: 1,
+        ai_generated: true,
+        plan_json: planJson,
+        adaptive_rules: {},
+      },
+      p_sessions: sessionRows,
+    },
+  );
 
-    if (sessionsError) {
-      return jsonWithRequest(request, {
-        error: "training_plan_sessions_create_failed",
-        detail: sanitizedInternalDetail(request, "index", sessionsError),
-      }, 500);
-    }
+  if (planError) {
+    return jsonWithRequest(request, {
+      error: "training_plan_create_failed",
+      detail: sanitizedInternalDetail(request, "index", planError),
+    }, 500);
   }
 
   return jsonWithRequest(request, {

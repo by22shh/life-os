@@ -72,6 +72,10 @@ jobs:
             -only-testing:LifeOSTests \
             -only-testing:LifeOSWidgetsTests
 
+      - name: Run iOS sync contract gate
+        shell: bash
+        run: bash scripts/run_ios_sync_contract_gate.sh
+
       - name: Upload xcresult bundle on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -411,7 +415,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: "2.9.5"
 
       - name: deno fmt --check
         run: deno fmt --check supabase/functions
@@ -436,7 +440,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.115.0"
 
       - name: Start local Supabase
         run: supabase start --workdir .
@@ -464,12 +468,12 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: "2.9.5"
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.115.0"
 
       - name: Run local Supabase edge e2e
         run: bash scripts/run_supabase_edge_e2e.sh
@@ -484,12 +488,12 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: "2.9.5"
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.115.0"
 
       - name: Run local Supabase edge load test
         env:
@@ -511,12 +515,12 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: "2.9.5"
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.115.0"
 
       - name: Run pre-prod security pass
         env:
@@ -542,7 +546,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: "2.115.0"
 
       - name: Link staging project
         run: supabase link --project-ref "$SUPABASE_STAGING_PROJECT_ID" --workdir .

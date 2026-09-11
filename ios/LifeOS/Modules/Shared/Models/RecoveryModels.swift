@@ -119,6 +119,12 @@ struct RecoveryScoreValue: Codable, Equatable, Sendable {
     let confidence: Double    // 0-1
     let components: Components
 
+    /// Derived on-device menstrual phase, when cycle tracking is enabled and
+    /// at least two periods establish a cycle.
+    let menstrualPhase: String?
+    /// Points added to compensate for the current phase (spec §Menstrual).
+    let menstrualAdjustment: Double?
+
     struct Components: Codable, Equatable, Sendable {
         var hrvScore: Double?
         var sleepScore: Double?
@@ -126,11 +132,19 @@ struct RecoveryScoreValue: Codable, Equatable, Sendable {
         var tempScore: Double?
     }
 
-    init(score: Double, confidence: Double, components: Components) {
+    init(
+        score: Double,
+        confidence: Double,
+        components: Components,
+        menstrualPhase: String? = nil,
+        menstrualAdjustment: Double? = nil
+    ) {
         self.score = min(max(score, 0), 100)
         self.zone = RecoveryZone.from(score: self.score)
         self.confidence = min(max(confidence, 0), 1)
         self.components = components
+        self.menstrualPhase = menstrualPhase
+        self.menstrualAdjustment = menstrualAdjustment
     }
 
     /// Whether this score is low-confidence and requires review.

@@ -93,6 +93,7 @@ actor WidgetSnapshotCoordinator {
             return WidgetSnapshot(
                 generatedAt: now,
                 privacy: privacy,
+                units: user.units.rawValue,
                 recovery: privacy.showRecoveryScore
                     ? try buildRecovery(db: db, userId: user.id, today: today)
                     : nil,

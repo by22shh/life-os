@@ -343,6 +343,7 @@ async function dispatchNotificationToDevices(
     await supabase
       .from("push_devices")
       .update({ revoked_at: new Date().toISOString() })
+      .eq("user_id", userId)
       .in("push_token", dispatchSummary.invalidTokens);
   }
 

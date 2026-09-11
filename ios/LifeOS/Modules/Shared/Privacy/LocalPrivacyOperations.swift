@@ -25,6 +25,29 @@ enum LocalUserDataReset {
         try deleteAllRowsIfTableExists("outbox_events", db: db)
         try deleteAllRowsIfTableExists("sync_row_state", db: db)
         try deleteAllRowsIfTableExists("sync_state", db: db)
+
+        // Custom catalog rows are owned through created_by/created_by_user_id
+        // instead of user_id. Remove them while keeping shared rows.
+        try deleteCustomCatalogRows(in: db)
+    }
+
+    private static func deleteCustomCatalogRows(in db: Database) throws {
+        if try tableExists("exercise_catalog", db: db) {
+            try db.execute(
+                sql: """
+                    DELETE FROM \(quotedIdentifier("exercise_catalog"))
+                    WHERE is_custom = 1 OR created_by IS NOT NULL
+                    """
+            )
+        }
+        if try tableExists("food_catalog_items", db: db) {
+            try db.execute(
+                sql: """
+                    DELETE FROM \(quotedIdentifier("food_catalog_items"))
+                    WHERE created_by_user_id IS NOT NULL
+                    """
+            )
+        }
     }
 
     static func insertFreshUser(
@@ -63,13 +86,16 @@ enum LocalUserDataReset {
         )
     }
 
-    static func deleteAllRowsIfTableExists(_ table: String, db: Database) throws {
-        let exists = try Int.fetchOne(
+    static func tableExists(_ table: String, db: Database) throws -> Bool {
+        try Int.fetchOne(
             db,
             sql: "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
             arguments: [table]
         ) == 1
-        guard exists else { return }
+    }
+
+    static func deleteAllRowsIfTableExists(_ table: String, db: Database) throws {
+        guard try tableExists(table, db: db) else { return }
         try db.execute(sql: "DELETE FROM \(quotedIdentifier(table))")
     }
 
@@ -83,7 +109,7 @@ struct LocalPrivacyUserContext: Sendable {
     let authId: UUID
 }
 
-private struct LocalPrivacyExportMetadata: Encodable, Sendable {
+private struct LocalPrivacyExportMetadata: Codable, Sendable {
     let exportId: String
     let generatedAt: String
     let scope: String
@@ -91,17 +117,37 @@ private struct LocalPrivacyExportMetadata: Encodable, Sendable {
     let authId: String
 }
 
-private struct LocalPrivacyExportDocument: Encodable, Sendable {
+private struct LocalPrivacyExportDocument: Codable, Sendable {
     let metadata: LocalPrivacyExportMetadata
     let tables: [String: [[String: LocalPrivacyExportValue]]]
 }
 
-private enum LocalPrivacyExportValue: Encodable, Sendable {
+private enum LocalPrivacyExportValue: Codable, Sendable {
     case string(String)
     case int(Int64)
     case double(Double)
     case data(String)
     case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self = .null
+        } else if let value = try? container.decode(Bool.self) {
+            self = .int(value ? 1 : 0)
+        } else if let value = try? container.decode(Int64.self) {
+            self = .int(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .double(value)
+        } else if let value = try? container.decode(String.self) {
+            self = .string(value)
+        } else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported export value"
+            )
+        }
+    }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
@@ -260,6 +306,31 @@ enum LocalPrivacyExportWriter {
         ]
         if let (parent, foreignKey) = parentLinks[table] {
             return ("SELECT child.* FROM \(tableName) child JOIN \(parent) parent ON child.\(foreignKey) = parent.id WHERE parent.user_id = ? OR lower(CAST(parent.user_id AS TEXT)) = lower(?) ORDER BY child.rowid", [user.userId, user.userId.uuidString])
+        }
+
+        // User-owned catalog rows do not have a user_id column.
+        if table == "exercise_catalog", columns.contains("created_by") {
+            return (
+                """
+                SELECT *
+                FROM \(tableName)
+                WHERE created_by = ? OR lower(CAST(created_by AS TEXT)) = lower(?)
+                ORDER BY rowid ASC
+                """,
+                [user.userId, user.userId.uuidString]
+            )
+        }
+
+        if table == "food_catalog_items", columns.contains("created_by_user_id") {
+            return (
+                """
+                SELECT *
+                FROM \(tableName)
+                WHERE created_by_user_id = ? OR lower(CAST(created_by_user_id AS TEXT)) = lower(?)
+                ORDER BY rowid ASC
+                """,
+                [user.userId, user.userId.uuidString]
+            )
         }
 
         if columns.contains("user_id") {
@@ -460,7 +531,7 @@ enum LocalPrivacyErasureExecutor {
                 deletedAt: completedAt,
                 postgresDeleted: false,
                 vectorsDeleted: false,
-                storageDeleted: true,
+                storageDeleted: false,
                 complianceVerified: false,
                 notes: "local_only:\(reason)"
             )
@@ -501,7 +572,8 @@ enum LocalPrivacyErasureExecutor {
             try db.execute(
                 sql: """
                     UPDATE deletion_audit_log
-                    SET compliance_verified = 1
+                    SET compliance_verified = 1,
+                        storage_deleted = 1
                     WHERE id = ?
                     """,
                 arguments: [auditId.uuidString]
@@ -605,5 +677,217 @@ enum LocalPrivacyErasureExecutor {
             return localized
         }
         return error.localizedDescription
+    }
+}
+
+// MARK: - Manual archive import
+
+struct LocalPrivacyImportSummary: Sendable, Equatable {
+    var importedRows: Int
+    var skippedRows: Int
+    var tables: [String: Int]
+}
+
+enum LocalPrivacyImportError: LocalizedError {
+    case invalidArchive
+    case noActiveUser
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidArchive:
+            return String(localized: "settings_import_error_invalid_archive")
+        case .noActiveUser:
+            return String(localized: "settings_import_error_no_user")
+        }
+    }
+}
+
+enum LocalPrivacyArchiveImporter {
+    /// Runtime state that belongs to the current device/installation. It is
+    /// exported for completeness, but restoring it would replay stale network
+    /// work or overwrite live sync bookkeeping.
+    static let deviceScopedTables: Set<String> = [
+        "local_meta",
+        "outbox_events",
+        "sync_row_state",
+        "sync_state",
+        "ai_cache"
+    ]
+
+    private struct ArchiveEnvelope: Decodable {
+        var localSnapshot: LocalPrivacyExportDocument?
+
+        enum CodingKeys: String, CodingKey {
+            case localSnapshot = "local_snapshot"
+        }
+    }
+
+    static func importArchive(
+        data: Data,
+        user: LocalPrivacyUserContext,
+        dbQueue: DatabaseQueue
+    ) async throws -> LocalPrivacyImportSummary {
+        let snapshot = try decodeSnapshot(from: data)
+        return try await dbQueue.write { db in
+            try importSnapshot(snapshot, user: user, db: db)
+        }
+    }
+
+    private static func decodeSnapshot(from data: Data) throws -> LocalPrivacyExportDocument {
+        let decoder = JSONDecoder()
+        if let envelope = try? decoder.decode(ArchiveEnvelope.self, from: data),
+           let localSnapshot = envelope.localSnapshot {
+            return localSnapshot
+        }
+        if let document = try? decoder.decode(LocalPrivacyExportDocument.self, from: data) {
+            return document
+        }
+        throw LocalPrivacyImportError.invalidArchive
+    }
+
+    private static func importSnapshot(
+        _ snapshot: LocalPrivacyExportDocument,
+        user: LocalPrivacyUserContext,
+        db: Database
+    ) throws -> LocalPrivacyImportSummary {
+        var remaining: [String: [[String: LocalPrivacyExportValue]]] = [:]
+        for (table, rows) in snapshot.tables where !rows.isEmpty {
+            guard !deviceScopedTables.contains(table) else { continue }
+            guard try LocalUserDataReset.tableExists(table, db: db) else { continue }
+            let columns = Set(try db.columns(in: table).map { $0.name.lowercased() })
+            let ownedRows = rows.filter {
+                rowBelongsToUser($0, table: table, columns: columns, user: user)
+            }
+            if !ownedRows.isEmpty {
+                remaining[table] = ownedRows
+            }
+        }
+
+        var summary = LocalPrivacyImportSummary(importedRows: 0, skippedRows: 0, tables: [:])
+        var passes = 0
+        while !remaining.isEmpty && passes < 8 {
+            passes += 1
+            var madeProgress = false
+            for (table, rows) in remaining {
+                var deferred: [[String: LocalPrivacyExportValue]] = []
+                for row in rows {
+                    do {
+                        if try insert(row, into: table, db: db) {
+                            summary.importedRows += 1
+                            summary.tables[table, default: 0] += 1
+                        } else {
+                            summary.skippedRows += 1
+                        }
+                    } catch let error as DatabaseError
+                        where error.extendedResultCode == .SQLITE_CONSTRAINT_FOREIGNKEY {
+                        // Parent rows may arrive later in the archive; retry on
+                        // the next pass once more tables are restored.
+                        deferred.append(row)
+                    } catch {
+                        summary.skippedRows += 1
+                    }
+                }
+                if deferred.isEmpty {
+                    remaining.removeValue(forKey: table)
+                } else {
+                    remaining[table] = deferred
+                }
+                if deferred.count < rows.count {
+                    madeProgress = true
+                }
+            }
+            if !madeProgress {
+                break
+            }
+        }
+        for (_, rows) in remaining {
+            summary.skippedRows += rows.count
+        }
+        return summary
+    }
+
+    private static func insert(
+        _ row: [String: LocalPrivacyExportValue],
+        into table: String,
+        db: Database
+    ) throws -> Bool {
+        let validColumns = Set(try db.columns(in: table).map { $0.name.lowercased() })
+        var names: [String] = []
+        var values: [any DatabaseValueConvertible] = []
+        for (key, value) in row {
+            let name = key.lowercased()
+            guard validColumns.contains(name),
+                  let databaseValue = databaseValue(for: value) else { continue }
+            names.append(LocalUserDataReset.quotedIdentifier(name))
+            values.append(databaseValue)
+        }
+        guard !names.isEmpty else { return false }
+
+        let tableName = LocalUserDataReset.quotedIdentifier(table)
+        let placeholders = Array(repeating: "?", count: names.count).joined(separator: ", ")
+        try db.execute(
+            sql: "INSERT OR IGNORE INTO \(tableName) (\(names.joined(separator: ", "))) VALUES (\(placeholders))",
+            arguments: StatementArguments(values)
+        )
+        return db.changesCount > 0
+    }
+
+    private static func databaseValue(
+        for value: LocalPrivacyExportValue
+    ) -> (any DatabaseValueConvertible)? {
+        switch value {
+        case .null:
+            return nil
+        case .string(let value):
+            return value
+        case .int(let value):
+            return value
+        case .double(let value):
+            return value
+        case .data(let value):
+            return Data(base64Encoded: value) ?? value
+        }
+    }
+
+    private static func rowBelongsToUser(
+        _ row: [String: LocalPrivacyExportValue],
+        table: String,
+        columns: Set<String>,
+        user: LocalPrivacyUserContext
+    ) -> Bool {
+        func stringValue(_ name: String) -> String? {
+            guard let stored = row.first(where: { $0.key.lowercased() == name })?.value else {
+                return nil
+            }
+            if case .string(let value) = stored { return value }
+            return nil
+        }
+
+        func matches(_ value: String?, _ expected: UUID) -> Bool {
+            guard let value, let uuid = UUID(uuidString: value) else { return false }
+            return uuid == expected
+        }
+
+        if columns.contains("user_id") {
+            return matches(stringValue("user_id"), user.userId)
+        }
+        if table == "users" {
+            return matches(stringValue("id"), user.userId)
+                || matches(stringValue("auth_id"), user.authId)
+        }
+        if columns.contains("auth_id") {
+            return matches(stringValue("auth_id"), user.authId)
+        }
+        if table == "exercise_catalog" {
+            return matches(stringValue("created_by"), user.userId)
+        }
+        if table == "food_catalog_items" {
+            return matches(stringValue("created_by_user_id"), user.userId)
+        }
+        if table == "workout_exercises" || table == "batch_recipe_ingredients" {
+            // Ownership is enforced through the parent foreign key below.
+            return true
+        }
+        return false
     }
 }

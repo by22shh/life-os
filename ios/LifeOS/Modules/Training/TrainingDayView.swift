@@ -613,7 +613,7 @@ struct WorkoutLogView: View {
             HStack(spacing: Spacing.s) {
                 summaryPill(title: String(localized: "training_summary_duration"), value: summary.durationText)
                 summaryPill(title: String(localized: "sets"), value: "\(summary.totalSets)")
-                summaryPill(title: String(localized: "training_summary_volume"), value: summary.volumeText)
+                summaryPill(title: String(localized: "training_summary_volume"), value: summary.volumeText(units: viewModel.userUnits))
             }
 
             if viewModel.incompleteSetCount > 0 && !viewModel.isDeleted {
@@ -879,7 +879,7 @@ struct WorkoutLogView: View {
                             .frame(width: 24)
 
                         editorField(
-                            title: String(localized: "weight_kg"),
+                            title: "\(String(localized: "weight")) (\(UnitPreferences.weightUnitLabel(viewModel.userUnits)))",
                             text: weightTextBinding(exerciseIndex: exerciseIndex, setIndex: setIndex),
                             width: 72,
                             keyboardType: .decimalPad,
@@ -992,8 +992,25 @@ struct WorkoutLogView: View {
 
     private func weightTextBinding(exerciseIndex: Int, setIndex: Int) -> Binding<String> {
         Binding(
-            get: { Self.formattedWeight(viewModel.exercises[exerciseIndex].sets[setIndex].weight) },
-            set: { viewModel.exercises[exerciseIndex].sets[setIndex].weight = Self.parseWeight($0) }
+            get: {
+                let kilograms = viewModel.exercises[exerciseIndex].sets[setIndex].weight
+                guard kilograms > 0 else { return "" }
+                return UnitPreferences.formattedDecimal(
+                    UnitPreferences.weightValue(fromKilograms: kilograms, units: viewModel.userUnits),
+                    maxDecimals: 1
+                )
+            },
+            set: { raw in
+                let displayed = Self.parseWeight(raw)
+                guard displayed > 0 else {
+                    viewModel.exercises[exerciseIndex].sets[setIndex].weight = 0
+                    return
+                }
+                viewModel.exercises[exerciseIndex].sets[setIndex].weight = UnitPreferences.kilograms(
+                    fromDisplayedWeight: displayed,
+                    units: viewModel.userUnits
+                )
+            }
         )
     }
 
@@ -1245,12 +1262,10 @@ fileprivate struct WorkoutSummaryMetrics: Equatable {
         return String(format: String(localized: "training_duration_minutes_short_format"), durationMinutes)
     }
 
-    var volumeText: String {
+    func volumeText(units: UnitSystem = .metric) -> String {
         guard totalVolume > 0 else { return String(localized: "training_not_available") }
-        if totalVolume.rounded() == totalVolume {
-            return String(format: String(localized: "training_volume_int_format"), Int(totalVolume))
-        }
-        return String(format: String(localized: "training_volume_decimal_format"), totalVolume)
+        let displayed = UnitPreferences.weightValue(fromKilograms: totalVolume, units: units)
+        return "\(UnitPreferences.formattedDecimal(displayed, maxDecimals: 1)) \(UnitPreferences.weightUnitLabel(units))"
     }
 }
 
@@ -1278,6 +1293,7 @@ final class WorkoutLogViewModel {
     var importedSessions: [ImportedWorkoutSummary] = []
     var isImportingFromHealthKit = false
     var healthKitStatusMessage: String?
+    var userUnits: UnitSystem = .metric
 
     private var didLoadExistingWorkout = false
     private var loadedPerceivedExertionRpe: Int?
@@ -1456,10 +1472,26 @@ final class WorkoutLogViewModel {
     func loadCatalog() async {
         let authId = AuthManager.activeAuthId?.uuidString
         do {
-            catalog = try await dbQueue.write { db in
+            let result = try await dbQueue.write { db -> ([ExerciseCatalogEntry], UnitSystem) in
                 let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db)
-                return try ExerciseCatalogSupport.loadVisibleCatalog(in: db, userId: userId)
+                let loadedCatalog = try ExerciseCatalogSupport.loadVisibleCatalog(in: db, userId: userId)
+                let userIdString = userId?.uuidString
+                let unitsRaw = try String.fetchOne(
+                    db,
+                    sql: """
+                        SELECT units
+                        FROM users
+                        WHERE (id = ? OR id = ?)
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [userId, userIdString]
+                )
+                let units = unitsRaw.flatMap(UnitSystem.init(rawValue:)) ?? .metric
+                return (loadedCatalog, units)
             }
+            catalog = result.0
+            userUnits = result.1
         } catch {
             catalog = []
         }
@@ -3349,9 +3381,9 @@ enum TrainingDayViewTestHarness {
             WorkoutSummaryMetrics(totalSets: 8, totalVolume: 612.5, durationMinutes: 75).durationText
         ]
         let volumeTexts = [
-            WorkoutSummaryMetrics(totalSets: 0, totalVolume: 0, durationMinutes: nil).volumeText,
-            WorkoutSummaryMetrics(totalSets: 4, totalVolume: 320, durationMinutes: 45).volumeText,
-            WorkoutSummaryMetrics(totalSets: 8, totalVolume: 612.5, durationMinutes: 75).volumeText
+            WorkoutSummaryMetrics(totalSets: 0, totalVolume: 0, durationMinutes: nil).volumeText(),
+            WorkoutSummaryMetrics(totalSets: 4, totalVolume: 320, durationMinutes: 45).volumeText(),
+            WorkoutSummaryMetrics(totalSets: 8, totalVolume: 612.5, durationMinutes: 75).volumeText()
         ]
         let restLabels = [
             WorkoutLogView.restDurationLabel(seconds: nil),

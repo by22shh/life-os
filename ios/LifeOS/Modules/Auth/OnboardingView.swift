@@ -622,7 +622,7 @@ struct OnboardingView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") {
+                    Button(String(localized: "common_done")) {
                         focusedProfileField = nil
                     }
                 }
@@ -1555,14 +1555,29 @@ private enum OnboardingOptionalSetupSheet: String, Identifiable {
 }
 
 private enum OnboardingSupplementQuickPick: String, CaseIterable {
-    case magnesium = "Magnesium"
-    case vitaminD3 = "Vitamin D3"
-    case omega3 = "Omega-3"
-    case creatine = "Creatine"
-    case zinc = "Zinc"
-    case lTheanine = "L-Theanine"
+    case magnesium
+    case vitaminD3
+    case omega3
+    case creatine
+    case zinc
+    case lTheanine
 
-    var displayName: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .magnesium:
+            return String(localized: "supplement_quick.magnesium")
+        case .vitaminD3:
+            return String(localized: "supplement_quick.vitamin_d3")
+        case .omega3:
+            return String(localized: "supplement_quick.omega3")
+        case .creatine:
+            return String(localized: "supplement_quick.creatine")
+        case .zinc:
+            return String(localized: "supplement_quick.zinc")
+        case .lTheanine:
+            return String(localized: "supplement_quick.l_theanine")
+        }
+    }
 }
 
 private enum OnboardingSupplementTimingPreference: CaseIterable {

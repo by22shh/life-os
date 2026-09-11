@@ -245,8 +245,37 @@ actor PrivacyGateway {
         }
     }
 
-    func requestErasure(reason: String = "user_requested") async throws {
+    /// Restores an exported archive (local-only snapshot or the bundled 2.0
+    /// cloud+local archive) into the local database. Existing rows are kept;
+    /// only missing rows are inserted, so the import cannot overwrite newer
+    /// local edits.
+    func importArchive(from fileURL: URL) async throws -> LocalPrivacyImportSummary {
         guard let user = try await latestUserContext() else {
+            throw LocalPrivacyImportError.noActiveUser
+        }
+
+        let isSecurityScoped = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if isSecurityScoped {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: fileURL)
+        } catch {
+            throw LocalPrivacyImportError.invalidArchive
+        }
+
+        return try await LocalPrivacyArchiveImporter.importArchive(
+            data: data,
+            user: user,
+            dbQueue: dbQueue
+        )
+    }
+
+    func requestErasure(reason: String = "user_requested") async throws {        guard let user = try await latestUserContext() else {
             throw SettingsError.deletionFailed
         }
 

@@ -374,6 +374,47 @@ final class NotificationEngineTests: XCTestCase {
         XCTAssertFalse(blocked, "4th notification should be blocked by daily cap")
     }
 
+    func testPerCategoryCapsAreEnforcedIndependentlyOfTheTotalCap() async throws {
+        settings.maxTotalPerDay = 6
+        settings.maxNudgesPerDay = 1
+        settings.maxPositivePerDay = 1
+        settings.maxCelebrationPerDay = 0
+
+        let firstNudge = try await engine.scheduleNotification(
+            LifeOSNotification(category: .supplementReminder, title: "Take", body: "Mag"),
+            settings: settings
+        )
+        XCTAssertTrue(firstNudge)
+        let secondNudge = try await engine.scheduleNotification(
+            LifeOSNotification(category: .mealReminder, title: "Meal", body: "Log"),
+            settings: settings
+        )
+        XCTAssertFalse(secondNudge, "nudges cap is shared by supplement and meal reminders")
+
+        let firstPositive = try await engine.scheduleNotification(
+            LifeOSNotification(category: .insight, title: "Insight", body: "Body"),
+            settings: settings
+        )
+        XCTAssertTrue(firstPositive)
+        let secondPositive = try await engine.scheduleNotification(
+            LifeOSNotification(category: .experiment, title: "Experiment", body: "Log"),
+            settings: settings
+        )
+        XCTAssertFalse(secondPositive, "positive cap is shared by insights and experiments")
+
+        let celebrationBlocked = try await engine.scheduleNotification(
+            LifeOSNotification(category: .celebration, title: "Nice", body: "Streak"),
+            settings: settings
+        )
+        XCTAssertFalse(celebrationBlocked, "a celebration cap of zero blocks celebrations")
+
+        let brief = try await engine.scheduleNotification(
+            LifeOSNotification(category: .morningBrief, title: "Brief", body: "Morning"),
+            settings: settings
+        )
+        XCTAssertTrue(brief, "morning brief is not covered by category caps")
+    }
+
     // MARK: - Dedup
 
     func testDedupBlocksRecentDuplicates() async throws {

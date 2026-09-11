@@ -70,13 +70,9 @@ Deno.serve(async (request) => {
   if (payload.ip_address != null && typeof payload.ip_address !== "string") {
     return jsonWithRequest(request, { error: "invalid_ip_address" }, 400);
   }
-  const ipAddressRaw = typeof payload.ip_address === "string"
-    ? payload.ip_address.trim()
-    : "";
-  if (ipAddressRaw.length > MAX_IP_ADDRESS_LENGTH) {
-    return jsonWithRequest(request, { error: "invalid_ip_address" }, 400);
-  }
-  const ipAddress = ipAddressRaw.length > 0 ? ipAddressRaw : null;
+  // The audit trail records the connection address observed by the platform,
+  // never a client-asserted value.
+  const ipAddress = clientIpFromHeaders(request);
 
   const service = serviceRoleClient();
   const { data: userRow, error: userError } = await service
@@ -116,10 +112,19 @@ Deno.serve(async (request) => {
   if (payload.timestamp != null && typeof payload.timestamp !== "string") {
     return jsonWithRequest(request, { error: "invalid_timestamp" }, 400);
   }
-  const timestamp = typeof payload.timestamp === "string" &&
+  // Client timestamps are accepted only within a plausible offline window;
+  // the server time remains the authoritative audit anchor (`created_at`).
+  const serverNow = new Date();
+  const clientTimestamp = typeof payload.timestamp === "string" &&
       !Number.isNaN(new Date(payload.timestamp).getTime())
-    ? new Date(payload.timestamp).toISOString()
-    : new Date().toISOString();
+    ? new Date(payload.timestamp)
+    : null;
+  const maxBackfillMs = 30 * 24 * 60 * 60 * 1000;
+  const timestamp = clientTimestamp &&
+      clientTimestamp.getTime() <= serverNow.getTime() &&
+      serverNow.getTime() - clientTimestamp.getTime() <= maxBackfillMs
+    ? clientTimestamp.toISOString()
+    : serverNow.toISOString();
 
   const { data: existing, error: existingError } = await service
     .from("consent_records")
@@ -169,6 +174,16 @@ Deno.serve(async (request) => {
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     .test(value);
+}
+
+function clientIpFromHeaders(request: Request): string | null {
+  const cloudflare = request.headers.get("cf-connecting-ip")?.trim();
+  if (cloudflare) return cloudflare.slice(0, MAX_IP_ADDRESS_LENGTH);
+  const forwarded = request.headers.get("x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  if (forwarded) return forwarded.slice(0, MAX_IP_ADDRESS_LENGTH);
+  return null;
 }
 
 function sanitizeText(value: unknown, maxLength: number): string | null {

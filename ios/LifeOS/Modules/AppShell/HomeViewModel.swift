@@ -152,7 +152,9 @@ final class HomeViewModel {
     private(set) var recoveryScore: Double?
     private(set) var recoveryZone: RecoveryZone?
     private(set) var recoveryConfidence: Double?
+    private(set) var displayName: String?
     private(set) var contextualRecoveryAction: RecoveryContextualAction?
+    private(set) var recoverySourceDate: String?
     private(set) var recommendations: [Recommendation] = []
     private var lastAnnouncedZone: RecoveryZone?
 
@@ -163,6 +165,10 @@ final class HomeViewModel {
     private(set) var nutritionUnderTarget: Int?
     private(set) var unreadInsightsCount: Int = 0
     private(set) var sleepPermissionMissing: Bool = false
+    /// Chronic fatigue enables the conservative recommendation mode: activity
+    /// suggestions are withheld because standard training advice may be
+    /// harmful for this population.
+    private(set) var conservativeRecommendationsMode: Bool = false
 
     private let logger = Logger(subsystem: "com.lifeos.app", category: "HomeViewModel")
     private let pushLatestWatchSnapshot: @Sendable (String?) async -> Void
@@ -194,6 +200,18 @@ final class HomeViewModel {
         !setupChecklistStore.isFullyComplete
     }
 
+    /// Human-readable measurement date of the displayed recovery score.
+    var recoverySourceDateDisplay: String? {
+        guard let recoverySourceDate else { return nil }
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: recoverySourceDate) else {
+            return recoverySourceDate
+        }
+        return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
+    }
+
     func refresh() async {
         do {
             let currentDailySnapshot: DailyInsightsSnapshot?
@@ -208,10 +226,14 @@ final class HomeViewModel {
             let snapshot = try await dbQueue.read { db in
                 try RecoverySnapshot.fetchLatest(db, authId: authId)
             }
+            displayName = try await dbQueue.read { db in
+                try UserIdentityLookup.fetchUser(authId: authId, db: db)?.displayName
+            }
 
             recoveryScore = snapshot?.state.recoveryScore
             recoveryZone = snapshot.map { RecoveryZone.from(score: $0.state.recoveryScore) }
             recoveryConfidence = snapshot?.state.confidenceScore
+            recoverySourceDate = snapshot?.state.date
             contextualRecoveryAction = snapshot.flatMap {
                 Self.makeContextualAction(state: $0.state, sleepBaselineHours: $0.sleepBaselineHours)
             }
@@ -243,14 +265,20 @@ final class HomeViewModel {
             unreadInsightsCount = nba.unreadInsights
             sleepPermissionMissing = nba.sleepMissing
             let storedRecommendations = try await Self.loadRecommendations(db: dbQueue)
-            recommendations = storedRecommendations.isEmpty
+            let healthFlags = try await Self.loadHealthFlags(db: dbQueue)
+            conservativeRecommendationsMode = healthFlags?.conservativeRecommendations ?? false
+            let loadedRecommendations = storedRecommendations.isEmpty
                 ? (currentDailySnapshot?.recommendations ?? [])
                 : storedRecommendations
+            recommendations = conservativeRecommendationsMode
+                ? loadedRecommendations.filter(Self.isAllowedInConservativeMode)
+                : loadedRecommendations
         } catch {
             logger.error("Failed to refresh home screen data from DB: \(error.localizedDescription)")
             recoveryScore = nil
             recoveryZone = nil
             recoveryConfidence = nil
+            recoverySourceDate = nil
             contextualRecoveryAction = nil
             recommendations = []
             nextBestAction = nil
@@ -258,6 +286,7 @@ final class HomeViewModel {
             nutritionUnderTarget = nil
             unreadInsightsCount = 0
             sleepPermissionMissing = false
+            conservativeRecommendationsMode = false
         }
 
         // Refresh setup checklist (progressive disclosure for new users)
@@ -434,8 +463,27 @@ final class HomeViewModel {
         )
     }
 
-    private static func loadRecommendations(db: DatabaseQueue) async throws -> [Recommendation] {
+    private static func loadHealthFlags(db: DatabaseQueue) async throws -> UserHealthFlags? {
         let authId = AuthManager.activeAuthId?.uuidString
+        return try await db.read { db in
+            guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
+                return nil
+            }
+            return try UserHealthFlags
+                .filter(Column("user_id") == userId || Column("user_id") == userId.uuidString)
+                .fetchOne(db)
+        }
+    }
+
+    private static let conservativeBlockedCategories: Set<String> = [
+        "training", "workout", "exercise", "performance", "activity", "load", "fitness"
+    ]
+
+    private static func isAllowedInConservativeMode(_ recommendation: Recommendation) -> Bool {
+        !conservativeBlockedCategories.contains(recommendation.category.lowercased())
+    }
+
+    private static func loadRecommendations(db: DatabaseQueue) async throws -> [Recommendation] {        let authId = AuthManager.activeAuthId?.uuidString
         return try await db.read { db in
             guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
                 return []
@@ -622,14 +670,13 @@ final class HomeViewModel {
         return remaining > 0 ? remaining : nil
     }
 
-    /// Check whether HealthKit sleep analysis permission is missing.
+    /// Check whether HealthKit sleep read access has never been requested.
     private static func checkSleepPermissionMissing() async -> Bool {
 #if os(iOS)
         guard HealthKitManager.isAvailable else { return false }
-        let store = HKHealthStore()
-        let sleepType = HKCategoryType(.sleepAnalysis)
-        let status = store.authorizationStatus(for: sleepType)
-        return status == .notDetermined
+        // authorizationStatus(for:) reports WRITE status and can never confirm
+        // read access; request completion is the only honest signal.
+        return !UserDefaults.standard.bool(forKey: "healthkit_read_request_completed")
 #else
         return false
 #endif

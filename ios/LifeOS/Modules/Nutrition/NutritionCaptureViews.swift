@@ -475,9 +475,11 @@ struct NutritionBarcodeScannerView: View {
                                 VStack(spacing: Spacing.xxs) {
                                     Text(matchedProduct.name)
                                         .font(LifeOSTypography.headline)
-                                    Text("\(matchedProduct.roundedCaloriesPer100g) kcal / 100g")
-                                        .font(LifeOSTypography.caption)
-                                        .foregroundStyle(.secondary)
+                                    if !NutritionSafetyPolicy.hidesCalories {
+                                        Text("\(matchedProduct.roundedCaloriesPer100g) kcal / 100g")
+                                            .font(LifeOSTypography.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
 

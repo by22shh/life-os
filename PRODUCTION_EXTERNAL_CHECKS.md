@@ -5,9 +5,10 @@ unit tests, simulators, or the repository alone. Each item needs hardware,
 credentials, or a hosted project. Nothing here is claimed as passing until the
 listed command/observation is actually run and its artifact is attached.
 
-Local gates that are already green (see `audits/system-audit-2026-09-08/`):
+Local gates that are already green (re-verified 2026-09-11 after the
+2026-09-11 hardening pass; see `audits/system-audit-2026-09-08/`):
 Deno fmt/lint/check + 280 tests, clean DB migrations + upgrade + integrity,
-edge E2E (66 scenarios), iOS build + 815 unit tests + widgets + watch,
+edge E2E (66 scenarios), iOS build + 821 unit tests + widgets + watch,
 core UI E2E and accessibility audit. Those do **not** substitute for the items below.
 
 Legend: **BLOCKER** = required before App Store submission · **PILOT** = required

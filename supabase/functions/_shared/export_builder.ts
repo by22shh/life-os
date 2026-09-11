@@ -42,7 +42,7 @@ export async function ensureExportReady(
   const artifact = await fetchExportArtifact(service, jobId, userId);
   if (artifact) {
     if (isExpired(artifact.expires_at)) {
-      await expireExport(service, jobId);
+      await expireExport(service, jobId, userId);
       return { status: "expired", downloadUrl: null };
     }
 
@@ -177,7 +177,7 @@ export async function fetchReadyExportArtifact(
   }
 
   if (isExpired(data.expires_at)) {
-    await expireExport(service, jobId);
+    await expireExport(service, jobId, userId);
     return null;
   }
 
@@ -238,14 +238,19 @@ async function rotateExportArtifactToken(
   return { downloadToken, downloadUrl };
 }
 
-async function expireExport(service: ServiceClient, jobId: string) {
+async function expireExport(
+  service: ServiceClient,
+  jobId: string,
+  userId: string,
+) {
   await service
     .from("export_jobs")
     .update({
       status: "expired",
       download_url: null,
     })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .eq("user_id", userId);
 }
 
 function buildDownloadURL(
@@ -284,6 +289,9 @@ const REDACTED_KEYS = new Set([
   "gps_longitude",
   "original_image_url",
   "image_url",
+  "scan_image_url",
+  "video_url",
+  "download_url",
   "ai_extraction_raw",
   "raw_document",
   "raw_pdf",
@@ -357,6 +365,7 @@ async function buildExportPayload(
     medicalScans,
     healthMeasurements,
     healthDiagnoses,
+    trainingLoads,
     experiments,
     insights,
     recommendations,
@@ -386,6 +395,7 @@ async function buildExportPayload(
     fetchAllByUserId(service, "medical_scans", userId),
     fetchAllByUserId(service, "health_measurements", userId),
     fetchAllByUserId(service, "health_diagnoses", userId),
+    fetchAllByUserId(service, "training_loads", userId),
     fetchAllByUserId(service, "experiments", userId),
     fetchAllByUserId(service, "insights", userId),
     fetchAllByUserId(service, "recommendations", userId),
@@ -393,6 +403,18 @@ async function buildExportPayload(
     fetchAllByUserId(service, "consent_records", userId),
     fetchAllByUserId(service, "notification_log", userId),
     fetchAllByUserId(service, "analytics_events", userId),
+  ]);
+
+  // Catalog rows are user-created but do not carry user_id; export them so
+  // workout exercises and favorite references stay resolvable in the archive.
+  const [exerciseCatalog, foodCatalogItems] = await Promise.all([
+    fetchAllByColumn(service, "exercise_catalog", "created_by", userId),
+    fetchAllByColumn(
+      service,
+      "food_catalog_items",
+      "created_by_user_id",
+      userId,
+    ),
   ]);
 
   const batchRecipeIds = collectIds(batchRecipes);
@@ -480,6 +502,11 @@ async function buildExportPayload(
       training_plans: trainingPlans,
       training_plan_sessions: trainingPlanSessions,
       training_templates: trainingTemplates,
+      training_loads: trainingLoads,
+    },
+    catalogs: {
+      exercise_catalog: exerciseCatalog,
+      food_catalog_items: foodCatalogItems,
     },
     supplements: {
       user_supplements: userSupplements,
@@ -541,6 +568,19 @@ async function fetchAllByUserId(
     service,
     table,
     (query) => query.eq("user_id", userId),
+  );
+}
+
+async function fetchAllByColumn(
+  service: ServiceClient,
+  table: string,
+  column: string,
+  value: string,
+): Promise<Record<string, unknown>[]> {
+  return await fetchAllPaged(
+    service,
+    table,
+    (query) => query.eq(column, value),
   );
 }
 
@@ -634,6 +674,7 @@ export const __exportBuilderTestHooks = {
   expireExport,
   exportFailureReason,
   fetchAllByIds,
+  fetchAllByColumn,
   fetchAllByUserId,
   fetchAllPaged,
   fetchCountByUserId,

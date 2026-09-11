@@ -1200,6 +1200,79 @@ await runFunctionScenario(
     assertEquals(objectValue(ocrLookup.body, "type"), "catalog");
     assertEquals(objectValue(ocrLookup.body, "provider"), "lifeos_label_ocr");
 
+    // A second authenticated user must not be able to overwrite the shared
+    // catalog row created above (cross-tenant catalog poisoning).
+    const foreignOverwrite = await requestJson(
+      LOCAL_FUNCTION_URL,
+      `/barcode/${ocrCatalogBarcode}/create`,
+      {
+        method: "POST",
+        headers: {
+          ...jsonAuthHeaders(stressAuth.accessToken),
+          "X-Outbox-Replay": "true",
+        },
+        body: JSON.stringify({
+          provider: "lifeos_label_ocr",
+          name: "Poisoned macros",
+          serving_size_g: 100,
+          macros_per_100g: {
+            calories: 999,
+            protein_g: 0,
+            fat_g: 0,
+            carbs_g: 0,
+            fiber_g: 0,
+          },
+        }),
+      },
+    );
+    assertEquals(foreignOverwrite.status, 409);
+    assertEquals(
+      objectValue(foreignOverwrite.body, "error"),
+      "catalog_item_exists",
+    );
+
+    const providerSpoof = await requestJson(
+      LOCAL_FUNCTION_URL,
+      `/barcode/${ocrCatalogBarcode}/create`,
+      {
+        method: "POST",
+        headers: {
+          ...jsonAuthHeaders(stressAuth.accessToken),
+          "X-Outbox-Replay": "true",
+        },
+        body: JSON.stringify({
+          provider: "open_food_facts",
+          name: "Provider spoof",
+          macros_per_100g: {
+            calories: 1,
+            protein_g: 0,
+            fat_g: 0,
+            carbs_g: 0,
+            fiber_g: 0,
+          },
+        }),
+      },
+    );
+    assertEquals(providerSpoof.status, 403);
+    assertEquals(
+      objectValue(providerSpoof.body, "error"),
+      "provider_read_only",
+    );
+
+    const catalogAfterPoisonAttempt = await requestJson(
+      LOCAL_FUNCTION_URL,
+      `/barcode/${ocrCatalogBarcode}`,
+      {
+        method: "GET",
+        headers: authHeaders(auth.accessToken),
+      },
+    );
+    assertEquals(catalogAfterPoisonAttempt.status, 200);
+    assertEquals(
+      objectValue(catalogAfterPoisonAttempt.body, "name"),
+      "Ryazhenka 4%",
+    );
+
     const override = await requestJson(
       LOCAL_FUNCTION_URL,
       "/custom",

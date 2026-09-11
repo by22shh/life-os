@@ -161,6 +161,36 @@ final class SyncFixtureContractGateTests: XCTestCase {
         assertCanonicalHealthMeasurementShape(object)
     }
 
+    private let requiredSleepLogKeys: Set<String> = [
+        "id",
+        "user_id",
+        "created_at",
+        "updated_at",
+        "sleep_date",
+        "source",
+        "bed_time",
+        "wake_time",
+        "total_duration_minutes",
+        "time_in_bed_minutes",
+        "deep_sleep_minutes",
+        "rem_sleep_minutes",
+        "light_sleep_minutes",
+        "awake_minutes",
+        "number_of_awakenings",
+        "sleep_efficiency",
+        "sleep_quality_score",
+        "device_name",
+    ]
+
+    func testSleepLogFixtureUsesCanonicalServerShape() throws {
+        let fixture = SyncContractFixtures.sleepLog()
+        let missing = requiredSleepLogKeys.subtracting(fixture.keys)
+        XCTAssertTrue(
+            missing.isEmpty,
+            "sleep_log fixture is missing canonical columns: \(missing.sorted())"
+        )
+    }
+
     private func assertCanonicalHealthMeasurementShape(
         _ object: [String: Any],
         file: StaticString = #filePath,

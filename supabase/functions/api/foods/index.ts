@@ -26,6 +26,14 @@ const VALID_PROVIDERS = new Set([
   "other",
 ]);
 
+// Providers whose shared catalog rows are written by data pipelines, never by
+// clients. User-submitted creates may only use the writable subset.
+const USER_WRITABLE_PROVIDERS = new Set([
+  "lifeos_label_ocr",
+  "manual_import",
+  "other",
+]);
+
 Deno.serve(async (request) => {
   const preflight = handleCorsPreflight(request);
   if (preflight) return preflight;
@@ -195,6 +203,9 @@ async function handleBarcodeCreate(
   if (!VALID_PROVIDERS.has(provider)) {
     return jsonWithRequest(request, { error: "invalid_provider" }, 400);
   }
+  if (!USER_WRITABLE_PROVIDERS.has(provider)) {
+    return jsonWithRequest(request, { error: "provider_read_only" }, 403);
+  }
   if (!name) {
     return jsonWithRequest(request, { error: "name_required" }, 400);
   }
@@ -204,33 +215,82 @@ async function handleBarcodeCreate(
     return jsonWithRequest(request, { error: macrosParsed.error }, 400);
   }
 
-  const rowId = isUUID(String(payload.id ?? ""))
-    ? String(payload.id)
-    : crypto.randomUUID();
-
-  const { data: inserted, error } = await service
+  const existingResult = await service
     .from("food_catalog_items")
-    .upsert({
-      id: rowId,
-      provider,
-      barcode: code,
-      provider_item_id: code,
-      created_by_user_id: userId,
-      name,
-      brand: optionalString(payload.brand),
-      serving_size_g: toNumberOrNull(payload.serving_size_g),
-      calories_per_100g: macrosParsed.value.calories,
-      protein_per_100g: macrosParsed.value.protein_g,
-      fat_per_100g: macrosParsed.value.fat_g,
-      carbs_per_100g: macrosParsed.value.carbs_g,
-      fiber_per_100g: macrosParsed.value.fiber_g,
-      source_confidence: toUnitFloatOrNull(payload.source_confidence),
-      expires_at: null,
-    }, { onConflict: "provider,barcode" })
-    .select("id,provider,barcode")
-    .single<{ id: string; provider: string; barcode: string }>();
+    .select("id,created_by_user_id")
+    .eq("provider", provider)
+    .eq("barcode", code)
+    .maybeSingle<{ id: string; created_by_user_id: string | null }>();
+
+  if (existingResult.error) {
+    return jsonWithRequest(request, {
+      error: "barcode_create_failed",
+      detail: sanitizedInternalDetail(request, "index", existingResult.error),
+    }, 500);
+  }
+
+  const existing = existingResult.data;
+  if (existing && existing.created_by_user_id !== userId) {
+    // Shared or foreign catalog rows are never overwritten through the client
+    // create path (prevents cross-tenant catalog poisoning).
+    return jsonWithRequest(request, {
+      error: "catalog_item_exists",
+      id: existing.id,
+    }, 409);
+  }
+  if (
+    existing && isUUID(String(payload.id ?? "")) &&
+    String(payload.id) !== existing.id
+  ) {
+    return jsonWithRequest(request, { error: "catalog_id_mismatch" }, 409);
+  }
+
+  const rowId = existing?.id ??
+    (isUUID(String(payload.id ?? ""))
+      ? String(payload.id)
+      : crypto.randomUUID());
+
+  const rowValues = {
+    provider,
+    barcode: code,
+    provider_item_id: code,
+    name,
+    brand: optionalString(payload.brand),
+    serving_size_g: toNumberOrNull(payload.serving_size_g),
+    calories_per_100g: macrosParsed.value.calories,
+    protein_per_100g: macrosParsed.value.protein_g,
+    fat_per_100g: macrosParsed.value.fat_g,
+    carbs_per_100g: macrosParsed.value.carbs_g,
+    fiber_per_100g: macrosParsed.value.fiber_g,
+    source_confidence: toUnitFloatOrNull(payload.source_confidence),
+    expires_at: null,
+  };
+
+  const write = existing
+    ? service
+      .from("food_catalog_items")
+      .update({ ...rowValues, id: existing.id })
+      .eq("id", existing.id)
+      .eq("created_by_user_id", userId)
+      .select("id,provider,barcode")
+      .single<{ id: string; provider: string; barcode: string }>()
+    : service
+      .from("food_catalog_items")
+      .insert({
+        ...rowValues,
+        id: rowId,
+        created_by_user_id: userId,
+      })
+      .select("id,provider,barcode")
+      .single<{ id: string; provider: string; barcode: string }>();
+
+  const { data: inserted, error } = await write;
 
   if (error) {
+    const errorCode = (error as { code?: string }).code;
+    if (errorCode === "23505") {
+      return jsonWithRequest(request, { error: "catalog_item_exists" }, 409);
+    }
     return jsonWithRequest(request, {
       error: "barcode_create_failed",
       detail: sanitizedInternalDetail(request, "index", error),
@@ -330,6 +390,50 @@ async function handleFavoriteCreate(
   }
   if (!isUUID(refId)) {
     return jsonWithRequest(request, { error: "invalid_ref_id" }, 400);
+  }
+
+  if (refType === "custom") {
+    const { data: ownedFood, error: ownedFoodError } = await service
+      .from("user_foods")
+      .select("id")
+      .eq("id", refId)
+      .eq("user_id", userId)
+      .maybeSingle<{ id: string }>();
+    if (ownedFoodError) {
+      return jsonWithRequest(request, {
+        error: "favorite_reference_lookup_failed",
+        detail: sanitizedInternalDetail(request, "index", ownedFoodError),
+      }, 500);
+    }
+    if (!ownedFood) {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_favorite_reference" },
+        400,
+      );
+    }
+  } else {
+    const { data: catalogItem, error: catalogItemError } = await service
+      .from("food_catalog_items")
+      .select("id,created_by_user_id")
+      .eq("id", refId)
+      .maybeSingle<{ id: string; created_by_user_id: string | null }>();
+    if (catalogItemError) {
+      return jsonWithRequest(request, {
+        error: "favorite_reference_lookup_failed",
+        detail: sanitizedInternalDetail(request, "index", catalogItemError),
+      }, 500);
+    }
+    const referenceIsVisible = catalogItem != null &&
+      (catalogItem.created_by_user_id === null ||
+        catalogItem.created_by_user_id === userId);
+    if (!referenceIsVisible) {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_favorite_reference" },
+        400,
+      );
+    }
   }
 
   const favoriteId = isUUID(String(payload.id ?? ""))

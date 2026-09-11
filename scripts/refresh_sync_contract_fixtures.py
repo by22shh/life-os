@@ -310,9 +310,35 @@ def validate_health_measurement_fixture(row: dict[str, Any]) -> None:
         )
 
 
+SLEEP_LOG_CANONICAL_KEYS = {
+    "bed_time",
+    "wake_time",
+    "total_duration_minutes",
+    "time_in_bed_minutes",
+    "deep_sleep_minutes",
+    "rem_sleep_minutes",
+    "light_sleep_minutes",
+    "awake_minutes",
+    "number_of_awakenings",
+    "sleep_efficiency",
+    "sleep_quality_score",
+    "device_name",
+}
+
+
+def validate_sleep_log_fixture(row: dict[str, Any]) -> None:
+    missing = sorted(key for key in SLEEP_LOG_CANONICAL_KEYS if key not in row)
+    if missing:
+        raise RuntimeError(
+            "sleep_log fixture is missing canonical columns: " + ", ".join(missing)
+        )
+
+
 def validate_fixture_shape(spec: FixtureSpec, row: dict[str, Any]) -> None:
     if spec.file_stem == "health_measurement":
         validate_health_measurement_fixture(row)
+    elif spec.file_stem == "sleep_log":
+        validate_sleep_log_fixture(row)
 
 
 def main() -> int:

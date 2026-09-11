@@ -144,6 +144,7 @@ enum LabsError: LocalizedError {
 enum SettingsError: LocalizedError {
     case saveFailed
     case exportFailed
+    case importFailed
     case deletionFailed
     case consentVersionMismatch
 
@@ -153,6 +154,8 @@ enum SettingsError: LocalizedError {
             return NSLocalizedString("error.settings.save_failed", value: "Unable to save settings right now", comment: "Settings error: save failed")
         case .exportFailed:
             return NSLocalizedString("error.settings.export_failed", value: "Unable to prepare your export right now", comment: "Settings error: export failed")
+        case .importFailed:
+            return NSLocalizedString("error.settings.import_failed", value: "Unable to import this archive", comment: "Settings error: archive import failed")
         case .deletionFailed:
             return NSLocalizedString("error.settings.deletion_failed", value: "Account deletion request failed", comment: "Settings error: deletion failed")
         case .consentVersionMismatch:

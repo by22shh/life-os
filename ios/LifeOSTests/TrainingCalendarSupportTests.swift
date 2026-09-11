@@ -31,6 +31,14 @@ private actor TrainingCalendarRouteAPIClientMock: TrainingCalendarRouteAPIClient
 
 @MainActor
 final class TrainingCalendarSupportTests: XCTestCase {
+    private func localized(_ key: String) -> String {
+        String(localized: String.LocalizationValue(key))
+    }
+
+    private func localizedFormat(_ key: String, _ arguments: CVarArg...) -> String {
+        String(format: localized(key), arguments: arguments)
+    }
+
     override func tearDown() {
         AuthManager.setActiveAuthIdForTests(nil)
         AuthManager._testSetActiveHasCloudSession(false)
@@ -50,7 +58,7 @@ final class TrainingCalendarSupportTests: XCTestCase {
         XCTAssertFalse(restDay.hasPlannedWorkout)
         XCTAssertNil(restDay.durationLabel)
         XCTAssertNil(restDay.compactMetricLabel)
-        XCTAssertTrue(restDay.accessibilitySummary.contains("Recovery day"))
+        XCTAssertTrue(restDay.accessibilitySummary.contains(localized("training.calendar_rest_day")))
 
         let plannedDay = TrainingCalendarDay(
             day: "2026-03-03",
@@ -61,8 +69,8 @@ final class TrainingCalendarSupportTests: XCTestCase {
             totalTrimpScore: 0
         )
         XCTAssertTrue(plannedDay.hasPlannedWorkout)
-        XCTAssertEqual(plannedDay.compactMetricLabel, "2 plan")
-        XCTAssertTrue(plannedDay.accessibilitySummary.contains("2 planned sessions"))
+        XCTAssertEqual(plannedDay.compactMetricLabel, localizedFormat("training.calendar_planned_short_format", 2))
+        XCTAssertTrue(plannedDay.accessibilitySummary.contains(localizedFormat("training.calendar_planned_format", 2)))
 
         let loggedDay = TrainingCalendarDay(
             day: "2026-03-04",
@@ -75,8 +83,8 @@ final class TrainingCalendarSupportTests: XCTestCase {
         XCTAssertTrue(loggedDay.hasLoggedWorkout)
         XCTAssertEqual(loggedDay.durationLabel, localizedTrainingMinutes(135))
         XCTAssertEqual(loggedDay.compactMetricLabel, localizedTrainingMinutes(135))
-        XCTAssertTrue(loggedDay.accessibilitySummary.contains("3 logged workouts"))
-        XCTAssertTrue(loggedDay.accessibilitySummary.contains("TRIMP 155"))
+        XCTAssertTrue(loggedDay.accessibilitySummary.contains(localizedFormat("training.calendar_logged_format", 3)))
+        XCTAssertTrue(loggedDay.accessibilitySummary.contains(localizedFormat("training.calendar_trimp_format", 155.0)))
 
         let mixedSummary = TrainingCalendarWeekSummary(days: [restDay, plannedDay, loggedDay])
         XCTAssertEqual(mixedSummary.loggedSessions, 3)
@@ -84,7 +92,7 @@ final class TrainingCalendarSupportTests: XCTestCase {
         XCTAssertEqual(mixedSummary.completedPlannedSessions, 2)
         XCTAssertEqual(mixedSummary.totalDurationMinutes, 135)
         XCTAssertEqual(mixedSummary.totalTrimpScore, 155)
-        XCTAssertEqual(mixedSummary.completionLabel, "3 of 4 planned")
+        XCTAssertEqual(mixedSummary.completionLabel, localizedFormat("training.calendar_completion_format", 3, 4))
         XCTAssertEqual(mixedSummary.durationLabel, localizedTrainingMinutes(135))
         XCTAssertEqual(mixedSummary.loadLabel, "155 TRIMP")
 
@@ -98,12 +106,12 @@ final class TrainingCalendarSupportTests: XCTestCase {
                 totalTrimpScore: 20
             )
         ])
-        XCTAssertEqual(loggedOnlySummary.completionLabel, "1 workouts logged")
+        XCTAssertEqual(loggedOnlySummary.completionLabel, localizedFormat("training.calendar_logged_only_format", 1))
 
         let emptySummary = TrainingCalendarWeekSummary(days: [restDay])
-        XCTAssertEqual(emptySummary.completionLabel, "Recovery-focused week")
-        XCTAssertEqual(emptySummary.durationLabel, "No duration yet")
-        XCTAssertEqual(emptySummary.loadLabel, "Load building")
+        XCTAssertEqual(emptySummary.completionLabel, localized("training.calendar_recovery_week"))
+        XCTAssertEqual(emptySummary.durationLabel, localized("training.calendar_no_duration"))
+        XCTAssertEqual(emptySummary.loadLabel, localized("training.calendar_load_pending"))
     }
 
     func testRangeHelpersResolveContainingWeekAndCalendarMonth() throws {
@@ -183,7 +191,7 @@ final class TrainingCalendarSupportTests: XCTestCase {
         XCTAssertEqual(requests.count, 0)
         XCTAssertEqual(days.map(\.day), ["2026-03-01", "2026-03-02", "2026-03-03"])
         XCTAssertTrue(days.allSatisfy { !$0.hasLoggedWorkout && !$0.hasPlannedWorkout })
-        XCTAssertTrue(days.allSatisfy { $0.accessibilitySummary.contains("Recovery day") })
+        XCTAssertTrue(days.allSatisfy { $0.accessibilitySummary.contains(localized("training.calendar_rest_day")) })
     }
 
     func testLocalFallbackAggregatesWorkoutAndPlanRowsAndIgnoresDeletedSessions() async throws {

@@ -677,7 +677,7 @@ struct SettingsProfileView: View {
                         .keyboardType(.decimalPad)
                         .accessibilityIdentifier("settings.profile.height")
 
-                        Text(String(localized: "unit_cm"))
+                        Text(UnitPreferences.heightUnitLabel(viewModel.userUnits))
                             .foregroundStyle(.secondary)
                     }
 
@@ -804,6 +804,12 @@ struct SettingsHealthFlagsView: View {
                         }
                         if viewModel.flags.pregnancyMode {
                             Label(String(localized: "settings_health_flags_pregnancy_mode"), systemImage: "figure.and.child.holdinghands")
+                        }
+                        if viewModel.flags.hrvInterpretationCaveat {
+                            Label(String(localized: "settings_health_flags_hrv_caveat"), systemImage: "waveform.path.ecg.rectangle")
+                        }
+                        if viewModel.flags.conservativeRecommendations {
+                            Label(String(localized: "settings_health_flags_conservative"), systemImage: "shield.lefthalf.filled")
                         }
                     } header: {
                         Text(String(localized: "settings_health_flags_effects"))
@@ -1136,6 +1142,7 @@ private final class SettingsProfileViewModel {
     var hasDateOfBirth = false
     var sex: BiologicalSex?
     var heightInputText = ""
+    var userUnits: UnitSystem = .metric
     var primaryGoal: PrimaryGoal?
     var activityLevel: ActivityLevel?
     var isLoaded = false
@@ -1163,10 +1170,29 @@ private final class SettingsProfileViewModel {
     }
 
     var parsedHeightCm: Double? {
-        SettingsAccountFormSupport.parseMetricValue(
+        guard let displayed = SettingsAccountFormSupport.parseMetricValue(
             heightInputText,
-            allowedRange: SettingsAccountFormSupport.minimumHeightCm...SettingsAccountFormSupport.maximumHeightCm
+            allowedRange: displayedHeightRange
+        ) else {
+            return nil
+        }
+        guard userUnits == .imperial else { return displayed }
+        let centimeters = UnitPreferences.centimeters(fromDisplayedHeight: displayed, units: userUnits)
+        guard SettingsAccountFormSupport.minimumHeightCm...SettingsAccountFormSupport.maximumHeightCm
+            ~= centimeters else { return nil }
+        return SettingsAccountFormSupport.roundedMetricValue(centimeters)
+    }
+
+    private var displayedHeightRange: ClosedRange<Double> {
+        let minimum = UnitPreferences.heightValue(
+            fromCentimeters: SettingsAccountFormSupport.minimumHeightCm,
+            units: userUnits
         )
+        let maximum = UnitPreferences.heightValue(
+            fromCentimeters: SettingsAccountFormSupport.maximumHeightCm,
+            units: userUnits
+        )
+        return minimum...maximum
     }
 
     var canSave: Bool {
@@ -1287,6 +1313,7 @@ private final class SettingsProfileViewModel {
     fileprivate func applyLoadedUser(_ user: User) {
         displayName = user.displayName ?? ""
         email = user.email
+        userUnits = user.units
         if let dateOfBirth = user.dateOfBirth {
             self.dateOfBirth = SettingsAccountFormSupport.clampedDateOfBirth(dateOfBirth)
             hasDateOfBirth = true
@@ -1296,7 +1323,10 @@ private final class SettingsProfileViewModel {
         }
         sex = user.sex
         if let heightCm = user.heightCm {
-            heightInputText = SettingsAccountFormSupport.formattedMetricValue(heightCm)
+            heightInputText = UnitPreferences.formattedDecimal(
+                UnitPreferences.heightValue(fromCentimeters: heightCm, units: user.units),
+                maxDecimals: 1
+            )
         } else {
             heightInputText = ""
         }
@@ -1344,6 +1374,7 @@ private final class SettingsHealthFlagsViewModel {
 
     var hasDerivedEffects: Bool {
         flags.disableHrv || flags.hideCalories || flags.pregnancyMode
+            || flags.hrvInterpretationCaveat || flags.conservativeRecommendations
     }
 
     func load() async {
@@ -1721,11 +1752,16 @@ private struct SettingsAppleHealthMetric: Equatable, Identifiable {
 private struct SettingsAppleHealthSnapshot: Equatable {
     var isAvailable: Bool
     var metrics: [SettingsAppleHealthMetric]
+    /// True once the read-authorization request completed. HealthKit never
+    /// reveals whether the user granted read access, so request completion is
+    /// the only honest signal available to the UI.
+    var readRequestCompleted: Bool = false
 
     static let unavailable = SettingsAppleHealthSnapshot(isAvailable: false, metrics: [])
 
     var authorizedCount: Int {
-        metrics.filter { $0.status == .sharingAuthorized }.count
+        guard readRequestCompleted else { return 0 }
+        return metrics.filter { $0.status != .sharingDenied }.count
     }
 
     var hasDeniedAccess: Bool {
@@ -1733,7 +1769,7 @@ private struct SettingsAppleHealthSnapshot: Equatable {
     }
 
     var isFullyAuthorized: Bool {
-        !metrics.isEmpty && authorizedCount == metrics.count
+        readRequestCompleted && !metrics.isEmpty && authorizedCount == metrics.count
     }
 }
 
@@ -1758,7 +1794,13 @@ private func loadSettingsAppleHealthAuthorizationSnapshot() async -> SettingsApp
             status: store.authorizationStatus(for: HKQuantityType(.restingHeartRate))
         )
     ]
-    return SettingsAppleHealthSnapshot(isAvailable: true, metrics: metrics)
+    return SettingsAppleHealthSnapshot(
+        isAvailable: true,
+        metrics: metrics,
+        readRequestCompleted: UserDefaults.standard.bool(
+            forKey: "healthkit_read_request_completed"
+        )
+    )
 }
 
 @MainActor
@@ -1842,7 +1884,7 @@ private final class SettingsAppleHealthViewModel {
     }
 
     var canImportRecent: Bool {
-        snapshot.isAvailable && snapshot.authorizedCount > 0 && !isBackfilling
+        snapshot.isAvailable && snapshot.readRequestCompleted && !isBackfilling
     }
 
     func load() async {
@@ -1893,16 +1935,12 @@ private final class SettingsAppleHealthViewModel {
     }
 
     func metricStatusText(for status: HKAuthorizationStatus) -> String {
-        switch status {
-        case .sharingAuthorized:
+        // Read access cannot be queried; only the completed request is known.
+        if snapshot.readRequestCompleted {
             return String(localized: "settings_apple_health_metric_allowed")
-        case .sharingDenied:
-            return String(localized: "settings_apple_health_metric_denied")
-        case .notDetermined:
-            return String(localized: "settings_apple_health_metric_not_requested")
-        @unknown default:
-            return String(localized: "settings_apple_health_metric_not_requested")
         }
+        _ = status
+        return String(localized: "settings_apple_health_metric_not_requested")
     }
 
     private func latestUserId() async throws -> UUID? {
@@ -2013,7 +2051,8 @@ extension SettingsDestinationViewsTestHarness {
                 SettingsAppleHealthMetric(id: "sleep", title: "Sleep", status: .sharingAuthorized),
                 SettingsAppleHealthMetric(id: "hrv", title: "HRV", status: .sharingAuthorized),
                 SettingsAppleHealthMetric(id: "resting_hr", title: "Resting HR", status: .sharingAuthorized)
-            ]
+            ],
+            readRequestCompleted: true
         )
         SettingsAppleHealthView(
             testSnapshot: connectedSnapshot,
@@ -2238,7 +2277,8 @@ extension SettingsDestinationViewsTestHarness {
                 SettingsAppleHealthMetric(id: "sleep", title: "Sleep", status: .sharingAuthorized),
                 SettingsAppleHealthMetric(id: "hrv", title: "HRV", status: .sharingAuthorized),
                 SettingsAppleHealthMetric(id: "resting_hr", title: "Resting HR", status: .sharingAuthorized)
-            ]
+            ],
+            readRequestCompleted: true
         )
         var currentSnapshot = initialSnapshot
 

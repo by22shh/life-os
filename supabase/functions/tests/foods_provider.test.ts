@@ -56,6 +56,7 @@ class FakeFoodsRepository implements FoodsRepository {
   }
 
   searchCatalogFoods(
+    _userId: string,
     _query: string,
     _limit: number,
   ): Promise<CatalogFoodRow[]> {
@@ -72,6 +73,7 @@ class FakeFoodsRepository implements FoodsRepository {
   findCatalogFoodByBarcode(
     provider: string,
     barcode: string,
+    _userId?: string | null,
   ): Promise<CatalogFoodRow | null> {
     return Promise.resolve(
       this.catalogBarcodeRows.get(`${provider}:${barcode}`) ?? null,
@@ -80,7 +82,7 @@ class FakeFoodsRepository implements FoodsRepository {
 
   upsertCatalogFood(
     payload: CatalogFoodUpsertInput,
-  ): Promise<CatalogFoodRow> {
+  ): Promise<CatalogFoodRow | null> {
     this.upsertCalls.push(payload);
     const row: CatalogFoodRow = {
       id: `catalog-${payload.provider}-${payload.barcode}`,
@@ -512,6 +514,17 @@ Deno.test("createSupabaseFoodsRepository maps query results and payloads", async
 
     if (
       state.table === "food_catalog_items" &&
+      state.terminal === "maybeSingle" &&
+      state.selected === "id,created_by_user_id"
+    ) {
+      return {
+        data: { id: catalogBarcodeRow.id, created_by_user_id: null },
+        error: null,
+      };
+    }
+
+    if (
+      state.table === "food_catalog_items" &&
       state.terminal === "maybeSingle"
     ) {
       return { data: catalogBarcodeRow, error: null };
@@ -539,7 +552,7 @@ Deno.test("createSupabaseFoodsRepository maps query results and payloads", async
     customRows,
   );
   assertEquals(
-    await repository.searchCatalogFoods(escapedQuery, 8),
+    await repository.searchCatalogFoods("user-1", escapedQuery, 8),
     catalogRows,
   );
   assertEquals(
@@ -550,6 +563,7 @@ Deno.test("createSupabaseFoodsRepository maps query results and payloads", async
     await repository.findCatalogFoodByBarcode(
       "open_food_facts",
       "4601234500002",
+      "user-1",
     ),
     catalogBarcodeRow,
   );
@@ -641,6 +655,100 @@ Deno.test("createSupabaseFoodsRepository maps query results and payloads", async
   );
 });
 
+Deno.test("catalog reads are scoped to shared rows plus the caller's own rows", async () => {
+  const service = createMockSupabaseService((state) => {
+    if (
+      state.table === "food_catalog_items" && state.terminal === "returns"
+    ) {
+      return { data: [], error: null };
+    }
+    if (
+      state.table === "food_catalog_items" &&
+      state.terminal === "maybeSingle"
+    ) {
+      return { data: null, error: null };
+    }
+    throw new Error(`Unhandled mock query: ${JSON.stringify(state)}`);
+  });
+  const repository = createSupabaseFoodsRepository(service as never);
+
+  await repository.searchCatalogFoods("user-1", "kefir", 5);
+  await repository.findCatalogFoodByBarcode(
+    "open_food_facts",
+    "4601",
+    "user-1",
+  );
+
+  const searchCall = service.__calls.find((state) =>
+    state.terminal === "returns"
+  );
+  assertExists(searchCall);
+  assertEquals(
+    filterValue(searchCall, "or", ""),
+    "created_by_user_id.is.null,created_by_user_id.eq.user-1",
+  );
+
+  const barcodeCall = service.__calls.find((state) =>
+    state.terminal === "maybeSingle"
+  );
+  assertExists(barcodeCall);
+  assertEquals(
+    filterValue(barcodeCall, "or", ""),
+    "created_by_user_id.is.null,created_by_user_id.eq.user-1",
+  );
+});
+
+Deno.test("catalog barcode lookup without a user only returns shared rows", async () => {
+  const service = createMockSupabaseService((state) => {
+    if (
+      state.table === "food_catalog_items" &&
+      state.terminal === "maybeSingle"
+    ) {
+      return { data: null, error: null };
+    }
+    throw new Error(`Unhandled mock query: ${JSON.stringify(state)}`);
+  });
+  const repository = createSupabaseFoodsRepository(service as never);
+
+  await repository.findCatalogFoodByBarcode("open_food_facts", "4601");
+
+  const barcodeCall = service.__calls.find((state) =>
+    state.terminal === "maybeSingle"
+  );
+  assertExists(barcodeCall);
+  assertEquals(
+    filterValue(barcodeCall, "is", "created_by_user_id"),
+    null,
+  );
+});
+
+Deno.test("provider cache writes never re-attribute a user-owned catalog row", async () => {
+  const service = createMockSupabaseService((state) => {
+    if (
+      state.table === "food_catalog_items" &&
+      state.terminal === "maybeSingle" &&
+      state.selected === "id,created_by_user_id"
+    ) {
+      return {
+        data: { id: "catalog-owned", created_by_user_id: "user-2" },
+        error: null,
+      };
+    }
+    throw new Error(`Unhandled mock query: ${JSON.stringify(state)}`);
+  });
+  const repository = createSupabaseFoodsRepository(service as never);
+
+  const result = await repository.upsertCatalogFood(
+    providerFood("4601234500009", "Owned Kefir"),
+  );
+
+  assertEquals(result, null);
+  assertEquals(
+    service.__calls.some((state) => state.action === "upsert"),
+    false,
+  );
+});
+
 Deno.test("createSupabaseFoodsRepository wraps Supabase failures in FoodsError codes", async () => {
   const cases = [
     {
@@ -669,7 +777,7 @@ Deno.test("createSupabaseFoodsRepository wraps Supabase failures in FoodsError c
     {
       expectedCode: "catalog_foods_fetch_failed",
       invoke: (repository: ReturnType<typeof createSupabaseFoodsRepository>) =>
-        repository.searchCatalogFoods("kefir", 5),
+        repository.searchCatalogFoods("user-1", "kefir", 5),
       matches: (state: MockQueryState) =>
         state.table === "food_catalog_items" &&
         state.terminal === "returns" &&
@@ -698,8 +806,8 @@ Deno.test("createSupabaseFoodsRepository wraps Supabase failures in FoodsError c
         ),
       matches: (state: MockQueryState) =>
         state.table === "food_catalog_items" &&
-        state.action === "upsert" &&
-        state.terminal === "single",
+        state.terminal === "maybeSingle" &&
+        state.selected === "id,created_by_user_id",
     },
   ] as const;
 
@@ -833,7 +941,7 @@ Deno.test("barcode lookup returns a fresh cached provider item without refetchin
 
 Deno.test("barcode lookup remaps provider cache-write failures after an expired cache entry", async () => {
   class FailingRepository extends FakeFoodsRepository {
-    override upsertCatalogFood(): Promise<CatalogFoodRow> {
+    override upsertCatalogFood(): Promise<CatalogFoodRow | null> {
       return Promise.reject(
         new FoodsError(500, "catalog_cache_failed", "cache write failed"),
       );
@@ -941,7 +1049,7 @@ Deno.test("search keeps successful provider rows when one provider cache write f
   class PartiallyFailingRepository extends FakeFoodsRepository {
     override upsertCatalogFood(
       payload: CatalogFoodUpsertInput,
-    ): Promise<CatalogFoodRow> {
+    ): Promise<CatalogFoodRow | null> {
       if (payload.barcode === "4607000000005") {
         return Promise.reject(
           new FoodsError(500, "catalog_cache_failed", "write failed"),
@@ -1430,13 +1538,17 @@ Deno.test("createSupabaseFoodsRepository falls back to empty collections when Su
   assertEquals(await repository.listFavoriteRefs("user-1"), []);
   assertEquals(await repository.listRecentRefs("user-1"), []);
   assertEquals(await repository.searchCustomFoods("user-1", "kefir", 5), []);
-  assertEquals(await repository.searchCatalogFoods("kefir", 5), []);
+  assertEquals(await repository.searchCatalogFoods("user-1", "kefir", 5), []);
   assertEquals(
     await repository.findCustomFoodByBarcode("user-1", "4601"),
     null,
   );
   assertEquals(
-    await repository.findCatalogFoodByBarcode("open_food_facts", "4602"),
+    await repository.findCatalogFoodByBarcode(
+      "open_food_facts",
+      "4602",
+      "user-1",
+    ),
     null,
   );
 });

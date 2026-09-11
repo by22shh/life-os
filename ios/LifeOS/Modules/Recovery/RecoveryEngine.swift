@@ -65,6 +65,31 @@ enum RecoveryEngine {
             .filter((Column("user_id") == userId || Column("user_id") == userId.uuidString))
             .fetchOne(db)
         let hrvDisabled = healthFlags?.disableHrv ?? false
+        // Beta blockers blunt absolute HRV. The baseline still adapts, but the
+        // HRV contribution carries extra uncertainty.
+        let hrvInterpretationCaveat = (healthFlags?.onBetaBlockers ?? false) && !hrvDisabled
+
+        // Opt-in cycle personalization: on-device derivation only. The derived
+        // phase never leaves the device.
+        var menstrualDerivation: MenstrualPhaseDerivation?
+        if healthFlags?.menstrualTrackingEnabled == true {
+            let flowDates = try String.fetchAll(
+                db,
+                sql: """
+                    SELECT DISTINCT date
+                    FROM menstrual_logs
+                    WHERE (user_id = ? OR user_id = ?)
+                      AND deleted_at IS NULL
+                      AND flow IS NOT NULL
+                      AND flow <> 'spotting'
+                    """,
+                arguments: [userId, userId.uuidString]
+            )
+            menstrualDerivation = MenstrualCycleAdjustment.derivePhase(flowDates: flowDates, on: date)
+        }
+        let lutealTemperatureCompensation = menstrualDerivation?.phase == .luteal
+            ? MenstrualCycleAdjustment.lutealTemperatureCompensation
+            : 0
 
         // HRV component (0.40) — skipped if cardiac condition present
         if !hrvDisabled,
@@ -111,12 +136,12 @@ enum RecoveryEngine {
         // |dev| ≤ 0.2°C → 100, 0.2–0.5 → 70–100, 0.5–1.0 → 30–70, 1.0–1.5 → 0–30, >1.5 → 0
         if let temp = state.wristTemperatureDeviationC, let baseTemp = baseline.tempMean {
             let deviation = temp - baseTemp
-            let score = temperatureDeviationScore(deviation)
+            let score = temperatureDeviationScore(deviation - lutealTemperatureCompensation)
             compResult.tempScore = score
             components.append((Weight.temp, score))
         } else if let temp = state.wristTemperatureDeviationC {
             // Fallback: temp is already deviation from Apple's personal baseline
-            let score = temperatureDeviationScore(temp)
+            let score = temperatureDeviationScore(temp - lutealTemperatureCompensation)
             compResult.tempScore = score
             components.append((Weight.temp, score))
         }
@@ -139,10 +164,18 @@ enum RecoveryEngine {
             confidence = 0
         }
 
+        let phaseAdjustment = menstrualDerivation?.phase.scoreAdjustment ?? 0
+        let adjustedScore = min(100, max(0, finalScore + phaseAdjustment))
+        let adjustedConfidence = hrvInterpretationCaveat && compResult.hrvScore != nil
+            ? max(0, confidence - 0.15)
+            : confidence
+
         return RecoveryScoreValue(
-            score: finalScore,
-            confidence: confidence,
-            components: compResult
+            score: adjustedScore,
+            confidence: adjustedConfidence,
+            components: compResult,
+            menstrualPhase: menstrualDerivation?.phase.rawValue,
+            menstrualAdjustment: phaseAdjustment > 0 ? phaseAdjustment : nil
         )
     }
 
@@ -322,8 +355,10 @@ extension RecoveryEngine {
         let components: RecoveryScoreValue.Components
     }
 
-    /// Convenience overload: computes recovery score from raw biomarker values
-    /// without DB access. Used by `HealthSyncManager` after fetching HealthKit data.
+    /// Test-only overload for raw biomarker math. Production paths must use the
+    /// DB overload so health flags, canonical sleep scoring and cycle
+    /// personalization are always applied.
+#if DEBUG
     static func computeScore(
         hrv: Double?,
         sleep: SleepData?,
@@ -391,6 +426,7 @@ extension RecoveryEngine {
             components: compResult
         )
     }
+#endif
 }
 
 #if DEBUG

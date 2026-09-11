@@ -153,10 +153,9 @@ final class PushNotificationManager: NSObject {
 
     private func requestAuthorizationIfNeeded() async {
         guard !isRunningTests else { return }
-        guard canUseRemotePush else {
-            clearRegistrationError()
-            return
-        }
+        // Local notifications do not require the APNs entitlement. Always
+        // request OS authorization; remote registration stays capability-gated
+        // inside handleAuthorizedState().
         let authorizationStatus = await notificationAuthorizationStatusProvider()
 
         switch authorizationStatus {

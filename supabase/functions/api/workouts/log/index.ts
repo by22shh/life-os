@@ -177,10 +177,7 @@ Deno.serve(async (request) => {
   }
 
   const exercises = Array.isArray(payload.exercises) ? payload.exercises : [];
-  const resolvedExercises: Array<{
-    input: WorkoutExerciseInput;
-    exerciseId: string | null;
-  }> = [];
+  const exercisePayloads: Array<Record<string, unknown>> = [];
   let totalSets = 0;
   let totalReps = 0;
   let totalVolume = 0;
@@ -195,14 +192,9 @@ Deno.serve(async (request) => {
     if (!exerciseResolution.ok) {
       return exerciseResolution.response;
     }
-    resolvedExercises.push({
-      input: exercise,
-      exerciseId: exerciseResolution.exerciseId,
-    });
 
     const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
-    totalSets += sets.length;
-    for (const set of sets) {
+    const setPayloads = sets.map((set, setIndex) => {
       const reps = typeof set.reps === "number" && Number.isFinite(set.reps)
         ? Math.max(0, Math.trunc(set.reps))
         : 0;
@@ -212,7 +204,51 @@ Deno.serve(async (request) => {
           : 0;
       totalReps += reps;
       totalVolume += reps * weight;
-    }
+      return {
+        id: isUUID(set.id ?? "") ? set.id : crypto.randomUUID(),
+        set_number: typeof set.set_number === "number" &&
+            Number.isFinite(set.set_number)
+          ? Math.max(1, Math.trunc(set.set_number))
+          : setIndex + 1,
+        weight: toNumberOrNull(set.weight),
+        reps: toIntegerOrNull(set.reps),
+        rpe: toIntegerOrNull(set.rpe),
+        rest_after_seconds: toIntegerOrNull(set.rest_after_seconds),
+        is_warmup: set.is_warmup ?? false,
+        is_failure: set.is_failure ?? false,
+        is_dropset: set.is_dropset ?? false,
+      };
+    });
+    totalSets += sets.length;
+
+    const rowTotals = setPayloads.reduce(
+      (acc, row) => {
+        const reps = typeof row.reps === "number" ? row.reps : 0;
+        const weight = typeof row.weight === "number" ? row.weight : 0;
+        return {
+          reps: acc.reps + reps,
+          volume: acc.volume + reps * weight,
+          maxWeight: Math.max(acc.maxWeight, weight),
+        };
+      },
+      { reps: 0, volume: 0, maxWeight: 0 },
+    );
+
+    exercisePayloads.push({
+      id: isUUID(exercise.id ?? "") ? exercise.id : crypto.randomUUID(),
+      exercise_id: exerciseResolution.exerciseId,
+      order_in_session: typeof exercise.order_in_session === "number" &&
+          Number.isFinite(exercise.order_in_session)
+        ? Math.max(0, Math.trunc(exercise.order_in_session))
+        : exercisePayloads.length,
+      total_sets: sets.length,
+      total_reps: rowTotals.reps,
+      total_volume: rowTotals.volume,
+      max_weight: rowTotals.maxWeight,
+      duration_seconds: toIntegerOrNull(exercise.duration_seconds),
+      notes: normalizeOptionalString(exercise.notes),
+      sets: setPayloads,
+    });
   }
 
   const providedDuration = typeof payload.duration_minutes === "number" &&
@@ -254,102 +290,41 @@ Deno.serve(async (request) => {
     post_feeling: toIntegerOrNull(payload.post_feeling),
   };
 
-  const { data: insertedSession, error: sessionError } = await service
-    .from("workout_sessions")
-    .insert(sessionRow)
-    .select("id,session_date,updated_at")
-    .single<{ id: string; session_date: string; updated_at: string }>();
+  // Session, exercises and sets are created inside one SQL function so a
+  // failed child insert cannot leave a partial workout behind.
+  const { data: sessionData, error: sessionError } = await service
+    .rpc("create_workout_atomic", {
+      p_user_id: userId,
+      p_session: sessionRow,
+      p_exercises: exercisePayloads,
+    });
+
+  const insertedSession =
+    (Array.isArray(sessionData) ? sessionData[0] : sessionData) as
+      | { id: string; session_date: string; updated_at: string }
+      | null;
 
   if (sessionError) {
+    const errorCode = rpcErrorCode(sessionError);
+    if (errorCode === "23503") {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_workout_reference" },
+        400,
+      );
+    }
+    if (errorCode === "42501") {
+      return jsonWithRequest(request, { error: "forbidden_id_ownership" }, 403);
+    }
     return jsonWithRequest(request, {
       error: "workout_session_insert_failed",
       detail: sanitizedInternalDetail(request, "index", sessionError),
     }, 500);
   }
-
-  for (
-    let exerciseIndex = 0;
-    exerciseIndex < resolvedExercises.length;
-    exerciseIndex += 1
-  ) {
-    const exercise = resolvedExercises[exerciseIndex].input;
-    const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
-
-    const exerciseRows = sets.map((set) => {
-      const reps = typeof set.reps === "number" && Number.isFinite(set.reps)
-        ? Math.max(0, Math.trunc(set.reps))
-        : 0;
-      const weight =
-        typeof set.weight === "number" && Number.isFinite(set.weight)
-          ? Math.max(0, set.weight)
-          : 0;
-      return {
-        reps,
-        weight,
-        volume: reps * weight,
-      };
-    });
-
-    const exerciseId = isUUID(exercise.id ?? "")
-      ? String(exercise.id)
-      : crypto.randomUUID();
-
-    const { error: insertExerciseError } = await service
-      .from("workout_exercises")
-      .insert({
-        id: exerciseId,
-        session_id: insertedSession.id,
-        exercise_id: resolvedExercises[exerciseIndex].exerciseId,
-        order_in_session: typeof exercise.order_in_session === "number" &&
-            Number.isFinite(exercise.order_in_session)
-          ? Math.max(0, Math.trunc(exercise.order_in_session))
-          : exerciseIndex,
-        total_sets: sets.length,
-        total_reps: exerciseRows.reduce((acc, row) => acc + row.reps, 0),
-        total_volume: exerciseRows.reduce((acc, row) => acc + row.volume, 0),
-        max_weight: exerciseRows.reduce(
-          (acc, row) => Math.max(acc, row.weight),
-          0,
-        ),
-        duration_seconds: toIntegerOrNull(exercise.duration_seconds),
-        notes: normalizeOptionalString(exercise.notes),
-      });
-
-    if (insertExerciseError) {
-      return jsonWithRequest(request, {
-        error: "workout_exercise_insert_failed",
-        detail: sanitizedInternalDetail(request, "index", insertExerciseError),
-      }, 500);
-    }
-
-    for (let setIndex = 0; setIndex < sets.length; setIndex += 1) {
-      const set = sets[setIndex];
-      const { error: insertSetError } = await service
-        .from("workout_sets")
-        .insert({
-          id: isUUID(set.id ?? "") ? set.id : crypto.randomUUID(),
-          exercise_entry_id: exerciseId,
-          user_id: userId,
-          set_number: typeof set.set_number === "number" &&
-              Number.isFinite(set.set_number)
-            ? Math.max(1, Math.trunc(set.set_number))
-            : setIndex + 1,
-          weight: toNumberOrNull(set.weight),
-          reps: toIntegerOrNull(set.reps),
-          rpe: toIntegerOrNull(set.rpe),
-          rest_after_seconds: toIntegerOrNull(set.rest_after_seconds),
-          is_warmup: set.is_warmup ?? false,
-          is_failure: set.is_failure ?? false,
-          is_dropset: set.is_dropset ?? false,
-        });
-
-      if (insertSetError) {
-        return jsonWithRequest(request, {
-          error: "workout_set_insert_failed",
-          detail: sanitizedInternalDetail(request, "index", insertSetError),
-        }, 500);
-      }
-    }
+  if (!insertedSession) {
+    return jsonWithRequest(request, {
+      error: "workout_session_insert_failed",
+    }, 500);
   }
 
   if (sessionRow.training_plan_id) {
@@ -379,6 +354,12 @@ Deno.serve(async (request) => {
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     .test(value);
+}
+
+function rpcErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object") return null;
+  const code = Reflect.get(error, "code");
+  return typeof code === "string" ? code : null;
 }
 
 function normalizeOptionalString(value: unknown): string | null {

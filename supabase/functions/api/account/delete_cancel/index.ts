@@ -7,6 +7,11 @@ import {
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 import { handleCors } from "../../../_shared/cors.ts";
+import {
+  type DeletionJobRow,
+  isDeletionJobStateConflict,
+  updateDeletionJobState,
+} from "../../../_shared/account_deletion.ts";
 
 type CancellableDeletionState = "requested" | "scheduled" | "retry_scheduled";
 
@@ -86,23 +91,41 @@ Deno.serve(async (request) => {
     "scheduled",
     "retry_scheduled",
   ];
-  const { error: jobCancelError } = await service
+  const { data: jobRows, error: jobLookupError } = await service
     .from("account_deletion_jobs")
-    .update({
-      state: "cancelled",
-      next_retry_at: null,
-      last_error: null,
-      last_failure_type: null,
-    })
+    .select("id,state")
     .eq("user_id", userRow.id)
     .eq("mode", "scheduled")
     .in("state", cancellableStates);
 
-  if (jobCancelError) {
+  if (jobLookupError) {
     return jsonWithRequest(request, {
-      error: "deletion_cancel_job_update_failed",
-      detail: sanitizedInternalDetail(request, "index", jobCancelError),
+      error: "deletion_cancel_job_lookup_failed",
+      detail: sanitizedInternalDetail(request, "index", jobLookupError),
     }, 500);
+  }
+
+  for (const job of jobRows ?? []) {
+    try {
+      await updateDeletionJobState(
+        service,
+        job as DeletionJobRow,
+        "cancelled",
+        {
+          next_retry_at: null,
+          last_error: null,
+          last_failure_type: null,
+        },
+      );
+    } catch (error) {
+      // A concurrent transition (for example the worker starting deletion)
+      // invalidates the cancel for this job; the state machine guard decides.
+      if (isDeletionJobStateConflict(error)) continue;
+      return jsonWithRequest(request, {
+        error: "deletion_cancel_job_update_failed",
+        detail: sanitizedInternalDetail(request, "index", error),
+      }, 500);
+    }
   }
 
   return jsonWithRequest(request, {

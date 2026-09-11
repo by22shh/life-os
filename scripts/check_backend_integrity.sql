@@ -20,6 +20,9 @@ DECLARE
   session UUID := gen_random_uuid(); exercise UUID := gen_random_uuid();
   supplement UUID := gen_random_uuid(); menstrual UUID := gen_random_uuid();
   export_job UUID := gen_random_uuid(); v_failed BOOLEAN; v_saved BOOLEAN;
+  batch UUID := gen_random_uuid(); plan_b UUID := gen_random_uuid();
+  workout_try UUID := gen_random_uuid(); scan_a UUID := gen_random_uuid();
+  measurement_old UUID := gen_random_uuid(); measurement_new UUID := gen_random_uuid();
 BEGIN
   SELECT user_a, user_b INTO a,b FROM integrity_fixture;
   IF a IS NULL OR b IS NULL THEN RAISE EXCEPTION 'auth bootstrap failed'; END IF;
@@ -119,6 +122,84 @@ BEGIN
   IF (SELECT download_token FROM public.export_artifacts WHERE job_id = export_job) <> repeat('a',64) THEN
     RAISE EXCEPTION 'SHA-256 export token storage failed';
   END IF;
+
+  INSERT INTO public.food_catalog_items
+      (id,provider,barcode,created_by_user_id,name,calories_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g)
+    VALUES (gen_random_uuid(),'lifeos_label_ocr','integrity-catalog-probe',a,'owned row',100,10,5,20);
+  v_failed := FALSE;
+  BEGIN
+    UPDATE public.food_catalog_items SET created_by_user_id = b
+      WHERE provider = 'lifeos_label_ocr' AND barcode = 'integrity-catalog-probe';
+  EXCEPTION WHEN insufficient_privilege THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed THEN RAISE EXCEPTION 'catalog owner reassignment was not rejected'; END IF;
+  v_failed := FALSE;
+  BEGIN
+    UPDATE public.food_catalog_items SET id = gen_random_uuid()
+      WHERE provider = 'lifeos_label_ocr' AND barcode = 'integrity-catalog-probe';
+  EXCEPTION WHEN insufficient_privilege THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed THEN RAISE EXCEPTION 'catalog identity change was not rejected'; END IF;
+
+  -- Server-managed deletion columns stay writable for service_role.
+  UPDATE public.users SET deletion_reason = 'integrity probe' WHERE id = a;
+  IF (SELECT deletion_reason FROM public.users WHERE id = a) <> 'integrity probe' THEN
+    RAISE EXCEPTION 'service_role could not update deletion columns';
+  END IF;
+
+  INSERT INTO public.training_plans (id,user_id,name,goal,plan_json)
+    VALUES (plan_b,b,'foreign plan','strength','{}'::JSONB);
+  v_failed := FALSE;
+  BEGIN
+    PERFORM public.create_workout_atomic(a,
+      jsonb_build_object('id',workout_try,'started_at',NOW(),'session_date',CURRENT_DATE,
+        'source','manual','training_plan_id',plan_b),
+      '[]'::JSONB);
+  EXCEPTION WHEN foreign_key_violation THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed OR EXISTS (SELECT 1 FROM public.workout_sessions WHERE id = workout_try) THEN
+    RAISE EXCEPTION 'workout RPC accepted a foreign training plan or left a partial session';
+  END IF;
+
+  INSERT INTO public.batch_recipes
+      (id,user_id,name,total_weight_g,total_calories,total_protein_g,total_fat_g,total_carbs_g)
+    VALUES (batch,a,'probe batch',100,100,10,5,10);
+  INSERT INTO public.batch_recipe_ingredients
+      (id,batch_recipe_id,name,weight_g,calories,protein_g,fat_g,carbs_g)
+    VALUES (gen_random_uuid(),batch,'original',100,100,10,5,10);
+  v_failed := FALSE;
+  BEGIN
+    PERFORM public.replace_batch_recipe_ingredients_atomic(a,batch,
+      jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'name','invalid','weight_g',50,
+        'calories',50,'protein_g',5,'fat_g',2,'carbs_g',5,'user_food_id',gen_random_uuid())));
+  EXCEPTION WHEN foreign_key_violation THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed
+      OR NOT EXISTS (SELECT 1 FROM public.batch_recipe_ingredients
+                     WHERE batch_recipe_id = batch AND name = 'original') THEN
+    RAISE EXCEPTION 'batch ingredient failure did not preserve the previous set';
+  END IF;
+
+  INSERT INTO public.medical_scans (id,user_id,scan_type,scan_date)
+    VALUES (scan_a,a,'blood_test',CURRENT_DATE);
+  INSERT INTO public.health_measurements
+      (id,user_id,marker_id,value,unit,measured_at,source_scan_id)
+    VALUES (measurement_old,a,'glucose',5,'mmol/L',CURRENT_DATE,scan_a);
+  PERFORM public.save_scan_measurements_atomic(a,scan_a,
+    jsonb_build_array(jsonb_build_object('id',measurement_new,'marker_id','ferritin','value',6,
+      'unit','mmol/L','measured_at',CURRENT_DATE,'source_type','scan')),
+    ARRAY[measurement_old]);
+  IF EXISTS (SELECT 1 FROM public.health_measurements WHERE id = measurement_old)
+      OR NOT EXISTS (SELECT 1 FROM public.health_measurements
+                     WHERE id = measurement_new AND value = 6) THEN
+    RAISE EXCEPTION 'scan marker replacement was not atomic';
+  END IF;
+  v_failed := FALSE;
+  BEGIN
+    PERFORM public.save_scan_measurements_atomic(b,scan_a,'[]'::JSONB,NULL);
+  EXCEPTION WHEN foreign_key_violation THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed THEN RAISE EXCEPTION 'scan RPC allowed a foreign scan owner'; END IF;
 END;
 $$;
 RESET ROLE;
@@ -186,6 +267,8 @@ BEGIN
   IF has_table_privilege('authenticated','public.account_deletion_receipts','SELECT')
     OR has_table_privilege('authenticated','public.vector_memory','INSERT')
     OR has_table_privilege('authenticated','public.vector_memory','UPDATE')
+    OR has_table_privilege('authenticated','public.deletion_failures','SELECT')
+    OR has_table_privilege('authenticated','public.deletion_failures','DELETE')
     OR has_table_privilege('authenticated','public.privacy_settings','DELETE') THEN
     RAISE EXCEPTION 'private lifecycle metadata is client writable/readable';
   END IF;
@@ -194,6 +277,16 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN rejected := TRUE;
   END;
   IF NOT rejected THEN RAISE EXCEPTION 'client cleared server vector cleanup obligation'; END IF;
+
+  rejected := FALSE;
+  BEGIN
+    UPDATE public.users SET deletion_in_progress = TRUE
+      WHERE id = (SELECT user_a FROM integrity_fixture);
+  EXCEPTION WHEN insufficient_privilege THEN rejected := TRUE;
+  END;
+  IF NOT rejected THEN
+    RAISE EXCEPTION 'authenticated caller changed server-managed deletion columns';
+  END IF;
 END;
 $$;
 RESET ROLE;

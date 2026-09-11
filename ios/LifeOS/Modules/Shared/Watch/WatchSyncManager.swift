@@ -245,6 +245,9 @@ final class WatchSyncManager: NSObject {
         var payload: [String: Any] = [
             "last_updated_at": ISO8601DateFormatter.supabaseString(from: snapshot.lastUpdatedAt)
         ]
+        if let date = snapshot.date {
+            payload["date"] = date
+        }
         if let recoveryScore = snapshot.recoveryScore {
             payload["recovery_score"] = recoveryScore
         }

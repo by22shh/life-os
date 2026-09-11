@@ -3,6 +3,7 @@ import Observation
 import Combine
 import GRDB
 import FamilyControls
+import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -320,6 +321,35 @@ struct SettingsNotificationsView: View {
                         value: $viewModel.settings.maxPositivePerDay,
                         in: 0...3
                     )
+                    Stepper(
+                        "\(String(localized: "settings_max_celebration_per_day")): \(viewModel.settings.maxCelebrationPerDay)",
+                        value: $viewModel.settings.maxCelebrationPerDay,
+                        in: 0...2
+                    )
+                } header: {
+                    Text(String(localized: "settings_notification_limits"))
+                }
+
+                Section {
+                    DatePicker(
+                        String(localized: "settings_morning_brief_time"),
+                        selection: timeBinding($viewModel.settings.morningBriefTimeLocal),
+                        displayedComponents: .hourAndMinute
+                    )
+                    DatePicker(
+                        String(localized: "settings_quiet_hours_start"),
+                        selection: timeBinding($viewModel.settings.quietHoursStart),
+                        displayedComponents: .hourAndMinute
+                    )
+                    DatePicker(
+                        String(localized: "settings_quiet_hours_end"),
+                        selection: timeBinding($viewModel.settings.quietHoursEnd),
+                        displayedComponents: .hourAndMinute
+                    )
+                } header: {
+                    Text(String(localized: "settings_notification_schedule"))
+                } footer: {
+                    Text(String(localized: "settings_notification_schedule_footer"))
                 }
                 
                 Section {
@@ -451,6 +481,30 @@ struct SettingsNotificationsView: View {
         Task { await viewModel.save() }
     }
 
+    private func timeBinding(_ source: Binding<String>) -> Binding<Date> {
+        Binding(
+            get: {
+                let parts = source.wrappedValue.split(separator: ":")
+                let hour = parts.count > 0 ? Int(parts[0]) ?? 7 : 7
+                let minute = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+                return Calendar.current.date(
+                    bySettingHour: min(23, max(0, hour)),
+                    minute: min(59, max(0, minute)),
+                    second: 0,
+                    of: Date()
+                ) ?? Date()
+            },
+            set: { newValue in
+                let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                source.wrappedValue = String(
+                    format: "%02d:%02d",
+                    min(23, max(0, components.hour ?? 0)),
+                    min(59, max(0, components.minute ?? 0))
+                )
+            }
+        )
+    }
+
     private func triggerPresentEmergencyOverride() {
         guard viewModel.canActivateEmergencyOverride else { return }
         isPresentingEmergencyOverride = true
@@ -572,6 +626,7 @@ private struct GuardianEmergencyOverrideSheet: View {
 
 struct SettingsExportDataView: View {
     @State private var shareArchive: SettingsExportShareItem?
+    @State private var isShowingImporter = false
     @State private var viewModel: SettingsExportDataViewModel
 
     init(
@@ -706,6 +761,25 @@ struct SettingsExportDataView: View {
                         .accessibilityIdentifier("settings.export.request")
                 }
 
+                Section {
+                    Text(String(localized: "settings_import_description"))
+                        .font(LifeOSTypography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Button(action: triggerImportArchive) {
+                        HStack(spacing: Spacing.s) {
+                            if viewModel.isImportingArchive {
+                                ProgressView()
+                            }
+                            Text(String(localized: "settings_import_archive"))
+                        }
+                    }
+                    .disabled(viewModel.isImportingArchive)
+                    .accessibilityIdentifier("settings.export.import")
+                } header: {
+                    Text(String(localized: "settings_import_section"))
+                }
+
                 if let statusMessage = viewModel.statusMessage {
                     Section {
                         Text(statusMessage)
@@ -722,6 +796,26 @@ struct SettingsExportDataView: View {
         }
         .sheet(item: $shareArchive) { shareArchive in
             SettingsExportActivitySheet(fileURL: shareArchive.fileURL)
+        }
+        .fileImporter(
+            isPresented: $isShowingImporter,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false,
+            onCompletion: handleImportSelection
+        )
+    }
+
+    private func triggerImportArchive() {
+        isShowingImporter = true
+    }
+
+    private func handleImportSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            Task { await viewModel.importArchive(from: url) }
+        case .failure(let error):
+            viewModel.statusMessage = error.localizedDescription
         }
     }
 
@@ -1389,12 +1483,14 @@ private final class SettingsExportDataViewModel {
     var isRequestingExport = false
     var isRefreshingStatus = false
     var isDownloadingExport = false
+    var isImportingArchive = false
     var requiresCloudReconnect = false
 
     private let dbQueue: DatabaseQueue
     private let requestExportOperation: @MainActor () async throws -> ExportRequestResponse
     private let exportStatusOperation: @MainActor (String) async throws -> ExportStatusResponse
     private let downloadExportOperation: @MainActor (String) async throws -> URL
+    private let importArchiveOperation: @MainActor (URL) async throws -> LocalPrivacyImportSummary
     private let explicitUserIdForTests: UUID?
 
     init(
@@ -1408,12 +1504,16 @@ private final class SettingsExportDataViewModel {
         downloadExportOperation: @escaping @MainActor (String) async throws -> URL = { exportId in
             try await PrivacyGateway().downloadExportArchive(exportId: exportId)
         },
+        importArchiveOperation: @escaping @MainActor (URL) async throws -> LocalPrivacyImportSummary = { url in
+            try await PrivacyGateway().importArchive(from: url)
+        },
         explicitUserIdForTests: UUID? = nil
     ) {
         self.dbQueue = dbQueue
         self.requestExportOperation = requestExportOperation
         self.exportStatusOperation = exportStatusOperation
         self.downloadExportOperation = downloadExportOperation
+        self.importArchiveOperation = importArchiveOperation
         self.explicitUserIdForTests = explicitUserIdForTests
     }
 
@@ -1509,6 +1609,23 @@ private final class SettingsExportDataViewModel {
 
             statusMessage = userFacingSettingsError(error, fallback: SettingsError.exportFailed)
             return nil
+        }
+    }
+
+    func importArchive(from url: URL) async {
+        guard !isImportingArchive else { return }
+        isImportingArchive = true
+        defer { isImportingArchive = false }
+
+        do {
+            let summary = try await importArchiveOperation(url)
+            statusMessage = String(
+                format: String(localized: "settings_import_success_format"),
+                summary.importedRows,
+                summary.skippedRows
+            )
+        } catch {
+            statusMessage = userFacingSettingsError(error, fallback: SettingsError.importFailed)
         }
     }
 

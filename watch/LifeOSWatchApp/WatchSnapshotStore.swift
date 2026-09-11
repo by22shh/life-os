@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import WatchConnectivity
+import WidgetKit
 
 private let watchPendingLightweightActionsDefaultsKey = "watch.pending_lightweight_actions"
 private let watchSnapshotStoreLogger = Logger(subsystem: "com.lifeos.watch", category: "WatchSnapshotStore")
@@ -76,6 +77,7 @@ final class WatchSnapshotStore: NSObject, ObservableObject {
     private func applySnapshot(_ data: Data) {
         if let decoded = try? decoder.decode(WatchSnapshot.self, from: data) {
             snapshot = decoded
+            publishComplicationSnapshot(decoded)
             reconcilePendingLightweightActionState(for: decoded)
             setActionFeedback(nil)
             return
@@ -84,9 +86,43 @@ final class WatchSnapshotStore: NSObject, ObservableObject {
         if let legacy = try? decoder.decode(LegacyWatchSnapshot.self, from: data) {
             let currentSnapshot = legacy.asCurrentSnapshot
             snapshot = currentSnapshot
+            publishComplicationSnapshot(currentSnapshot)
             reconcilePendingLightweightActionState(for: currentSnapshot)
             setActionFeedback(nil)
         }
+    }
+
+    /// The complication extension runs in the watch app's app group, not on the
+    /// iPhone. The phone's `transferCurrentComplicationUserInfo` payload only
+    /// reaches this process, so persist the same minimal payload locally before
+    /// reloading WidgetKit timelines.
+    private func publishComplicationSnapshot(_ snapshot: WatchSnapshot) {
+        guard let defaults = UserDefaults(suiteName: "group.com.lifeos.watchkit") else {
+            return
+        }
+        var payload: [String: Any] = [
+            "last_updated_at": Self.complicationTimestamp(from: snapshot.lastUpdatedAt)
+        ]
+        if let date = snapshot.date {
+            payload["date"] = date
+        }
+        if let recoveryScore = snapshot.recoveryScore {
+            payload["recovery_score"] = recoveryScore
+        }
+        if let recoveryZone = snapshot.recoveryZone {
+            payload["recovery_zone"] = recoveryZone
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+            return
+        }
+        defaults.set(data, forKey: "latestSnapshot")
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private static func complicationTimestamp(from date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
 
     // MARK: - Lightweight Actions (§1.3)

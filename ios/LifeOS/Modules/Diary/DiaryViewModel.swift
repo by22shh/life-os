@@ -4,12 +4,61 @@ import SwiftUI
 import GRDB
 import os
 
+/// Life area that contributed data to a day in the unified diary calendar.
+enum DiaryRecordDomain: String, CaseIterable, Sendable, Hashable {
+    case nutrition
+    case training
+    case sleep
+    case recovery
+    case supplements
+    case hydration
+    case wellness
+    case body
+    case labs
+    case menstrual
+    case experiments
+
+    var title: String {
+        switch self {
+        case .nutrition: return String(localized: "diary_domain_nutrition")
+        case .training: return String(localized: "diary_domain_training")
+        case .sleep: return String(localized: "diary_domain_sleep")
+        case .recovery: return String(localized: "diary_domain_recovery")
+        case .supplements: return String(localized: "diary_domain_supplements")
+        case .hydration: return String(localized: "diary_domain_hydration")
+        case .wellness: return String(localized: "diary_domain_wellness")
+        case .body: return String(localized: "diary_domain_body")
+        case .labs: return String(localized: "diary_domain_labs")
+        case .menstrual: return String(localized: "diary_domain_menstrual")
+        case .experiments: return String(localized: "diary_domain_experiments")
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .nutrition: return LifeOSColors.Semantic.primary
+        case .training: return LifeOSColors.Semantic.warning
+        case .sleep: return Color.indigo
+        case .recovery: return LifeOSColors.Semantic.success
+        case .supplements: return Color.purple
+        case .hydration: return Color.teal
+        case .wellness: return Color.pink
+        case .body: return Color.brown
+        case .labs: return Color.blue
+        case .menstrual: return Color.red
+        case .experiments: return Color.orange
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class DiaryViewModel {
     private static let logger = Logger(subsystem: "com.lifeos.app", category: "DiaryViewModel")
 
-    var recordedDays: Set<String> = []
+    private(set) var recordedDomainsByDay: [String: Set<DiaryRecordDomain>] = [:]
+    private(set) var monthDomains: [DiaryRecordDomain] = []
+    var recordedDays: Set<String> { Set(recordedDomainsByDay.keys) }
     var hideCalories = false
     var caloriesValue = "—"
     var proteinValue = "—"
@@ -77,25 +126,46 @@ final class DiaryViewModel {
 
         do {
             let month = String(day.prefix(7))
-            let context = try await dbQueue.read { db -> (Set<String>, Bool) in
-                guard let userId = try Self.latestUserId(authId: authId, db: db) else { return ([], false) }
+            let context = try await dbQueue.read { db -> ([String: Set<DiaryRecordDomain>], Bool) in
+                guard let userId = try Self.latestUserId(authId: authId, db: db) else { return ([:], false) }
                 let flags = try UserHealthFlags.filter(Column("user_id") == userId.uuidString).fetchOne(db)
-                var sources = [("food_logs", "logged_date", true), ("workout_sessions", "session_date", true),
-                    ("sleep_logs", "date", true), ("physiological_states", "date", false),
-                    ("supplement_logs", "taken_date", true), ("medical_scans", "scan_date", true),
-                    ("hydration_logs", "logged_date", true), ("wellness_checks", "date", true)]
-                if flags?.menstrualTrackingEnabled == true { sources.append(("menstrual_logs", "date", true)) }
-                var days = Set<String>()
-                for (table, column, softDelete) in sources {
-                    let sql = "SELECT DISTINCT \(column) FROM \(table) WHERE (user_id = ? OR user_id = ?) AND \(column) BETWEEN ? AND ?" + (softDelete ? " AND deleted_at IS NULL" : "")
-                    days.formUnion(try String.fetchAll(db, sql: sql, arguments: [userId, userId.uuidString, month + "-01", month + "-31"]))
+                var sources: [(table: String, column: String, softDelete: Bool, domain: DiaryRecordDomain)] = [
+                    ("food_logs", "logged_date", true, .nutrition),
+                    ("workout_sessions", "session_date", true, .training),
+                    ("sleep_logs", "date", true, .sleep),
+                    ("physiological_states", "date", false, .recovery),
+                    ("supplement_logs", "taken_date", true, .supplements),
+                    ("medical_scans", "scan_date", true, .labs),
+                    ("hydration_logs", "logged_date", true, .hydration),
+                    ("wellness_checks", "date", true, .wellness),
+                    ("body_composition", "measured_date", true, .body),
+                    ("experiment_measurements", "date", false, .experiments)
+                ]
+                if flags?.menstrualTrackingEnabled == true {
+                    sources.append(("menstrual_logs", "date", true, .menstrual))
                 }
-                return (days, flags?.hideCalories ?? false)
+                var domainsByDay: [String: Set<DiaryRecordDomain>] = [:]
+                for source in sources {
+                    let sql = "SELECT DISTINCT \(source.column) FROM \(source.table) WHERE (user_id = ? OR user_id = ?) AND \(source.column) BETWEEN ? AND ?" + (source.softDelete ? " AND deleted_at IS NULL" : "")
+                    let days = try String.fetchAll(
+                        db,
+                        sql: sql,
+                        arguments: [userId, userId.uuidString, month + "-01", month + "-31"]
+                    )
+                    for recordedDay in days {
+                        domainsByDay[recordedDay, default: []].insert(source.domain)
+                    }
+                }
+                return (domainsByDay, flags?.hideCalories ?? false)
             }
-            recordedDays = context.0
+            recordedDomainsByDay = context.0
+            monthDomains = DiaryRecordDomain.allCases.filter { domain in
+                context.0.values.contains { $0.contains(domain) }
+            }
             hideCalories = context.1
         } catch {
-            recordedDays = []
+            recordedDomainsByDay = [:]
+            monthDomains = []
             hideCalories = true
             Self.logger.error("Diary calendar load failed: \(error.localizedDescription)")
         }

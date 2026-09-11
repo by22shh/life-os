@@ -740,7 +740,7 @@ actor TrainingService {
         try await dbQueue.write { db in
             // Recheck in the write transaction: an edit may occur during the GET.
             let entityId = detail.session.id
-            let pending = try OutboxEvent.fetchAll(db, sql: "SELECT * FROM outbox_events WHERE status NOT IN (?, ?)", arguments: [OutboxStatus.succeeded.rawValue, OutboxStatus.cancelled.rawValue])
+            let pending = try OutboxEvent.fetchAll(db, sql: "SELECT * FROM outbox_events WHERE status IN (?, ?, ?)", arguments: [OutboxStatus.pending.rawValue, OutboxStatus.inFlight.rawValue, OutboxStatus.failedRetryable.rawValue])
             guard !pending.contains(where: { event in
                 event.id == entityId || event.path.lowercased().contains(entityId.uuidString.lowercased()) ||
                 String(data: event.bodyJson, encoding: .utf8)?.lowercased().contains(entityId.uuidString.lowercased()) == true

@@ -18,7 +18,7 @@ DerivedData/
 /.supergoal/
 /scripts/__pycache__/
 __pycache__/
-/.codex-tmp/
+.codex-tmp/
 /.coverage/
 /.deno-coverage-functions*/
 
@@ -53,5 +53,7 @@ audits/*/phase-*-traces/
 # nested coverage artifacts
 supabase/.coverage/
 
-# Supabase CLI runtime credentials generated when starting Edge Runtime locally
-supabase/.temp/start-secrets/
+# Supabase CLI runtime state (version marker, branches, start secrets)
+supabase/.temp/
+supabase/supabase/
+supabase/tests_edge_soak_report*.json

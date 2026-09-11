@@ -51,7 +51,11 @@ struct DiaryView: View {
                         .labelsHidden()
                         .padding(.horizontal, LayoutConstants.contentPadding)
 
-                    DiaryMonthGrid(selection: $selectedDate, recordedDays: viewModel.recordedDays)
+                    DiaryMonthGrid(
+                        selection: $selectedDate,
+                        domainsByDay: viewModel.recordedDomainsByDay,
+                        legendDomains: viewModel.monthDomains
+                    )
                         .padding(.horizontal, LayoutConstants.contentPadding)
 
                     // Sleep & Recovery Summary
@@ -658,7 +662,7 @@ struct HydrationDayView: View {
                 VStack(spacing: Spacing.xs) {
                     ProgressView(value: viewModel.progress)
                         .tint(LifeOSColors.Semantic.primary)
-                    Text("\(viewModel.totalMl) / \(viewModel.targetMl) ml")
+                    Text("\(viewModel.displayVolume(Double(viewModel.totalMl))) / \(viewModel.displayVolume(Double(viewModel.targetMl))) \(viewModel.volumeUnitLabel)")
                         .font(LifeOSTypography.headline)
                 }
 
@@ -674,7 +678,7 @@ struct HydrationDayView: View {
                         Button {
                             Task { await viewModel.addWater(amount) }
                         } label: {
-                            Text("+\(amount) ml")
+                            Text("+\(UnitPreferences.formatVolume(milliliters: Double(amount), units: viewModel.userUnits))")
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, Spacing.s)
                         }
@@ -704,7 +708,7 @@ struct HydrationDayView: View {
                         ForEach(viewModel.logs) { log in
                             HStack(spacing: Spacing.s) {
                                 VStack(alignment: .leading, spacing: Spacing.xxs) {
-                                    Text("\(log.amountMl) ml")
+                                    Text(UnitPreferences.formatVolume(milliliters: Double(log.amountMl), units: viewModel.userUnits))
                                         .font(LifeOSTypography.body.weight(.semibold))
                                     Text(log.timestampText)
                                         .font(LifeOSTypography.caption)
@@ -743,6 +747,7 @@ private final class HydrationDayViewModel {
     var isLoading = false
     var isSaving = false
     var statusMessage: String?
+    var userUnits: UnitSystem = .metric
 
     let displayDate: String
     private let day: String
@@ -765,15 +770,26 @@ private final class HydrationDayViewModel {
         return min(Double(totalMl) / Double(targetMl), 1)
     }
 
+    var volumeUnitLabel: String {
+        UnitPreferences.volumeUnitLabel(userUnits)
+    }
+
+    func displayVolume(_ milliliters: Double) -> String {
+        UnitPreferences.formattedDecimal(
+            UnitPreferences.volumeValue(fromMilliliters: milliliters, units: userUnits),
+            maxDecimals: 1
+        )
+    }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }
         let authId = AuthManager.activeAuthId?.uuidString
 
         do {
-            let result = try await dbQueue.read { db -> (targetMl: Int, totalMl: Int, logs: [HydrationEntry]) in
+            let result = try await dbQueue.read { db -> (targetMl: Int, totalMl: Int, logs: [HydrationEntry], units: UnitSystem) in
                 guard let userId = try Self.resolveUserId(authId: authId, db: db) else {
-                    return (2_000, 0, [])
+                    return (2_000, 0, [], .metric)
                 }
 
                 let effectiveWeight = try WeightResolution.getEffectiveWeight(userId: userId, db: db) ?? 70.0
@@ -796,12 +812,25 @@ private final class HydrationDayViewModel {
                     let loggedAt: Date = row["logged_at"]
                     return HydrationEntry(id: uuid, amountMl: amountMl, timestampText: Self.formattedTime(loggedAt))
                 }
-                return (targetMl, logs.reduce(0) { $0 + $1.amountMl }, logs)
+                let unitsRaw = try String.fetchOne(
+                    db,
+                    sql: """
+                        SELECT units
+                        FROM users
+                        WHERE (id = ? OR id = ?)
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [userId, userId.uuidString]
+                )
+                let units = unitsRaw.flatMap(UnitSystem.init(rawValue:)) ?? .metric
+                return (targetMl, logs.reduce(0) { $0 + $1.amountMl }, logs, units)
             }
 
             targetMl = result.targetMl
             totalMl = result.totalMl
             logs = result.logs
+            userUnits = result.units
             statusMessage = nil
         } catch {
             statusMessage = error.localizedDescription
@@ -883,7 +912,10 @@ private final class HydrationDayViewModel {
                 event.headersJson = try Self.outboxHeadersJson()
                 try event.insert(db)
             }
-            statusMessage = String(format: String(localized: "hydration_added_format"), amountMl)
+            statusMessage = String(
+                format: String(localized: "hydration_added_format"),
+                UnitPreferences.formatVolume(milliliters: Double(amountMl), units: userUnits)
+            )
             await load()
         } catch {
             statusMessage = error.localizedDescription
@@ -1458,7 +1490,7 @@ struct BodyCompositionView: View {
                     )
 
                     metricField(
-                        title: String(localized: "weight_kg"),
+                        title: "\(String(localized: "weight")) (\(UnitPreferences.weightUnitLabel(viewModel.userUnits)))",
                         text: $viewModel.weightKgText,
                         placeholder: "70.0",
                         accessibilityId: "body_comp.weight"
@@ -1472,7 +1504,7 @@ struct BodyCompositionView: View {
                     )
 
                     metricField(
-                        title: String(localized: "body_composition_muscle_mass"),
+                        title: "\(String(localized: "body_composition_muscle_mass")) (\(UnitPreferences.weightUnitLabel(viewModel.userUnits)))",
                         text: $viewModel.muscleMassKgText,
                         placeholder: "30.0",
                         accessibilityId: "body_comp.muscle_mass"
@@ -1525,7 +1557,7 @@ struct BodyCompositionView: View {
                                         Text(Self.formattedTimestamp(entry.measuredAt))
                                             .font(LifeOSTypography.subheadline.weight(.semibold))
 
-                                        Text(Self.metricsSummary(for: entry))
+                                        Text(Self.metricsSummary(for: entry, units: viewModel.userUnits))
                                             .font(LifeOSTypography.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -1590,12 +1622,12 @@ struct BodyCompositionView: View {
         return formatter.string(from: date)
     }
 
-    private static func metricsSummary(for entry: BodyCompositionHistoryEntry) -> String {
+    private static func metricsSummary(
+        for entry: BodyCompositionHistoryEntry,
+        units: UnitSystem
+    ) -> String {
         var parts: [String] = [
-            String(
-                format: String(localized: "body_composition_summary_weight_format"),
-                BodyCompositionViewModel.formattedDecimal(entry.weightKg)
-            )
+            UnitPreferences.formatWeight(kilograms: entry.weightKg, units: units)
         ]
         if let bodyFatPercent = entry.bodyFatPercent {
             parts.append(
@@ -1609,7 +1641,7 @@ struct BodyCompositionView: View {
             parts.append(
                 String(
                     format: String(localized: "body_composition_summary_muscle_format"),
-                    BodyCompositionViewModel.formattedDecimal(muscleMassKg)
+                    UnitPreferences.formatWeight(kilograms: muscleMassKg, units: units)
                 )
             )
         }
@@ -1628,6 +1660,7 @@ private final class BodyCompositionViewModel {
     var isLoading = false
     var isSaving = false
     var statusMessage: String?
+    var userUnits: UnitSystem = .metric
     private(set) var editingEntryId: UUID?
 
     private let dbQueue: DatabaseQueue
@@ -1645,6 +1678,23 @@ private final class BodyCompositionViewModel {
         return value > 0
     }
 
+    private func displayedWeight(_ kilograms: Double) -> String {
+        UnitPreferences.formattedDecimal(
+            UnitPreferences.weightValue(fromKilograms: kilograms, units: userUnits),
+            maxDecimals: 1
+        )
+    }
+
+    private func parsedWeightKg() -> Double? {
+        guard let value = Self.parseDecimal(weightKgText), value > 0 else { return nil }
+        return UnitPreferences.kilograms(fromDisplayedWeight: value, units: userUnits)
+    }
+
+    private func parsedMuscleMassKg() -> Double? {
+        guard let value = Self.parseDecimal(muscleMassKgText) else { return nil }
+        return UnitPreferences.kilograms(fromDisplayedWeight: value, units: userUnits)
+    }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -1654,7 +1704,7 @@ private final class BodyCompositionViewModel {
         do {
             let snapshot = try await dbQueue.read { db -> BodyCompositionLoadSnapshot in
                 guard let userId = try Self.resolveUserId(authId: authId, db: db) else {
-                    return BodyCompositionLoadSnapshot(entries: [], preferredWeightKg: nil)
+                    return BodyCompositionLoadSnapshot(entries: [], preferredWeightKg: nil, units: .metric)
                 }
 
                 let rows = try Row.fetchAll(
@@ -1725,10 +1775,23 @@ private final class BodyCompositionViewModel {
                 )
 
                 let preferredWeightKg = entries.first?.weightKg ?? profileWeight
-                return BodyCompositionLoadSnapshot(entries: entries, preferredWeightKg: preferredWeightKg)
+                let unitsRaw = try String.fetchOne(
+                    db,
+                    sql: """
+                        SELECT units
+                        FROM users
+                        WHERE (id = ? OR id = ?)
+                        ORDER BY updated_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [userId, userId.uuidString]
+                )
+                let units = unitsRaw.flatMap(UnitSystem.init(rawValue:)) ?? .metric
+                return BodyCompositionLoadSnapshot(entries: entries, preferredWeightKg: preferredWeightKg, units: units)
             }
 
             entries = snapshot.entries
+            userUnits = snapshot.units
 
             if let editingEntryId,
                !snapshot.entries.contains(where: { $0.id == editingEntryId }) {
@@ -1738,7 +1801,7 @@ private final class BodyCompositionViewModel {
             if !isEditing,
                weightKgText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                let preferredWeightKg = snapshot.preferredWeightKg {
-                weightKgText = Self.formattedDecimal(preferredWeightKg)
+                weightKgText = displayedWeight(preferredWeightKg)
             }
         } catch {
             statusMessage = error.localizedDescription
@@ -1749,9 +1812,9 @@ private final class BodyCompositionViewModel {
     func startEditing(_ entry: BodyCompositionHistoryEntry) {
         editingEntryId = entry.id
         measuredAt = entry.measuredAt
-        weightKgText = Self.formattedDecimal(entry.weightKg)
+        weightKgText = displayedWeight(entry.weightKg)
         bodyFatPercentText = entry.bodyFatPercent.map(Self.formattedDecimal) ?? ""
-        muscleMassKgText = entry.muscleMassKg.map(Self.formattedDecimal) ?? ""
+        muscleMassKgText = entry.muscleMassKg.map(displayedWeight) ?? ""
         statusMessage = nil
     }
 
@@ -1764,7 +1827,7 @@ private final class BodyCompositionViewModel {
     }
 
     func save() async {
-        guard let weightKg = Self.parseDecimal(weightKgText), weightKg > 0 else {
+        guard let weightKg = parsedWeightKg(), weightKg > 0 else {
             statusMessage = String(localized: "body_composition_invalid_weight")
             return
         }
@@ -1774,7 +1837,7 @@ private final class BodyCompositionViewModel {
 
         let measuredAt = measuredAt
         let bodyFatPercent = Self.parseDecimal(bodyFatPercentText)
-        let muscleMassKg = Self.parseDecimal(muscleMassKgText)
+        let muscleMassKg = parsedMuscleMassKg()
         let editingEntryId = editingEntryId
         let wasEditing = editingEntryId != nil
         let existingEntry = entries.first(where: { $0.id == editingEntryId })
@@ -1897,7 +1960,7 @@ private final class BodyCompositionViewModel {
 
             self.editingEntryId = nil
             self.measuredAt = Date()
-            self.weightKgText = Self.formattedDecimal(weightKg)
+            self.weightKgText = displayedWeight(weightKg)
             self.bodyFatPercentText = ""
             self.muscleMassKgText = ""
             self.statusMessage = wasEditing
@@ -2031,6 +2094,7 @@ private struct BodyCompositionHistoryEntry: Identifiable, Equatable {
 private struct BodyCompositionLoadSnapshot {
     let entries: [BodyCompositionHistoryEntry]
     let preferredWeightKg: Double?
+    let units: UnitSystem
 }
 
 #if DEBUG
@@ -2271,7 +2335,8 @@ enum WellnessCheckDayViewTestHarness {
 
 private struct DiaryMonthGrid: View {
     @Binding var selection: Date
-    let recordedDays: Set<String>
+    let domainsByDay: [String: Set<DiaryRecordDomain>]
+    let legendDomains: [DiaryRecordDomain]
     private let calendar = Calendar.current
 
     private var monthStart: Date {
@@ -2306,23 +2371,52 @@ private struct DiaryMonthGrid: View {
                     }
                 }
             }
+
+            if !legendDomains.isEmpty {
+                HStack(spacing: Spacing.s) {
+                    ForEach(legendDomains, id: \.self) { domain in
+                        HStack(spacing: 3) {
+                            Circle().fill(domain.color).frame(width: 6, height: 6)
+                            Text(domain.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHidden(true)
+            }
         }
     }
 
     private func dayButton(_ date: Date) -> some View {
         let selected = calendar.isDate(date, inSameDayAs: selection)
-        let recorded = recordedDays.contains(DiaryDateFormatter.formatDate(date))
+        let domains = domainsByDay[DiaryDateFormatter.formatDate(date)] ?? []
+        let sortedDomains = domains.sorted { $0.rawValue < $1.rawValue }
+        let domainSummary = sortedDomains.map(\.title).sorted().joined(separator: ", ")
         return Button { selection = date } label: {
             VStack(spacing: 3) {
                 Text("\(calendar.component(.day, from: date))").font(.callout)
-                Circle().fill(recorded ? Color.accentColor : Color.clear).frame(width: 5, height: 5)
+                HStack(spacing: 2) {
+                    ForEach(Array(sortedDomains.prefix(4)), id: \.self) { domain in
+                        Circle().fill(domain.color).frame(width: 4, height: 4)
+                    }
+                }
+                .frame(height: 5)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(selected ? Color.accentColor.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(date.formatted(date: .complete, time: .omitted))
-        .accessibilityValue(recorded ? String(localized: "diary_day_has_records", defaultValue: "Has records") : String(localized: "diary_day_empty", defaultValue: "No records"))
+        .accessibilityValue(
+            domains.isEmpty
+                ? String(localized: "diary_day_empty", defaultValue: "No records")
+                : String(
+                    format: String(localized: "diary_day_domains_format", defaultValue: "Has records: %@"),
+                    domainSummary
+                )
+        )
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 

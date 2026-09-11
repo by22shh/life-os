@@ -41,6 +41,7 @@
 		1FAB63F06272F70F83CF0F3C /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61718BD4FBB66F7B9B7D540 /* KeychainHelper.swift */; };
 		1FD4F89181439BAE96A93B15 /* NutritionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2810102D93BA0E3DCDC93 /* NutritionModels.swift */; };
 		2036A7BB900F49A6DA9A18F5 /* notification_settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 3A75268BE3551B7CE45A4939 /* notification_settings.json */; };
+		220B41A474B1C0E5E9C1A976 /* MenstrualCycleAdjustment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9DFFB9DED060BC2AF22F11 /* MenstrualCycleAdjustment.swift */; };
 		225051A4BE0FC68A0AF26827 /* SyncContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08CA5DF6544F8C445D4D0A13 /* SyncContractTests.swift */; };
 		245D9A43CB61693E5E107C02 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F72F1BAF23A8E2C7401676 /* DatabaseManager.swift */; };
 		24CF5B05D06DD5711B4F6A61 /* SecurityHardeningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630492B7A582FB9DF96BEC63 /* SecurityHardeningTests.swift */; };
@@ -53,6 +54,7 @@
 		28EBC64F3FF7DED0AE7C07F8 /* ForceUpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE1EFF990DD42E2FF404431 /* ForceUpdateManager.swift */; };
 		29269172F6A63E8E0DFA8B7E /* training_plan_session.json in Resources */ = {isa = PBXBuildFile; fileRef = 556A35D2A890EEE275758B74 /* training_plan_session.json */; };
 		29853212CE4581364BE93CEA /* training_load.json in Resources */ = {isa = PBXBuildFile; fileRef = EDD3E34DAF9AFAA87561558E /* training_load.json */; };
+		2A7A77C9530DBF94E1AE4040 /* UnitPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9AAB016E1F4EC9C48E07911 /* UnitPreferences.swift */; };
 		2B75E741C54A9553531491D0 /* LifeOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B41F187BAFD79954082EDBD /* LifeOSApp.swift */; };
 		2C0D43E0592039507C2E4E45 /* FeatureFlagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C565249EBA5FFF6B5962CD68 /* FeatureFlagManager.swift */; };
 		2C3D38C8EDFCF19A4BC9CAD8 /* DesignAndSyncModelCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3B45A0C6D2A17C0A94C4AC /* DesignAndSyncModelCoverageTests.swift */; };
@@ -112,6 +114,7 @@
 		56F48D73657ACC86E8B7E304 /* RecoveryZoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633E17537A0946E7F2F26E1A /* RecoveryZoneTests.swift */; };
 		57C3DFB868BE0C591FAC2F00 /* NutritionMealTemplateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3647FC78EE408CBEE6A35CAE /* NutritionMealTemplateViews.swift */; };
 		5877AA4BDBACAE7F2604A19B /* AdditionalModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DC8C6DAD684E6E4D6C9C79 /* AdditionalModelsTests.swift */; };
+		591E6D8CB29B1290074B17E5 /* MenstrualCycleAdjustmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1474C449B0F5DC4364FEF9C0 /* MenstrualCycleAdjustmentTests.swift */; };
 		5956A07C97295DEE977A1E49 /* HealthSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0242CA2671460FE34AC82F9D /* HealthSyncManager.swift */; };
 		596EAD5C98639D4533A44636 /* health_measurement.json in Resources */ = {isa = PBXBuildFile; fileRef = E4C8F5D365ABB2F7C476E020 /* health_measurement.json */; };
 		59AB9C33FF722F28FCA0A2A0 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 176367CEB665485DAE0272E6 /* HapticManager.swift */; };
@@ -404,6 +407,7 @@
 		119DAA936DFCB008F5D59AF7 /* AdditionalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalModels.swift; sourceTree = "<group>"; };
 		124E238741B49679F4364AAB /* MenstrualStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenstrualStore.swift; sourceTree = "<group>"; };
 		12FE9C2A01B842DA98D9B00C /* WidgetSnapshotCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotCoordinator.swift; sourceTree = "<group>"; };
+		1474C449B0F5DC4364FEF9C0 /* MenstrualCycleAdjustmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenstrualCycleAdjustmentTests.swift; sourceTree = "<group>"; };
 		14B054D118B0D5A4DC2FC31D /* WatchSnapshotModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotModel.swift; sourceTree = "<group>"; };
 		15136A94D6FA1EA62BA3B957 /* LocalPrivacyOperationsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPrivacyOperationsTests.swift; sourceTree = "<group>"; };
 		1577BD82DB4DB5F59195A5F2 /* HapticManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManagerTests.swift; sourceTree = "<group>"; };
@@ -500,6 +504,7 @@
 		6A50310513916A3DBC3941BB /* WatchSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotStore.swift; sourceTree = "<group>"; };
 		6A90CA2357E4609E2632B90D /* DatabaseMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseMigrationTests.swift; sourceTree = "<group>"; };
 		6B628DE32CDBB1A708B8F122 /* NutritionTargetEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionTargetEngineTests.swift; sourceTree = "<group>"; };
+		6B9DFFB9DED060BC2AF22F11 /* MenstrualCycleAdjustment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenstrualCycleAdjustment.swift; sourceTree = "<group>"; };
 		6C729C7F908F00225AC4FC88 /* SyncEngineP1Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngineP1Tests.swift; sourceTree = "<group>"; };
 		6CF40541BCF89FF190D3E417 /* OnboardingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModels.swift; sourceTree = "<group>"; };
 		6E209D6D76179699416D94ED /* FieldEncryption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldEncryption.swift; sourceTree = "<group>"; };
@@ -579,6 +584,7 @@
 		B5A92C634FC822697179EBFB /* KeychainHelperCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelperCoverageTests.swift; sourceTree = "<group>"; };
 		B73F69DB0BA81481E99B99B1 /* WatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHomeView.swift; sourceTree = "<group>"; };
 		B8A6316976EA3F86DA19899B /* PrivacyRetentionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyRetentionManagerTests.swift; sourceTree = "<group>"; };
+		B9AAB016E1F4EC9C48E07911 /* UnitPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitPreferences.swift; sourceTree = "<group>"; };
 		BB1D84BE1EF91C35527F4651 /* LowCoverageUtilitiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LowCoverageUtilitiesTests.swift; sourceTree = "<group>"; };
 		BBB77AC9722B33AFD61F3247 /* UserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModels.swift; sourceTree = "<group>"; };
 		BBE1EFF990DD42E2FF404431 /* ForceUpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForceUpdateManager.swift; sourceTree = "<group>"; };
@@ -726,6 +732,7 @@
 		36976DF72F5C34DAF422F6B8 /* Recovery */ = {
 			isa = PBXGroup;
 			children = (
+				6B9DFFB9DED060BC2AF22F11 /* MenstrualCycleAdjustment.swift */,
 				D9D6F771F95150BC3D5C064E /* RecoveryDetailView.swift */,
 				E9CE6FDD8E75CD5911C50155 /* RecoveryEngine.swift */,
 				E4A9CDC8CD5CCD8914A6D808 /* SleepScorer.swift */,
@@ -804,6 +811,7 @@
 				92E95478A5221302C99E7389 /* LocalSensitiveFieldEncryptionTests.swift */,
 				BB1D84BE1EF91C35527F4651 /* LowCoverageUtilitiesTests.swift */,
 				0ABFF9354B54D55F27BCD6A4 /* MainTabViewBadgeObservationTests.swift */,
+				1474C449B0F5DC4364FEF9C0 /* MenstrualCycleAdjustmentTests.swift */,
 				5F6333AD126E7E0CCEF8FBF0 /* MenstrualStoreTests.swift */,
 				544A997CAB044F1B8C72C496 /* ModelCoverageExpansionTests.swift */,
 				98C1B315EB98D88FFB88E30A /* NotificationEngineTests.swift */,
@@ -861,6 +869,7 @@
 				4EB25325089892517319B1F2 /* SyncModels.swift */,
 				1E6E2FA2B454E9037745C43C /* SyncTimestamped.swift */,
 				C31FDC7941DA6C751A407C0F /* TrainingModels.swift */,
+				B9AAB016E1F4EC9C48E07911 /* UnitPreferences.swift */,
 				BBB77AC9722B33AFD61F3247 /* UserModels.swift */,
 				8FC55A58DDB373DEFFB00088 /* WeightResolution.swift */,
 			);
@@ -1761,6 +1770,7 @@
 				7CD3E8F4F605E8CE5EAC43E8 /* LocalSensitiveFieldEncryptionTests.swift in Sources */,
 				B695BB68BF5622B96ACCD0E3 /* LowCoverageUtilitiesTests.swift in Sources */,
 				D0F1B6CDD04DDC2CDD277225 /* MainTabViewBadgeObservationTests.swift in Sources */,
+				591E6D8CB29B1290074B17E5 /* MenstrualCycleAdjustmentTests.swift in Sources */,
 				712C9FF4E504EDDDCE616A10 /* MenstrualStoreTests.swift in Sources */,
 				DD4EF0D59620A60426E6482E /* ModelCoverageExpansionTests.swift in Sources */,
 				7353D0A322E1D2CB5D304E38 /* NotificationEngineTests.swift in Sources */,
@@ -1867,6 +1877,7 @@
 				2737C1E114D1A984ABEE89F6 /* LocalPrivacyOperations.swift in Sources */,
 				94F2432FED63E00B4992A5AE /* LockedTestOverride.swift in Sources */,
 				356FF1908E33BCE42AA509DF /* MainTabView.swift in Sources */,
+				220B41A474B1C0E5E9C1A976 /* MenstrualCycleAdjustment.swift in Sources */,
 				3F78FC6614D2B338422FBDEC /* MenstrualDayView.swift in Sources */,
 				33A04EF2938410CA85255769 /* MenstrualModels.swift in Sources */,
 				2CFDF5E79519D87DA3CD09D0 /* MenstrualStore.swift in Sources */,
@@ -1934,6 +1945,7 @@
 				04E89AC3350556CCDC1BB712 /* TrainingSyncHandler.swift in Sources */,
 				C9606849C3CDD23C588D67BB /* TrainingZone.swift in Sources */,
 				7729573B019FA301565C32B4 /* UITestBootstrap.swift in Sources */,
+				2A7A77C9530DBF94E1AE4040 /* UnitPreferences.swift in Sources */,
 				C667C129B8298D9BA05F391B /* UserIdentityReconciler.swift in Sources */,
 				48D9B3B1E12EFCABA32055C0 /* UserModels.swift in Sources */,
 				EC86B17A871F8BD9C0E43793 /* WatchSyncManager.swift in Sources */,

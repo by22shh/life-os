@@ -691,8 +691,10 @@ final class AuthManager {
                 try UserIdentityLookup.fetchUser(authId: authId.uuidString, db: db)
             }
             if let localUser {
+                // The erasure executor purges user-scoped data and writes the
+                // deletion audit + fresh stub itself; a second purge here would
+                // delete that audit trail.
                 _ = try await LocalPrivacyErasureExecutor.execute(reason: "explicit_local_profile_removal", user: LocalPrivacyUserContext(userId: localUser.id, authId: authId), dbQueue: dbQueue.dbQueue)
-                try await clearLocalUserState()
             }
         }
 #if os(iOS)

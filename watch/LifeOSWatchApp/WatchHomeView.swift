@@ -27,9 +27,19 @@ struct WatchHomeView: View {
 
     // MARK: - Recovery Score + Zone (§1.2 Block 1)
 
+    private var snapshotIsForToday: Bool {
+        guard let snapshot else { return false }
+        guard let day = snapshot.date else { return true }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return day == formatter.string(from: Date())
+    }
+
     @ViewBuilder
     private var recoveryBlock: some View {
         if let snapshot,
+           snapshotIsForToday,
            let score = snapshot.recoveryScore {
             let zone = WatchRecoveryZone(rawValue: snapshot.recoveryZone?.lowercased() ?? "") ?? .critical
 

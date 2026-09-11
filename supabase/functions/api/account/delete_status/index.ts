@@ -7,7 +7,10 @@ import {
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 import { handleCors } from "../../../_shared/cors.ts";
-import { readDeletionReceipt } from "../../../_shared/deletion_receipt.ts";
+import {
+  deletionReceiptHash,
+  readDeletionReceipt,
+} from "../../../_shared/deletion_receipt.ts";
 
 interface DeletionJobStatusRow {
   mode: "scheduled" | "immediate";
@@ -44,9 +47,15 @@ Deno.serve(async (request) => {
 
   const receipt = request.headers.get("X-Deletion-Receipt");
   if (receipt) {
+    // Per-receipt rate-limit bucket: a shared global bucket would let one
+    // caller exhaust status polling for every client after a deletion.
+    const receiptBucket = `deletion-receipt:${
+      (await deletionReceiptHash(receipt))
+        .slice(0, 32)
+    }`;
     const rateLimited = await enforceRateLimit(
       request,
-      "deletion-receipt-public",
+      receiptBucket,
       "standard",
     );
     if (rateLimited) return rateLimited;

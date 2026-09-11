@@ -307,7 +307,7 @@ private struct NutritionWidgetRoot: View {
             if !entry.snapshot.privacy.showNutrition {
                 hiddenWidget(title: WidgetL10n.text("widget.nutrition.title"))
             } else if let nutrition = entry.snapshot.nutrition {
-                content(nutrition: nutrition)
+                content(nutrition: nutrition, units: entry.snapshot.units)
             } else {
                 emptyWidget(
                     title: WidgetL10n.text("widget.nutrition.title"),
@@ -319,7 +319,7 @@ private struct NutritionWidgetRoot: View {
     }
 
     @ViewBuilder
-    private func content(nutrition: WidgetSnapshot.NutritionPayload) -> some View {
+    private func content(nutrition: WidgetSnapshot.NutritionPayload, units: String?) -> some View {
         switch resolvedFamily {
         case .systemMedium:
             SystemCard {
@@ -338,7 +338,7 @@ private struct NutritionWidgetRoot: View {
                         VStack(alignment: .leading, spacing: 8) {
                             MetricBar(label: String(localized: "protein"), valueText: widgetGramsText(nutrition.proteinG), progress: widgetProgress(from: nutrition.proteinG, target: nutrition.targetProteinG))
                             MetricBar(label: String(localized: "carbs"), valueText: widgetGramsText(nutrition.carbsG), progress: widgetProgress(from: nutrition.carbsG, target: nutrition.targetCarbsG))
-                            MetricBar(label: String(localized: "water"), valueText: widgetMillilitersText(nutrition.waterMl), progress: widgetProgress(from: nutrition.waterMl, target: nutrition.targetWaterMl))
+                            MetricBar(label: String(localized: "water"), valueText: widgetWaterText(nutrition.waterMl, units: units), progress: widgetProgress(from: nutrition.waterMl, target: nutrition.targetWaterMl))
                         }
                     }
                 }
@@ -355,7 +355,7 @@ private struct NutritionWidgetRoot: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     MetricBar(label: String(localized: "protein"), valueText: widgetGramsText(nutrition.proteinG), progress: widgetProgress(from: nutrition.proteinG, target: nutrition.targetProteinG))
-                    MetricBar(label: String(localized: "water"), valueText: widgetMillilitersText(nutrition.waterMl), progress: widgetProgress(from: nutrition.waterMl, target: nutrition.targetWaterMl))
+                    MetricBar(label: String(localized: "water"), valueText: widgetWaterText(nutrition.waterMl, units: units), progress: widgetProgress(from: nutrition.waterMl, target: nutrition.targetWaterMl))
                 }
             }
         }
@@ -672,8 +672,12 @@ private func widgetGramsText(_ value: Int) -> String {
     WidgetL10n.format("widget.value_grams_format", value)
 }
 
-private func widgetMillilitersText(_ value: Int) -> String {
-    WidgetL10n.format("widget.value_milliliters_format", value)
+private func widgetWaterText(_ milliliters: Int, units: String?) -> String {
+    guard units == "imperial" else {
+        return WidgetL10n.format("widget.value_milliliters_format", milliliters)
+    }
+    let ounces = Double(milliliters) / 29.5735295625
+    return WidgetL10n.format("widget.value_fluid_ounces_format", ounces)
 }
 
 #if DEBUG
@@ -765,7 +769,7 @@ enum LifeOSWidgetsTestHooks {
     }
 
     static func millilitersText(_ value: Int) -> String {
-        widgetMillilitersText(value)
+        widgetWaterText(value, units: nil)
     }
 }
 #endif

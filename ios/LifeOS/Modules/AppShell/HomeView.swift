@@ -17,6 +17,13 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Spacing.m) {
+                    if let displayName = viewModel.displayName, !displayName.isEmpty {
+                        Text(String(format: String(localized: "home_greeting_name_format"), displayName))
+                            .font(LifeOSTypography.title3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("home.greeting")
+                    }
+
                     // Recovery Score Card
                     recoveryCard
 
@@ -123,6 +130,16 @@ struct HomeView: View {
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .accessibilityLabel(zone.accessibilityAnnouncement(score: score))
+
+                if let sourceDate = viewModel.recoverySourceDateDisplay {
+                    Text(String(
+                        format: String(localized: "home_recovery_source_date_format"),
+                        sourceDate
+                    ))
+                    .font(LifeOSTypography.caption)
+                    .foregroundStyle(LifeOSColors.Text.tertiary)
+                    .accessibilityIdentifier("home.recovery.source_date")
+                }
 
                 if let confidence = viewModel.recoveryConfidence,
                    confidence < LifeOSConstants.lowConfidenceThreshold {
@@ -375,6 +392,13 @@ struct HomeView: View {
             .font(LifeOSTypography.headline)
             .foregroundStyle(LifeOSColors.Text.primary)
 
+            if viewModel.conservativeRecommendationsMode {
+                Text(String(localized: "home_conservative_mode_note"))
+                    .font(LifeOSTypography.caption)
+                    .foregroundStyle(LifeOSColors.Text.secondary)
+                    .accessibilityIdentifier("home.conservative_mode")
+            }
+
             ForEach(viewModel.recommendations.prefix(3)) { recommendation in
                 Button(action: recommendationButtonAction(recommendation, onRoute: routeHandler)) {
                     recommendationRow(recommendation)
@@ -433,17 +457,17 @@ struct HomeView: View {
     private var quickActionsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Spacing.s) {
-                quickActionButton(icon: "fork.knife", label: String(localized: "log_food"), deepLink: "lifeos://nutrition/log")
-                quickActionButton(icon: "figure.run", label: String(localized: "workout"), deepLink: "lifeos://workout/log")
-                quickActionButton(icon: "pill", label: String(localized: "supplements"), deepLink: "lifeos://supplements/log")
-                quickActionButton(icon: "drop", label: String(localized: "water"), deepLink: "lifeos://hydration")
+                quickActionButton(icon: "fork.knife", label: String(localized: "log_food"), deepLink: "lifeos://nutrition/log", hintKey: "home_quick_action_log_food_hint")
+                quickActionButton(icon: "figure.run", label: String(localized: "workout"), deepLink: "lifeos://workout/log", hintKey: "home_quick_action_workout_hint")
+                quickActionButton(icon: "pill", label: String(localized: "supplements"), deepLink: "lifeos://supplements/log", hintKey: "home_quick_action_supplements_hint")
+                quickActionButton(icon: "drop", label: String(localized: "water"), deepLink: "lifeos://hydration", hintKey: "home_quick_action_water_hint")
             }
             .padding(.horizontal, 1)
         }
         .accessibilityElement(children: .contain)
     }
 
-    private func quickActionButton(icon: String, label: String, deepLink: String) -> some View {
+    private func quickActionButton(icon: String, label: String, deepLink: String, hintKey: String) -> some View {
         Button(action: quickActionButtonAction(deepLink, onRoute: routeHandler)) {
             VStack(spacing: Spacing.xxs) {
                 Image(systemName: icon)
@@ -461,7 +485,7 @@ struct HomeView: View {
             .frame(width: 128)
         }
         .accessibilityLabel("\(String(localized: "home_log_prefix")) \(label)")
-        .accessibilityHint(String(localized: "home_start_wellness_check_hint"))
+        .accessibilityHint(String(localized: String.LocalizationValue(hintKey)))
     }
 
     private func runRefreshTask(_ refresh: () async -> Void) async {
@@ -673,7 +697,8 @@ extension HomeView {
         _ = quickActionButton(
             icon: "fork.knife",
             label: "Test",
-            deepLink: "lifeos://nutrition/log"
+            deepLink: "lifeos://nutrition/log",
+            hintKey: "home_quick_action_log_food_hint"
         )
     }
 

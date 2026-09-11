@@ -579,7 +579,7 @@ async function handlePostDeleteFailure(
     postgres_deleted: options.postgresDeleted,
     auth_deleted: options.authDeleted,
     audit_log_id: auditLogId,
-    error: options.error,
+    error: "deletion_failed",
     failure_type: options.failureType,
     deletion_state: cascadedFailureState(job.state),
     attempt_count: job.attempt_count,
@@ -594,15 +594,12 @@ function deletionUnhandledFailure(
 ): Response {
   const detail = error instanceof Error ? error.message : String(error);
   if (detail.startsWith("deletion_job_state_conflict:")) {
-    return jsonWithRequest(request, {
-      error: "deletion_state_conflict",
-      detail,
-    }, 409);
+    return jsonWithRequest(request, { error: "deletion_state_conflict" }, 409);
   }
 
   return jsonWithRequest(request, {
     error: errorCode,
-    detail,
+    detail: sanitizedInternalDetail(request, "index", error),
   }, 500);
 }
 

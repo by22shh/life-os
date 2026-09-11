@@ -196,6 +196,27 @@ async function handleCreate(
         : null;
   }
 
+  if (typeof row.previous_measurement_id === "string") {
+    const { data: previous, error: previousError } = await service
+      .from("body_composition")
+      .select("user_id")
+      .eq("id", row.previous_measurement_id)
+      .maybeSingle<{ user_id: string }>();
+    if (previousError) {
+      return jsonWithRequest(request, {
+        error: "body_composition_lookup_failed",
+        detail: sanitizedInternalDetail(request, "index", previousError),
+      }, 500);
+    }
+    if (!previous || previous.user_id !== userId) {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_previous_measurement_reference" },
+        400,
+      );
+    }
+  }
+
   const { data, error } = await service
     .from("body_composition")
     .upsert(row, { onConflict: "id" })
@@ -411,9 +432,10 @@ async function handleDelete(
 ): Promise<Response> {
   const { error } = await service
     .from("body_composition")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", rowId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .is("deleted_at", null);
 
   if (error) {
     return jsonWithRequest(request, {

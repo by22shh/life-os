@@ -261,12 +261,21 @@ Deno.test("ensureExportReady expires stale artifacts and short-circuits expired 
 Deno.test("ensureExportReady builds a fresh export, redacts sensitive fields, and marks the job ready", async () => {
   await withMockedDate("2026-05-29T12:00:00.000Z", async () => {
     const pagedRows: Record<string, Array<Record<string, unknown>>> = {
-      workout_sessions: [{ id: "session-1", user_id: USER_ID }],
+      workout_sessions: [{
+        id: "session-1",
+        user_id: USER_ID,
+        video_url: "user/session-1/video.mov",
+      }],
       workout_exercises: [{ id: "exercise-1", session_id: "session-1" }],
       workout_sets: [{
         id: "set-1",
         exercise_entry_id: "exercise-1",
         reps: 10,
+      }],
+      body_composition: [{
+        id: "body-1",
+        user_id: USER_ID,
+        scan_image_url: "user/body-1/scan.jpg",
       }],
       analytics_events: [
         {
@@ -425,6 +434,13 @@ Deno.test("ensureExportReady builds a fresh export, redacts sensitive fields, an
     );
     assertEquals(notificationLog[0].device_token, "[REDACTED]");
     assertEquals(analyticsEvents[0].location_lat, "[REDACTED]");
+    const bodyComposition = health.body_composition as Array<
+      Record<string, unknown>
+    >;
+    assertEquals(bodyComposition[0].scan_image_url, "[REDACTED]");
+    const workoutSessions = (payloadJson.training as Record<string, unknown>)
+      .workout_sessions as Array<Record<string, unknown>>;
+    assertEquals(workoutSessions[0].video_url, "[REDACTED]");
     assertEquals(
       (privacy.vector_summary as Record<string, unknown>).entry_count,
       7,
