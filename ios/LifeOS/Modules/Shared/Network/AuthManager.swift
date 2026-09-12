@@ -178,6 +178,7 @@ final class AuthManager {
 
     static func _testResetOverrides() {
         UserDefaults.standard.removeObject(forKey: signedOutVaultOwnerKey)
+        UserDefaults.standard.removeObject(forKey: vaultOwnerKey)
         runningTestsOverride = nil
         bootstrapSessionOverride = nil
         defaultBootstrapSessionOverride = nil
@@ -196,6 +197,8 @@ final class AuthManager {
         fallbackUITestAuthIdOverride = nil
         UserDefaults.standard.removeObject(forKey: offlineAuthIdDefaultsKey)
         UserDefaults.standard.removeObject(forKey: lastCloudAuthIdDefaultsKey)
+        activeAuthId = nil
+        activeHasCloudSession = false
         activeRequiresCloudReauthentication = false
     }
 #endif
@@ -575,7 +578,16 @@ final class AuthManager {
             session = try await signInWithAppleIdentity(tokenString)
         }
 
-        try applySessionState(session, isAnonymous: false)
+        do {
+            try applySessionState(session, isAnonymous: false)
+        } catch {
+            // A completed external sign-in can persist an SDK session before
+            // the local vault rejects its owner. Do not retain that session.
+            if !Self.isRunningTests {
+                try? await client.auth.signOut()
+            }
+            throw error
+        }
         await synchronizeLocalIdentityState(
             authId: session.user.id,
             email: session.user.email,
@@ -672,7 +684,17 @@ final class AuthManager {
             throw AuthError.sessionExpired
         }
 
-        try applySessionState(session, isAnonymous: false)
+        do {
+            try applySessionState(session, isAnonymous: false)
+        } catch {
+            // OTP verification updates the SDK session before the local vault
+            // owner can reject it. Clear that new SDK session before exposing
+            // the error so a later bootstrap cannot revive the wrong account.
+            if !Self.isRunningTests {
+                try? await client.auth.signOut()
+            }
+            throw error
+        }
         await synchronizeLocalIdentityState(
             authId: session.user.id,
             email: session.user.email,
@@ -698,7 +720,13 @@ final class AuthManager {
             }
         }
 #if os(iOS)
-        await PushNotificationManager.shared.unregisterCurrentDevice()
+        guard await PushNotificationManager.shared.unregisterCurrentDevice(attemptImmediateDelivery: true) else {
+            // Retain the authenticated session until the provider confirms the
+            // device was revoked. An outbox-only request cannot be replayed
+            // after sign-out and would leave the old account able to notify
+            // this device.
+            throw AuthError.pushDeviceUnregistrationFailed
+        }
 #endif
         if session != nil {
 #if DEBUG
@@ -716,6 +744,7 @@ final class AuthManager {
         // Preserve local-only history and queued writes; this vault remains bound to its owner.
         if removingLocalData {
             UserDefaults.standard.removeObject(forKey: Self.signedOutVaultOwnerKey)
+            UserDefaults.standard.removeObject(forKey: Self.vaultOwnerKey)
         } else if let vaultOwner {
             UserDefaults.standard.set(vaultOwner.uuidString, forKey: Self.signedOutVaultOwnerKey)
         }
@@ -810,13 +839,23 @@ final class AuthManager {
     }
 
     private static let signedOutVaultOwnerKey = "lifeos.signed_out_vault_owner"
+    /// The local database and its outbox are a single-user vault.  This is
+    /// deliberately independent of the transient signed-out marker: a failed
+    /// cloud session restore can continue in local fallback mode without ever
+    /// going through `signOut()`.
+    private static let vaultOwnerKey = "lifeos.local_vault_owner"
 
     private func applySessionState(_ session: Session, isAnonymous: Bool) throws {
         if let owner = UserDefaults.standard.string(forKey: Self.signedOutVaultOwnerKey),
            owner.lowercased() != session.user.id.uuidString.lowercased() {
             throw AuthError.localVaultBelongsToAnotherAccount
         }
+        if let owner = UserDefaults.standard.string(forKey: Self.vaultOwnerKey),
+           owner.lowercased() != session.user.id.uuidString.lowercased() {
+            throw AuthError.localVaultBelongsToAnotherAccount
+        }
         UserDefaults.standard.removeObject(forKey: Self.signedOutVaultOwnerKey)
+        UserDefaults.standard.set(session.user.id.uuidString, forKey: Self.vaultOwnerKey)
         self.session = session
         self.userId = session.user.id
         self.isAnonymous = isAnonymous
@@ -896,6 +935,7 @@ final class AuthManager {
             return
         }
         let offlineAuthId = Self.offlineLocalAuthId()
+        Self.bindVault(to: offlineAuthId)
         await synchronizeLocalIdentityState(
             authId: offlineAuthId,
             email: nil,
@@ -1019,6 +1059,7 @@ final class AuthManager {
         requiresCloudReconnect: Bool
     ) async {
         if let fallbackIdentity = await resolvePreferredLocalFallbackIdentity() {
+            Self.bindVault(to: fallbackIdentity)
             await synchronizeLocalIdentityState(
                 authId: fallbackIdentity,
                 email: nil,
@@ -1037,6 +1078,15 @@ final class AuthManager {
         }
 
         await activateOfflineLocalMode()
+    }
+
+    private static func bindVault(to authId: UUID) {
+        let key = vaultOwnerKey
+        let existing = UserDefaults.standard.string(forKey: key)
+        guard existing == nil || existing?.caseInsensitiveCompare(authId.uuidString) == .orderedSame else {
+            return
+        }
+        UserDefaults.standard.set(authId.uuidString, forKey: key)
     }
 
     private func resolvePreferredLocalFallbackIdentity() async -> UUID? {
@@ -1280,6 +1330,7 @@ enum AuthError: LocalizedError {
     case accountLinkRequiresCloudSession
     case cloudSessionReconnectRequired
     case appleSignInUnavailable
+    case pushDeviceUnregistrationFailed
 
     var errorDescription: String? {
         switch self {
@@ -1299,6 +1350,8 @@ enum AuthError: LocalizedError {
             return String(localized: "auth_error_cloud_session_reconnect_required")
         case .appleSignInUnavailable:
             return String(localized: "auth_error_apple_sign_in_unavailable")
+        case .pushDeviceUnregistrationFailed:
+            return String(localized: "auth_error_push_device_unregistration_failed", defaultValue: "Unable to securely sign out while push notifications are still registered. Please try again when online.")
         }
     }
 }

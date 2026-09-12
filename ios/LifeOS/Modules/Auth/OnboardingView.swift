@@ -296,6 +296,19 @@ struct OnboardingView: View {
             .padding(.horizontal, Spacing.l)
             .disabled(store.isCompletingQuickWin)
             .accessibilityIdentifier("onboarding.quick_win.primary")
+
+            if !store.quickWinCompleted {
+                Button(action: skipQuickWinAction(store: store)) {
+                    Text(String(localized: "onboarding_quick_win_skip"))
+                        .font(LifeOSTypography.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: LayoutConstants.minTouchTarget)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal, Spacing.l)
+                .disabled(store.isCompletingQuickWin)
+                .accessibilityIdentifier("onboarding.quick_win.skip")
+            }
         }
     }
 
@@ -1499,6 +1512,10 @@ struct OnboardingView: View {
                 openQuickWinCapture()
             }
         }
+    }
+
+    private func skipQuickWinAction(store: StoreOf<OnboardingFeature>) -> () -> Void {
+        { store.send(.skipQuickWin) }
     }
 
     private func advanceFromQuickWinAction(store: StoreOf<OnboardingFeature>) -> () -> Void {

@@ -513,6 +513,7 @@ async function handleMarkersLatest(
     .select("measured_at,value,unit,status")
     .eq("user_id", userId)
     .eq("marker_id", markerId)
+    .is("deleted_at", null)
     .order("measured_at", { ascending: false })
     .limit(120)
     .returns<
@@ -566,6 +567,7 @@ async function handleMarkersHistory(
       .select("measured_at,value,unit,status,source_scan_id")
       .eq("user_id", userId)
       .eq("marker_id", markerId)
+      .is("deleted_at", null)
       .gte("measured_at", range.from)
       .lte("measured_at", range.to)
       .order("measured_at", { ascending: true })

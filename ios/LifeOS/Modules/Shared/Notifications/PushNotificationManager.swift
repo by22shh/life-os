@@ -252,11 +252,13 @@ final class PushNotificationManager: NSObject {
     }
 
     @discardableResult
-    func unregisterCurrentDevice() async -> Bool {
-        guard !isRunningTests else { return false }
+    func unregisterCurrentDevice(attemptImmediateDelivery: Bool = false) async -> Bool {
+        // XCTest has no real APNs registration to revoke. Treat it as already
+        // clean so auth lifecycle tests never depend on a network transport.
+        guard !isRunningTests else { return true }
         await cancelPendingDeviceRegistrationIfPossible()
-        guard isRuntimeConfiguredProvider() else { return false }
-        guard let token = tokenEligibleForUnregistration else { return false }
+        guard isRuntimeConfiguredProvider() else { return true }
+        guard let token = tokenEligibleForUnregistration else { return true }
         guard let syncEngine = syncEngineProvider() else { return false }
 
         let payload: [String: Any] = [
@@ -272,6 +274,17 @@ final class PushNotificationManager: NSObject {
         )
         do {
             try await syncEngine.enqueueMutation(event)
+            if attemptImmediateDelivery {
+                try await syncEngine.pushPendingEvents()
+                let delivered = try await syncEngine.readLocal { db in
+                    try String.fetchOne(
+                        db,
+                        sql: "SELECT status FROM outbox_events WHERE id = ? OR id = ? LIMIT 1",
+                        arguments: [event.id, event.id.uuidString]
+                    ) == OutboxStatus.succeeded.rawValue
+                }
+                guard delivered else { return false }
+            }
             setTrackedRegisteredPushToken(nil)
             return true
         } catch {

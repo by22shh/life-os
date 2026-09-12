@@ -664,15 +664,16 @@ private enum ExperimentListFilter: String, CaseIterable, Identifiable {
         }
     }
 
-    func includes(_ experiment: Experiment) -> Bool {
+    func includes(_ experiment: Experiment, on localDate: String) -> Bool {
+        let status = experiment.resolvedLifecycleStatus(forLocalDate: localDate)
         switch self {
         case .all:
             return true
         case .active:
-            return ExperimentStatus.lifecycleActiveStatuses.contains(experiment.status)
-                || [.design, .planned, .paused].contains(experiment.status)
+            return ExperimentStatus.lifecycleActiveStatuses.contains(status)
+                || [.design, .planned, .paused].contains(status)
         case .completed:
-            return ExperimentStatus.lifecycleTerminalStatuses.contains(experiment.status)
+            return ExperimentStatus.lifecycleTerminalStatuses.contains(status)
         }
     }
 }
@@ -684,7 +685,8 @@ struct ExperimentListView: View {
     @State private var loadError: String?
 
     private var filteredExperiments: [Experiment] {
-        experiments.filter(selectedFilter.includes)
+        let today = DiaryDateFormatter.formatDate(Date())
+        return experiments.filter { selectedFilter.includes($0, on: today) }
     }
 
     var body: some View {
@@ -724,7 +726,7 @@ struct ExperimentListView: View {
                                 Text(experiment.title)
                                     .font(LifeOSTypography.headline)
                                 Spacer()
-                                Text(localizedStatus(experiment.status))
+                                Text(localizedStatus(experiment.resolvedLifecycleStatus(forLocalDate: DiaryDateFormatter.formatDate(Date()))) )
                                     .font(LifeOSTypography.caption)
                                     .foregroundStyle(LifeOSColors.Text.secondary)
                             }

@@ -762,7 +762,17 @@ final class ExperimentDetailViewModel {
             conclusion = isCompleted ? loadedState.analysis.summary : loadedState.experiment.resultSummary
             measurements = loadedState.measurements
 
-            hasLoggedToday = loadedState.measurements.contains { $0.date == today }
+            if let todayMeasurement = loadedState.measurements.first(where: { $0.date == today }) {
+                hasLoggedToday = true
+                dailyValue = todayMeasurement.value
+                dailyNotes = todayMeasurement.notes ?? ""
+                adheredToday = todayMeasurement.adhered
+            } else {
+                hasLoggedToday = false
+                dailyValue = ""
+                dailyNotes = ""
+                adheredToday = true
+            }
 
             let analysis = loadedState.analysis
             baselineValue = analysis.baselineMean.map { String(format: "%.2f", $0) } ?? "—"

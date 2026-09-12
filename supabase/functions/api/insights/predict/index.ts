@@ -53,6 +53,7 @@ interface PredictRequest {
 interface FallbackExtras {
   parse_error?: boolean;
   fallback_mode?: "deterministic";
+  historical_evidence?: "none";
   upstream_error?: string;
   provider_status?: number;
 }
@@ -427,9 +428,23 @@ ${memory.join("\n")}`;
       );
     }
 
-    const validZones = ["critical", "caution", "ready", "optimal"];
     const fallbackRange = contextBundle.derivedEstimate.predictedRange;
     const fallbackScore = contextBundle.derivedEstimate.predictedScore;
+
+    // Without personal precedents the model has no N=1 evidence to override
+    // the deterministic estimate. Do not let a fluent but ungrounded response
+    // manufacture a precision range, zone, or confidence.
+    if (contextBundle.matchCount === 0) {
+      return jsonWithRequest(
+        request,
+        buildFallbackResponse(contextBundle, explanationLanguage, {
+          fallback_mode: "deterministic",
+          historical_evidence: "none",
+        }),
+        200,
+      );
+    }
+
     const rawRange = Array.isArray(parsedPrediction.predicted_recovery_range)
       ? parsedPrediction.predicted_recovery_range
       : null;
@@ -445,10 +460,10 @@ ${memory.join("\n")}`;
       typeof rawRange[0] === "number" &&
       typeof rawRange[1] === "number"
     ) {
-      const low = Math.min(rawRange[0], rawRange[1]);
-      const high = Math.max(rawRange[0], rawRange[1]);
-      rangeLow = Math.max(0, Math.round(low));
-      rangeHigh = Math.min(100, Math.round(high));
+      const first = Math.min(100, Math.max(0, Math.round(rawRange[0])));
+      const second = Math.min(100, Math.max(0, Math.round(rawRange[1])));
+      rangeLow = Math.min(first, second);
+      rangeHigh = Math.max(first, second);
     } else {
       const clampedScore = Math.min(100, Math.max(0, Math.round(rawScore)));
       rangeLow = Math.max(0, clampedScore - 5);
@@ -456,12 +471,10 @@ ${memory.join("\n")}`;
     }
 
     const midpointScore = Math.round((rangeLow + rangeHigh) / 2);
-    let zone = typeof parsedPrediction.predicted_zone === "string"
-      ? parsedPrediction.predicted_zone.toLowerCase()
-      : "";
-    if (!validZones.includes(zone)) {
-      zone = zoneFromScore(midpointScore);
-    }
+    // The response zone is always derived from its normalized numerical
+    // prediction. This prevents an upstream model from labelling 15% as
+    // "optimal" or otherwise contradicting the returned range.
+    const zone = zoneFromScore(midpointScore);
 
     const rawConfidence = typeof parsedPrediction.confidence_score === "number"
       ? parsedPrediction.confidence_score

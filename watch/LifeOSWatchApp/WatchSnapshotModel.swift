@@ -11,6 +11,7 @@ public struct WatchSnapshot: Codable, Sendable {
         public struct Payload: Codable, Sendable {
             public var deepLink: String?
             public var supplementName: String?
+            public var supplementId: String? = nil
             public var scheduledTime: String?
             public var insightId: String?
             public var date: String?
@@ -18,6 +19,7 @@ public struct WatchSnapshot: Codable, Sendable {
             enum CodingKeys: String, CodingKey {
                 case deepLink = "deep_link"
                 case supplementName = "supplement_name"
+                case supplementId = "supplement_id"
                 case scheduledTime = "scheduled_time"
                 case insightId = "insight_id"
                 case date
@@ -43,6 +45,7 @@ public struct WatchSnapshot: Codable, Sendable {
     // MARK: - Core Fields (never dropped per §2 truncation rules)
 
     public var date: String?
+    public var profileOwnerId: String?
     public var lastUpdatedAt: Date
     public var recoveryScore: Double?
     public var recoveryZone: String?
@@ -64,6 +67,7 @@ public struct WatchSnapshot: Codable, Sendable {
 
     public init(
         date: String? = nil,
+        profileOwnerId: String? = nil,
         lastUpdatedAt: Date = Date(),
         recoveryScore: Double? = nil,
         recoveryZone: String? = nil,
@@ -76,6 +80,7 @@ public struct WatchSnapshot: Codable, Sendable {
         wasTruncated: Bool? = nil
     ) {
         self.date = date
+        self.profileOwnerId = profileOwnerId
         self.lastUpdatedAt = lastUpdatedAt
         self.recoveryScore = recoveryScore
         self.recoveryZone = recoveryZone
@@ -92,6 +97,7 @@ public struct WatchSnapshot: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case date
+        case profileOwnerId = "profile_owner_id"
         case lastUpdatedAt = "last_updated_at"
         case recoveryScore = "recovery_score"
         case recoveryZone = "recovery_zone"

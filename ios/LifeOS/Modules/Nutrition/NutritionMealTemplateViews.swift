@@ -3248,6 +3248,7 @@ private func batchIngredientLine(_ ingredient: BatchRecipeIngredient) -> String 
     )
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension MealTemplateDetailViewModel {
     @MainActor
@@ -4596,3 +4597,4 @@ extension BatchRecipeIngredientPickerView {
         return await NutritionSearchExecutionHelper.run(query: normalizedQuery, searcher: searcher)
     }
 }
+#endif

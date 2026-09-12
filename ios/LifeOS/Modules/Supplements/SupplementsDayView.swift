@@ -18,6 +18,7 @@ struct SupplementsDayView: View {
     @State private var shouldReopenQuickLogAfterAdd = false
     @State private var hasPresentedInitialQuickLog = false
     @State private var pendingAddSupplementFromQuickLog = false
+    @State private var editingSupplement: UserStackItem?
 
     init(dateString: String?, launchContext: SupplementsLaunchContext = .day) {
         self.dateString = dateString
@@ -109,6 +110,12 @@ struct SupplementsDayView: View {
                 onCancel: {
                     shouldReopenQuickLogAfterAdd = false
                 }
+            )
+        }
+        .sheet(item: $editingSupplement) { supplement in
+            AddSupplementView(
+                editing: supplement,
+                onSave: { Task { await viewModel.load() } }
             )
         }
         .sheet(isPresented: $showsQuickLogSheet) {
@@ -275,6 +282,14 @@ struct SupplementsDayView: View {
                 .labelsHidden()
                 .tint(LifeOSColors.Semantic.primary)
                 .disabled(viewModel.isUpdatingSupplement(supplement.id))
+            Button {
+                editingSupplement = supplement
+            } label: {
+                Image(systemName: "pencil")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+            }
+            .accessibilityLabel(String(localized: "edit"))
+            .accessibilityIdentifier("supplements.edit.\(supplement.id.uuidString)")
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -298,6 +313,14 @@ struct SupplementsDayView: View {
                 }
             }
             Spacer()
+            Button(role: .destructive) {
+                Task { await viewModel.undoTakenLog(log) }
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .frame(width: LayoutConstants.minTouchTarget, height: LayoutConstants.minTouchTarget)
+            }
+            .accessibilityLabel(String(localized: "undo"))
+            .accessibilityIdentifier("supplements.undo_taken.\(log.id.uuidString)")
         }
         .padding(Spacing.s)
         .background(LifeOSColors.Surface.card)
@@ -578,6 +601,7 @@ private final class SupplementsDayViewModel {
                     sql: """
                         SELECT
                             user_supplements.id,
+                            user_supplements.user_id,
                             user_supplements.catalog_id,
                             user_supplements.custom_name,
                             supplement_catalog.name AS catalog_name,
@@ -605,6 +629,7 @@ private final class SupplementsDayViewModel {
 
                 var fetchedStack: [UserStackItem] = []
                 var fetchedScheduled: [ScheduledSupplement] = []
+                var scheduleDefinitions: [SupplementScheduleDefinition] = []
 
                 for row in stackRows {
                     guard let supId = MixedUUIDStorage.decode(from: row, column: "id") else { continue }
@@ -614,6 +639,9 @@ private final class SupplementsDayViewModel {
                     let doseAmt: Double? = row["dose_amount"]
                     let doseUnitVal: String? = row["dose_unit"]
                     let timesJson: String? = row["scheduled_times"]
+                    let daysJson: String? = row["days_of_week"]
+                    let startedAt: String = row["started_at"] ?? currentDay
+                    let endedAt: String? = row["ended_at"]
 
                     let scheduleLabel: String
                     switch freq {
@@ -627,10 +655,32 @@ private final class SupplementsDayViewModel {
                         id: supId,
                         name: name,
                         schedule: scheduleLabel,
-                        isActive: isActive
+                        isActive: isActive,
+                        doseAmount: doseAmt,
+                        doseUnit: doseUnitVal ?? "mg",
+                        frequency: freq,
+                        scheduledTimes: Self.decodeStringArray(timesJson),
+                        daysOfWeek: Self.decodeIntArray(daysJson),
+                        startedAt: startedAt,
+                        endedAt: endedAt,
+                        createdAt: Self.decodeDate(from: row, column: "created_at") ?? Date()
                     ))
 
                     guard isActive else {
+                        continue
+                    }
+
+                    let times = Self.decodeStringArray(timesJson)
+                    let definition = SupplementScheduleDefinition(
+                        id: supId,
+                        frequency: freq,
+                        scheduledTimes: times,
+                        daysOfWeek: Self.decodeIntArray(daysJson),
+                        startedAt: startedAt,
+                        endedAt: endedAt
+                    )
+                    scheduleDefinitions.append(definition)
+                    guard Self.isScheduled(definition, on: currentDay) else {
                         continue
                     }
 
@@ -639,14 +689,6 @@ private final class SupplementsDayViewModel {
                         guard let amt = doseAmt, let unit = doseUnitVal, !unit.isEmpty else { return nil }
                         return "\(amt) \(unit)"
                     }()
-
-                    // Parse scheduled times from JSON array string
-                    var times: [String] = []
-                    if let json = timesJson,
-                       let data = json.data(using: .utf8),
-                       let arr = try? JSONSerialization.jsonObject(with: data) as? [String] {
-                        times = arr
-                    }
 
                     if times.isEmpty {
                         // Single entry with no specific time
@@ -714,8 +756,6 @@ private final class SupplementsDayViewModel {
                 let comps = calendar.dateComponents([.year, .month], from: currentDate)
 
                 var fetchedMonthDays: [SupplementMonthDay] = []
-                let totalScheduled = fetchedStack.filter(\.isActive).count
-
                 for dayNum in monthRange {
                     var dayComps = comps
                     dayComps.day = dayNum
@@ -723,23 +763,38 @@ private final class SupplementsDayViewModel {
                     let dayStr = dateFormatter.string(from: dayDate)
                     let isToday = dayStr == currentDay
 
-                    let dayTakenCount = try Int.fetchOne(
+                    let dueDefinitions = scheduleDefinitions.filter { Self.isScheduled($0, on: dayStr) }
+                    let expectedLookupKeys = Set(dueDefinitions.flatMap { definition in
+                        let times = definition.scheduledTimes.isEmpty ? [nil] : definition.scheduledTimes.map(Optional.some)
+                        return times.map {
+                            Self.scheduledLookupKey(userSupplementId: definition.id, scheduledTime: $0)
+                        }
+                    })
+                    let scheduledTakenRows = try Row.fetchAll(
                         db,
                         sql: """
-                            SELECT COUNT(DISTINCT user_supplement_id) FROM supplement_logs
+                            SELECT user_supplement_id, scheduled_time FROM supplement_logs
                             WHERE (user_id = ? OR user_id = ?)
                               AND taken_date = ?
+                              AND was_scheduled = 1
                               AND deleted_at IS NULL
                             """,
                         arguments: [userId, userId.uuidString, dayStr]
-                    ) ?? 0
+                    )
+                    let takenLookupKeys = Set(scheduledTakenRows.compactMap { row -> String? in
+                        guard let supplementId = MixedUUIDStorage.decode(from: row, column: "user_supplement_id") else {
+                            return nil
+                        }
+                        let scheduledTime: String? = row["scheduled_time"]
+                        return Self.scheduledLookupKey(userSupplementId: supplementId, scheduledTime: scheduledTime)
+                    })
 
                     fetchedMonthDays.append(SupplementMonthDay(
                         date: dayStr,
                         dayNumber: dayNum,
                         isToday: isToday,
-                        takenCount: dayTakenCount,
-                        totalCount: totalScheduled
+                        takenCount: takenLookupKeys.intersection(expectedLookupKeys).count,
+                        totalCount: expectedLookupKeys.count
                     ))
                 }
 
@@ -1001,6 +1056,59 @@ private final class SupplementsDayViewModel {
         }
     }
 
+    func undoTakenLog(_ log: SupplementLogSummary) async {
+        do {
+            let authId = AuthManager.activeAuthId?.uuidString
+            let now = Date()
+            try await dbQueue.write { db in
+                guard let userId = try Self.resolveUserId(authId: authId, db: db) else {
+                    throw SupplementsDayViewModelError.missingUser
+                }
+                try db.execute(
+                    sql: """
+                        UPDATE supplement_logs
+                        SET deleted_at = ?, deleted_reason = ?, updated_at = ?
+                        WHERE (id = ? OR id = ?)
+                          AND (user_id = ? OR user_id = ?)
+                          AND deleted_at IS NULL
+                        """,
+                    arguments: [
+                        now.timeIntervalSince1970,
+                        "user_undo",
+                        now.timeIntervalSince1970,
+                        log.id,
+                        log.id.uuidString,
+                        userId,
+                        userId.uuidString
+                    ]
+                )
+                guard db.changesCount > 0 else { return }
+                let body = try JSONEncoder.supabase.encode([
+                    "deleted_at": ISO8601DateFormatter().string(from: now),
+                    "deleted_reason": "user_undo",
+                    "updated_at": ISO8601DateFormatter().string(from: now)
+                ])
+                var event = OutboxEvent(
+                    httpMethod: .PATCH,
+                    path: "rest/v1/supplement_logs?id=eq.\(log.id.uuidString)",
+                    bodyJson: body,
+                    priority: 100
+                )
+                event.headersJson = try Self.outboxHeadersJson()
+                try event.insert(db)
+            }
+            if let notificationScheduler = AppContainer.shared?.notificationScheduler {
+                await notificationScheduler.refreshSchedules()
+            }
+            await AppContainer.shared?.widgetSnapshotCoordinator.refreshSnapshot()
+            await load()
+        } catch {
+            #if DEBUG
+            supplementsDayLogger.debug("SupplementsDayViewModel.undoTakenLog failed: \(error.localizedDescription, privacy: .private)")
+            #endif
+        }
+    }
+
     func logSupplementNow(_ item: UserStackItem) async {
         do {
             let authId = AuthManager.activeAuthId?.uuidString
@@ -1150,7 +1258,15 @@ private final class SupplementsDayViewModel {
                 id: item.id,
                 name: item.name,
                 schedule: item.schedule,
-                isActive: isActive
+                isActive: isActive,
+                doseAmount: item.doseAmount,
+                doseUnit: item.doseUnit,
+                frequency: item.frequency,
+                scheduledTimes: item.scheduledTimes,
+                daysOfWeek: item.daysOfWeek,
+                startedAt: item.startedAt,
+                endedAt: item.endedAt,
+                createdAt: item.createdAt
             )
         }
         .sorted { lhs, rhs in
@@ -1182,6 +1298,31 @@ private final class SupplementsDayViewModel {
     ) -> String? {
         guard let doseAmount else { return nil }
         return "\(doseAmount) \(doseUnit)"
+    }
+
+    nonisolated fileprivate static func isScheduled(
+        _ definition: SupplementScheduleDefinition,
+        on dayString: String
+    ) -> Bool {
+        guard definition.startedAt <= dayString,
+              definition.endedAt.map({ $0 >= dayString }) ?? true,
+              definition.frequency != "as_needed" else {
+            return false
+        }
+        guard definition.frequency == "weekly" else { return true }
+
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: dayString) else { return false }
+        let weekday = Calendar.current.component(.weekday, from: date) - 1
+        if let daysOfWeek = definition.daysOfWeek, !daysOfWeek.isEmpty {
+            return daysOfWeek.contains(weekday)
+        }
+        guard let started = formatter.date(from: definition.startedAt) else { return false }
+        return weekday == Calendar.current.component(.weekday, from: started) - 1
     }
 
     nonisolated private static func scheduledLookupKey(
@@ -1342,6 +1483,15 @@ struct ScheduledSupplement: Identifiable {
     var isTaken: Bool
 }
 
+struct SupplementScheduleDefinition: Equatable, Sendable {
+    let id: UUID
+    let frequency: String
+    let scheduledTimes: [String]
+    let daysOfWeek: [Int]?
+    let startedAt: String
+    let endedAt: String?
+}
+
 // MARK: - Month Day Entry
 
 struct SupplementMonthDay {
@@ -1374,6 +1524,14 @@ struct UserStackItem: Identifiable {
     let name: String
     let schedule: String
     let isActive: Bool
+    let doseAmount: Double?
+    let doseUnit: String
+    let frequency: String
+    let scheduledTimes: [String]
+    let daysOfWeek: [Int]?
+    let startedAt: String
+    let endedAt: String?
+    let createdAt: Date
 }
 
 private struct StoredUserSupplement {
@@ -1514,7 +1672,9 @@ struct AddSupplementView: View {
     @State private var doseUnit = "mg"
     @State private var frequency = "daily"
     @State private var scheduledTime = Date()
+    @State private var selectedWeeklyDays: Set<Int> = []
     @State private var didSave = false
+    private let editing: UserStackItem?
     let onSave: () -> Void
     let onCancel: () -> Void
 
@@ -1524,14 +1684,17 @@ struct AddSupplementView: View {
         initialDoseUnit: String = "mg",
         initialFrequency: String = "daily",
         initialScheduledTime: Date = Date(),
+        editing: UserStackItem? = nil,
         onSave: @escaping () -> Void,
         onCancel: @escaping () -> Void = {}
     ) {
-        _name = State(initialValue: initialName)
-        _doseAmount = State(initialValue: initialDoseAmount)
-        _doseUnit = State(initialValue: initialDoseUnit)
-        _frequency = State(initialValue: initialFrequency)
-        _scheduledTime = State(initialValue: initialScheduledTime)
+        self.editing = editing
+        _name = State(initialValue: editing?.name ?? initialName)
+        _doseAmount = State(initialValue: editing?.doseAmount.map { String($0) } ?? initialDoseAmount)
+        _doseUnit = State(initialValue: editing?.doseUnit ?? initialDoseUnit)
+        _frequency = State(initialValue: editing?.frequency ?? initialFrequency)
+        _scheduledTime = State(initialValue: Self.date(fromWallClock: editing?.scheduledTimes.first) ?? initialScheduledTime)
+        _selectedWeeklyDays = State(initialValue: Set(editing?.daysOfWeek ?? []))
         self.onSave = onSave
         self.onCancel = onCancel
     }
@@ -1558,13 +1721,19 @@ struct AddSupplementView: View {
                 Section(String(localized: "supplements_schedule")) {
                     Picker(String(localized: "supplements_frequency"), selection: $frequency) {
                         Text(String(localized: "supplements_freq_daily")).tag("daily")
+                        Text(String(localized: "supplements_freq_twice_daily")).tag("twice_daily")
                         Text(String(localized: "supplements_freq_weekly")).tag("weekly")
                         Text(String(localized: "supplements_freq_as_needed")).tag("as_needed")
                     }
-                    DatePicker(String(localized: "supplements_time"), selection: $scheduledTime, displayedComponents: .hourAndMinute)
+                    if frequency != "as_needed" {
+                        DatePicker(String(localized: "supplements_time"), selection: $scheduledTime, displayedComponents: .hourAndMinute)
+                    }
+                    if frequency == "weekly" {
+                        weeklyDaysPicker
+                    }
                 }
             }
-            .navigationTitle(String(localized: "supplements_add"))
+            .navigationTitle(editing == nil ? String(localized: "supplements_add") : String(localized: "edit"))
             .onDisappear {
                 guard !didSave else { return }
                 onCancel()
@@ -1589,8 +1758,31 @@ struct AddSupplementView: View {
         }
     }
 
+    private var weeklyDaysPicker: some View {
+        let symbols = Calendar.current.shortWeekdaySymbols
+        return VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text(String(localized: "supplements_schedule"))
+                .font(LifeOSTypography.caption.weight(.semibold))
+            HStack(spacing: Spacing.xxs) {
+                ForEach(0..<7, id: \.self) { weekday in
+                    let title = symbols[(weekday + 1) % 7]
+                    Button(title) {
+                        if selectedWeeklyDays.contains(weekday) {
+                            selectedWeeklyDays.remove(weekday)
+                        } else {
+                            selectedWeeklyDays.insert(weekday)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(selectedWeeklyDays.contains(weekday) ? LifeOSColors.Semantic.primary : .secondary)
+                    .accessibilityIdentifier("supplements.weekday.\(weekday)")
+                }
+            }
+        }
+    }
+
     private func saveSupplement() async -> Bool {
-        let id = UUID()
+        let id = editing?.id ?? UUID()
         let userId = AuthManager.activeAuthId ?? UUID()
         let supplementName = name
         let parsedDoseAmount = Double(doseAmount)
@@ -1607,8 +1799,15 @@ struct AddSupplementView: View {
         dayFormatter.dateFormat = "yyyy-MM-dd"
         let todayStr = dayFormatter.string(from: Date())
 
+        let daysOfWeek: [Int]? = {
+            guard selectedFrequency == "weekly" else { return nil }
+            if !selectedWeeklyDays.isEmpty { return selectedWeeklyDays.sorted() }
+            return [Calendar.current.component(.weekday, from: Date()) - 1]
+        }()
+
         let timesJson: String
-        if let data = try? JSONSerialization.data(withJSONObject: [timeString]),
+        let scheduledTimes = selectedFrequency == "as_needed" ? [] : [timeString]
+        if let data = try? JSONSerialization.data(withJSONObject: scheduledTimes),
            let str = String(data: data, encoding: .utf8) {
             timesJson = str
         } else {
@@ -1625,28 +1824,42 @@ struct AddSupplementView: View {
                 }
                 let now = Date()
 
-                try db.execute(
-                    sql: """
-                        INSERT INTO user_supplements
-                            (id, user_id, custom_name, dose_amount, dose_unit,
-                             frequency, scheduled_times, active, started_at,
-                             created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                    arguments: [
-                        id.uuidString,
-                        dbUserId.uuidString,
-                        supplementName,
-                        parsedDoseAmount,
-                        selectedDoseUnit,
-                        selectedFrequency,
-                        timesJson,
-                        true,
-                        todayStr,
-                        now.timeIntervalSince1970,
-                        now.timeIntervalSince1970
-                    ]
-                )
+                let serializedDays = daysOfWeek.flatMap { try? String(data: JSONEncoder().encode($0), encoding: .utf8) }
+                let startedAt = editing?.startedAt ?? todayStr
+                let createdAt = editing?.createdAt ?? now
+                if let editing {
+                    try db.execute(
+                        sql: """
+                            UPDATE user_supplements
+                            SET custom_name = ?, dose_amount = ?, dose_unit = ?,
+                                frequency = ?, scheduled_times = ?, days_of_week = ?,
+                                updated_at = ?
+                            WHERE (id = ? OR id = ?) AND (user_id = ? OR user_id = ?)
+                            """,
+                        arguments: [
+                            supplementName, parsedDoseAmount, selectedDoseUnit,
+                            selectedFrequency, timesJson, serializedDays,
+                            now.timeIntervalSince1970,
+                            editing.id, editing.id.uuidString, dbUserId, dbUserId.uuidString
+                        ]
+                    )
+                } else {
+                    try db.execute(
+                        sql: """
+                            INSERT INTO user_supplements
+                                (id, user_id, custom_name, dose_amount, dose_unit,
+                                 frequency, scheduled_times, active, started_at,
+                                 days_of_week, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            id.uuidString, dbUserId.uuidString, supplementName,
+                            parsedDoseAmount, selectedDoseUnit, selectedFrequency,
+                            timesJson, true, startedAt, serializedDays,
+                            createdAt.timeIntervalSince1970, now.timeIntervalSince1970
+                        ]
+                    )
+                }
 
                 let payload = UserSupplementOutboxPayload(
                     id: id,
@@ -1656,14 +1869,14 @@ struct AddSupplementView: View {
                     doseAmount: parsedDoseAmount,
                     doseUnit: selectedDoseUnit,
                     frequency: selectedFrequency,
-                    scheduledTimes: [timeString],
-                    daysOfWeek: nil,
+                    scheduledTimes: scheduledTimes,
+                    daysOfWeek: daysOfWeek,
                     takeWithFood: false,
                     notes: nil,
-                    active: true,
-                    startedAt: todayStr,
-                    endedAt: nil,
-                    createdAt: now,
+                    active: editing?.isActive ?? true,
+                    startedAt: startedAt,
+                    endedAt: editing?.endedAt,
+                    createdAt: createdAt,
                     updatedAt: now
                 )
 
@@ -1691,6 +1904,14 @@ struct AddSupplementView: View {
 
     nonisolated private static func outboxHeadersJson() throws -> Data {
         try JSONSerialization.data(withJSONObject: ["Content-Type": "application/json"])
+    }
+
+    private static func date(fromWallClock rawValue: String?) -> Date? {
+        guard let rawValue, !rawValue.isEmpty else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return formatter.date(from: rawValue)
     }
 }
 
@@ -1779,6 +2000,27 @@ private extension SupplementLogSummary {
 
 @MainActor
 enum SupplementsDayViewTestHarness {
+    static func scheduleIsDue(
+        frequency: String,
+        scheduledTimes: [String] = [],
+        daysOfWeek: [Int]? = nil,
+        startedAt: String,
+        endedAt: String? = nil,
+        on day: String
+    ) -> Bool {
+        SupplementsDayViewModel.isScheduled(
+            SupplementScheduleDefinition(
+                id: UUID(),
+                frequency: frequency,
+                scheduledTimes: scheduledTimes,
+                daysOfWeek: daysOfWeek,
+                startedAt: startedAt,
+                endedAt: endedAt
+            ),
+            on: day
+        )
+    }
+
     static func exerciseBodyBranches() {
         let loadingVM = SupplementsDayViewModel(dateString: "2026-02-24")
         loadingVM._testOverrideState(logs: [], isLoading: true)

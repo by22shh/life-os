@@ -90,6 +90,7 @@ actor HealthSyncManager {
 
     /// Generates and persists the PhysiologicalState for a target date.
     func syncDailyState(for date: Date = Date(), userId: UUID) async throws {
+        guard try await canSyncHealthData(for: userId) else { return }
         if try await timeZoneHistoryStore.hasRelevantSnapshot(for: date, userId: userId) == false {
             try await timeZoneHistoryStore.captureCurrentTimeZoneIfNeeded(
                 userId: userId,
@@ -210,6 +211,7 @@ actor HealthSyncManager {
     /// Backfills daily state for the recent N days (inclusive of today).
     func backfillRecentData(days: Int, userId: UUID) async throws {
         guard days > 0 else { return }
+        guard try await canSyncHealthData(for: userId) else { return }
         let referenceNow = nowProvider()
         try await timeZoneHistoryStore.captureCurrentTimeZoneIfNeeded(
             userId: userId,
@@ -252,10 +254,9 @@ actor HealthSyncManager {
         userId: UUID
     ) async throws {
         guard isHealthKitAvailable() else { return }
+        guard try await canSyncHealthData(for: userId) else { return }
 
         let workouts = try await healthKitManager.fetchWorkouts(for: dayContext)
-        let activeSourceIds = Set(workouts.map(\.sourceId))
-        let targetSessionDate = dayContext.dayString
 
         var firstError: Error?
         for workout in workouts {
@@ -268,20 +269,30 @@ actor HealthSyncManager {
             }
         }
 
-        do {
-            try await reconcileRemovedImportedWorkouts(
-                on: targetSessionDate,
-                userId: userId,
-                activeSourceIds: activeSourceIds
-            )
-        } catch {
-            if firstError == nil {
-                firstError = error
-            }
-        }
+        // HealthKit intentionally does not reveal read authorization state.
+        // An empty result can therefore mean access was revoked or a fresh
+        // device is still hydrating, not that Health deleted every workout.
+        // Do not manufacture tombstones from a snapshot. Confirmed source
+        // deletions must arrive through an anchored-deletion path before a
+        // local/cloud record is removed.
 
         if let firstError {
             throw firstError
+        }
+    }
+
+    private func canSyncHealthData(for userId: UUID) async throws -> Bool {
+        try await dbQueue.read { db in
+            try Bool.fetchOne(
+                db,
+                sql: """
+                    SELECT deletion_in_progress
+                    FROM users
+                    WHERE id = ? OR id = ?
+                    LIMIT 1
+                    """,
+                arguments: [userId, userId.uuidString]
+            ) != true
         }
     }
     
@@ -413,68 +424,6 @@ actor HealthSyncManager {
             existing.perceivedExertionRpe != updated.perceivedExertionRpe ||
             existing.deletedAt != updated.deletedAt ||
             existing.deletedReason != updated.deletedReason
-    }
-
-    private func reconcileRemovedImportedWorkouts(
-        on sessionDate: String,
-        userId: UUID,
-        activeSourceIds: Set<String>
-    ) async throws {
-        let updateTimestamp = nowProvider()
-        let removedSessions = try await dbQueue.write { db -> [WorkoutSession] in
-            let candidates = try WorkoutSession.fetchAll(
-                db,
-                sql: """
-                    SELECT *
-                    FROM workout_sessions
-                    WHERE (user_id = ? OR user_id = ?)
-                      AND source = ?
-                      AND import_provider = ?
-                      AND session_date = ?
-                      AND deleted_at IS NULL
-                    """,
-                arguments: [
-                    userId,
-                    userId.uuidString,
-                    WorkoutSource.import.rawValue,
-                    ImportProvider.healthkit.rawValue,
-                    sessionDate,
-                ]
-            )
-
-            var removed: [WorkoutSession] = []
-            for var session in candidates {
-                guard let importSourceId = session.importSourceId,
-                      activeSourceIds.contains(importSourceId) else {
-                    session.updatedAt = updateTimestamp
-                    session.deletedAt = updateTimestamp
-                    session.deletedReason = nil
-                    try session.update(db)
-                    removed.append(session)
-                    continue
-                }
-            }
-
-            return removed
-        }
-
-        guard !removedSessions.isEmpty else { return }
-
-        for session in removedSessions {
-            let event: OutboxEvent = try {
-                var event = OutboxEvent(
-                    httpMethod: .POST,
-                    path: "rest/v1/workout_sessions",
-                    bodyJson: try JSONEncoder.supabase.encode(session),
-                    priority: 95
-                )
-                event.headersJson = try Self.outboxHeadersJson()
-                return event
-            }()
-            try await dbQueue.write { db in
-                try event.insert(db)
-            }
-        }
     }
 
     nonisolated private static func outboxHeadersJson() throws -> Data {

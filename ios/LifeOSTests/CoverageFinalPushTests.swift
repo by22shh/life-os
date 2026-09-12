@@ -3400,11 +3400,11 @@ final class CoverageFinalPushTests: XCTestCase {
         )
         XCTAssertEqual(englishParsed.name, "Granola Bar")
         XCTAssertEqual(englishParsed.servingSizeG, 50, accuracy: 0.001)
-        XCTAssertEqual(englishParsed.caloriesPer100g, 220, accuracy: 0.001)
-        XCTAssertEqual(englishParsed.proteinPer100g, 20, accuracy: 0.001)
-        XCTAssertEqual(englishParsed.fatPer100g, 8, accuracy: 0.001)
-        XCTAssertEqual(englishParsed.carbsPer100g, 18, accuracy: 0.001)
-        XCTAssertEqual(englishParsed.fiberPer100g, 4, accuracy: 0.001)
+        XCTAssertEqual(englishParsed.caloriesPer100g, 440, accuracy: 0.001)
+        XCTAssertEqual(englishParsed.proteinPer100g, 40, accuracy: 0.001)
+        XCTAssertEqual(englishParsed.fatPer100g, 16, accuracy: 0.001)
+        XCTAssertEqual(englishParsed.carbsPer100g, 36, accuracy: 0.001)
+        XCTAssertEqual(englishParsed.fiberPer100g, 8, accuracy: 0.001)
 
         let russianParsed = MediaRecognitionService._testParseNutritionLabelText(
             """
@@ -3418,10 +3418,10 @@ final class CoverageFinalPushTests: XCTestCase {
         )
         XCTAssertEqual(russianParsed.name, "Батончик")
         XCTAssertEqual(russianParsed.servingSizeG, 40, accuracy: 0.001)
-        XCTAssertEqual(russianParsed.caloriesPer100g, 180, accuracy: 0.001)
-        XCTAssertEqual(russianParsed.proteinPer100g, 12, accuracy: 0.001)
-        XCTAssertEqual(russianParsed.fatPer100g, 6, accuracy: 0.001)
-        XCTAssertEqual(russianParsed.carbsPer100g, 20, accuracy: 0.001)
+        XCTAssertEqual(russianParsed.caloriesPer100g, 450, accuracy: 0.001)
+        XCTAssertEqual(russianParsed.proteinPer100g, 30, accuracy: 0.001)
+        XCTAssertEqual(russianParsed.fatPer100g, 15, accuracy: 0.001)
+        XCTAssertEqual(russianParsed.carbsPer100g, 50, accuracy: 0.001)
 
         let emptyParsed = MediaRecognitionService._testParseNutritionLabelText(nil)
         XCTAssertFalse(emptyParsed.warnings.isEmpty)
@@ -9570,6 +9570,8 @@ final class CoverageFinalPushTests: XCTestCase {
         let viewModel = WorkoutLogViewModel(dbQueue: manager.dbQueue)
         viewModel.notes = "  Strong day  "
         viewModel.setRPE(7)
+        viewModel.setDurationMinutes(45)
+        XCTAssertEqual(viewModel.editableDurationMinutes, 45)
         viewModel.exercises = [
             WorkoutLogExercise(
                 id: squatExerciseId,
@@ -9612,11 +9614,11 @@ final class CoverageFinalPushTests: XCTestCase {
         XCTAssertEqual(snapshot.0.userId, userId)
         XCTAssertEqual(snapshot.0.notes, "Strong day")
         XCTAssertEqual(snapshot.0.perceivedExertionRpe, 7)
-        XCTAssertEqual(snapshot.0.durationMinutes, 15)
+        XCTAssertEqual(snapshot.0.durationMinutes, 45)
         XCTAssertEqual(try XCTUnwrap(snapshot.0.totalSets), 3)
         XCTAssertEqual(try XCTUnwrap(snapshot.0.totalReps), 16)
         XCTAssertEqual(try XCTUnwrap(snapshot.0.totalVolume), 1_470, accuracy: 0.001)
-        XCTAssertEqual(try XCTUnwrap(snapshot.0.trimpScore), 15.75, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(snapshot.0.trimpScore), 47.25, accuracy: 0.001)
         XCTAssertEqual(snapshot.1.count, 2)
         XCTAssertEqual(snapshot.2.count, 3)
 
@@ -10407,8 +10409,8 @@ final class CoverageFinalPushTests: XCTestCase {
         XCTAssertEqual(updatedDrafts[0].id, workoutId)
         XCTAssertEqual(updatedDrafts[0].notes, "Updated notes")
         XCTAssertEqual(updatedDrafts[0].perceivedExertionRpe, 8)
-        XCTAssertEqual(updatedDrafts[0].durationMinutes, 15)
-        XCTAssertEqual(try XCTUnwrap(updatedDrafts[0].trimpScore), 18, accuracy: 0.001)
+        XCTAssertNil(updatedDrafts[0].durationMinutes, "Set count must not invent a workout duration")
+        XCTAssertNil(updatedDrafts[0].trimpScore, "TRIMP requires an actual recorded duration")
         XCTAssertEqual(updatedDrafts[0].exercises?.count, 1)
         XCTAssertEqual(updatedDrafts[0].exercises?.first?.notes, "Heavy set")
         XCTAssertEqual(updatedDrafts[0].exercises?.first?.sets.first?.restAfterSeconds, 120)

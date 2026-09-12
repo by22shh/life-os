@@ -50,6 +50,7 @@ function makeJob(overrides: Partial<DeletionJobRow> = {}): DeletionJobRow {
     storage_object_paths: [],
     storage_cleanup_completed: false,
     storage_cleanup_completed_at: null,
+    processing_started_at: null,
     created_at: "2026-03-15T00:00:00.000Z",
     updated_at: "2026-03-15T00:00:00.000Z",
     ...overrides,

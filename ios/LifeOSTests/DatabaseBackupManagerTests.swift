@@ -168,6 +168,34 @@ final class DatabaseBackupManagerTests: XCTestCase {
 
         XCTAssertNil(DatabaseBackupManager.newestValidBackupURL(in: emptyDirectory))
     }
+
+    func testFinishErasureReleasesBackupFenceForFreshProfile() async throws {
+        let root = try makeTempDirectory(named: "lifeos-backup-erasure-fence")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("lifeos.db")
+        let backupsURL = root.appendingPathComponent("backups", isDirectory: true)
+        let queue = try DatabaseQueue(path: databaseURL.path)
+        try await queue.write { db in
+            try db.execute(sql: "CREATE TABLE data (value INTEGER)")
+        }
+        let (defaults, suiteName) = try makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        nonisolated(unsafe) let sendableDefaults = defaults
+        let manager = DatabaseBackupManager(
+            dbQueueProvider: { queue },
+            defaultsProvider: { sendableDefaults },
+            backupsDirectoryProvider: { backupsURL },
+            now: Date.init
+        )
+
+        try await manager.removeAllBackupsForErasure()
+        await manager.performBackupIfDue()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: backupsURL.path))
+
+        await manager.finishErasure()
+        await manager.performBackupIfDue()
+        XCTAssertEqual(try mainBackupFileNames(in: backupsURL).count, 1)
+    }
     func testRestorePreservesDamagedPrimaryAndRecoversCommittedHistory() throws {
         let directory = try makeTempDirectory(named: "lifeos-recovery")
         defer { try? FileManager.default.removeItem(at: directory) }

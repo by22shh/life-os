@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import GRDB
 import XCTest
 @testable import LifeOS
@@ -210,6 +211,54 @@ final class LocalPrivacyOperationsTests: XCTestCase {
         XCTAssertEqual(calories, 777)
     }
 
+    func testArchiveImportNormalizesUUIDsAndEncryptsHealthValuesAtRest() async throws {
+        let fixedKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedKey }
+        defer { FieldEncryption._testResetOverrides() }
+        let source = try DatabaseManager.inMemory()
+        let destination = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+        let directory = try makeTempExportsDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try await source.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try HealthMeasurement(
+                userId: userId,
+                biomarkerName: "Ferritin",
+                value: 78.4,
+                unit: "ng/mL"
+            ).insert(db)
+        }
+        try await destination.dbQueue.write { db in
+            // GRDB stores this UUID upper-case. The portable archive carries
+            // it lower-case, which used to create a second local profile.
+            try Self.insertUser(db, userId: userId, authId: authId)
+        }
+
+        let archiveURL = try await LocalPrivacyExportWriter.createExport(
+            exportId: UUID().uuidString,
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: source.dbQueue,
+            exportsDirectoryOverride: directory
+        )
+        _ = try await LocalPrivacyArchiveImporter.importArchive(
+            data: Data(contentsOf: archiveURL),
+            user: LocalPrivacyUserContext(userId: userId, authId: authId),
+            dbQueue: destination.dbQueue
+        )
+
+        try await destination.dbQueue.read { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM users"), 1)
+            let encryptedValue = try XCTUnwrap(String.fetchOne(
+                db,
+                sql: "SELECT value FROM health_measurements LIMIT 1"
+            ))
+            XCTAssertTrue(encryptedValue.hasPrefix("enc:v1:"))
+        }
+    }
+
     private enum TestFailure: LocalizedError, Equatable {
         case exportCleanup
         case keyDeletion
@@ -346,6 +395,35 @@ final class LocalPrivacyOperationsTests: XCTestCase {
 
             let failureCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM deletion_failures") ?? 0
             XCTAssertEqual(failureCount, 0)
+        }
+    }
+
+    func testPurgeUserScopedDataAlsoRemovesDeviceScopedAICache() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let userId = UUID()
+        let authId = UUID()
+
+        try await manager.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            try db.execute(
+                sql: """
+                    INSERT INTO ai_cache (id, cache_key, payload, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    "cache-1",
+                    "insight-summary",
+                    Data([0x01, 0x02, 0x03]),
+                    Date(),
+                    Date().addingTimeInterval(3600),
+                ]
+            )
+            try LocalUserDataReset.purgeUserScopedData(in: db)
+        }
+
+        try await manager.dbQueue.read { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM ai_cache") ?? -1, 0)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM users") ?? -1, 0)
         }
     }
 

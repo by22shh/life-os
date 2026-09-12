@@ -444,8 +444,11 @@ final class LifeOSWatchCoverageTests: XCTestCase {
         XCTAssertEqual(store.lastActionFeedback, .openOnIPhoneQueued)
         XCTAssertEqual(store.openOnIPhoneAvailability, .queued)
 
+        let profileOwnerId = UUID().uuidString
+        let supplementId = UUID().uuidString
         let supplementSnapshot = WatchSnapshot(
             date: "2026-03-19",
+            profileOwnerId: profileOwnerId,
             lastUpdatedAt: Date(timeIntervalSince1970: 1_710_836_400),
             recoveryScore: 82,
             recoveryZone: "optimal",
@@ -456,6 +459,7 @@ final class LifeOSWatchCoverageTests: XCTestCase {
                 payload: WatchSnapshot.NextBestAction.Payload(
                     deepLink: nil,
                     supplementName: "Magnesium",
+                    supplementId: supplementId,
                     scheduledTime: "21:00",
                     insightId: nil,
                     date: nil
@@ -483,6 +487,17 @@ final class LifeOSWatchCoverageTests: XCTestCase {
             queuedLightweightSession.transferredUserInfo.first?["action"] as? String,
             "supplement_taken"
         )
+        XCTAssertEqual(
+            queuedLightweightSession.transferredUserInfo.first?["profile_owner_id"] as? String,
+            profileOwnerId
+        )
+        XCTAssertEqual(
+            queuedLightweightSession.transferredUserInfo.first?["supplement_id"] as? String,
+            supplementId
+        )
+        XCTAssertNotNil(queuedLightweightSession.transferredUserInfo.first?["occurred_at"] as? String)
+        XCTAssertNotNil(queuedLightweightSession.transferredUserInfo.first?["occurred_timezone"] as? String)
+        XCTAssertNotNil(queuedLightweightSession.transferredUserInfo.first?["occurred_local_date"] as? String)
         XCTAssertTrue(store.isCurrentNextBestActionPending)
         XCTAssertEqual(store.lastActionFeedback, .lightweightActionQueued)
 
@@ -504,6 +519,7 @@ final class LifeOSWatchCoverageTests: XCTestCase {
         store._testReconcilePendingLightweightActionState(for: nil)
         let insightSnapshot = WatchSnapshot(
             date: "2026-03-19",
+            profileOwnerId: profileOwnerId,
             lastUpdatedAt: Date(timeIntervalSince1970: 1_710_836_400),
             recoveryScore: 67,
             recoveryZone: "caution",

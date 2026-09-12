@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceId": "C7446DE6-7FB6-4C1F-AD18-B431AC30C512",
+        "deviceName": "LifeOS Audit 2026-09-12",
+        "modelName": "iPhone 17 Pro",
+        "osBuildNumber": "23F77",
+        "osVersion": "26.5",
+        "platform": "iOS Simulator"
+      },
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "passedTests": 830,
+      "skippedTests": 5,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription": "LifeOS · Built with macOS 26.3",
+  "expectedFailures": 0,
+  "failedTests": 0,
+  "finishTime": 1789223101.105,
+  "passedTests": 830,
+  "result": "Passed",
+  "skippedTests": 5,
+  "startTime": 1789222794.042,
+  "statistics": [],
+  "testFailures": [],
+  "title": "Test - LifeOS",
+  "topInsights": [
+    {
+      "category": "Longest Test Runs",
+      "impact": "44% of duration",
+      "text": "3 longest test runs with outlier durations exceeding 3.95s (three standard deviations)"
+    }
+  ],
+  "totalTestCount": 835
+}

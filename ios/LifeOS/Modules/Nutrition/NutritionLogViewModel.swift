@@ -75,6 +75,15 @@ struct NutritionEditableMealItem: Equatable, Sendable, Identifiable {
     var confidence: Double?
     var detectedByAi: Bool
     var userAdjusted: Bool
+    /// The nutrient values are stored for the currently selected portion.  Keep a
+    /// private reference portion so changing grams can scale the entire item
+    /// rather than silently leaving the old calories and macros behind.
+    private var referenceWeightG: Double
+    private var referenceCalories: Double
+    private var referenceProteinG: Double
+    private var referenceFatG: Double
+    private var referenceCarbsG: Double
+    private var referenceFiberG: Double
 
     init(
         id: UUID = UUID(),
@@ -110,6 +119,12 @@ struct NutritionEditableMealItem: Equatable, Sendable, Identifiable {
         self.confidence = confidence
         self.detectedByAi = detectedByAi
         self.userAdjusted = userAdjusted
+        self.referenceWeightG = max(weightG, 0.000_001)
+        self.referenceCalories = calories
+        self.referenceProteinG = proteinG
+        self.referenceFatG = fatG
+        self.referenceCarbsG = carbsG
+        self.referenceFiberG = fiberG
     }
 
     init(foodItem: FoodItem) {
@@ -131,6 +146,31 @@ struct NutritionEditableMealItem: Equatable, Sendable, Identifiable {
             detectedByAi: foodItem.detectedByAi,
             userAdjusted: foodItem.userAdjusted
         )
+    }
+
+    mutating func rescaleNutritionForCurrentWeight() {
+        guard weightG > 0, referenceWeightG > 0 else { return }
+        let scale = weightG / referenceWeightG
+        calories = referenceCalories * scale
+        proteinG = referenceProteinG * scale
+        fatG = referenceFatG * scale
+        carbsG = referenceCarbsG * scale
+        fiberG = referenceFiberG * scale
+        userAdjusted = true
+    }
+
+    /// A direct macro correction establishes a new per-portion reference for
+    /// later gram changes. This preserves a deliberate correction instead of
+    /// reapplying stale OCR/catalog values.
+    mutating func rebaseNutritionForCurrentWeight() {
+        guard weightG > 0 else { return }
+        referenceWeightG = weightG
+        referenceCalories = calories
+        referenceProteinG = proteinG
+        referenceFatG = fatG
+        referenceCarbsG = carbsG
+        referenceFiberG = fiberG
+        userAdjusted = true
     }
 }
 
@@ -428,6 +468,16 @@ final class NutritionLogViewModel {
         mealItems.append(NutritionEditableMealItem(name: defaultName, calories: 100, proteinG: 0, fatG: 0, carbsG: 0))
     }
 
+    func rescaleMealItem(id: UUID) {
+        guard let index = mealItems.firstIndex(where: { $0.id == id }) else { return }
+        mealItems[index].rescaleNutritionForCurrentWeight()
+    }
+
+    func rebaseMealItemNutrition(id: UUID) {
+        guard let index = mealItems.firstIndex(where: { $0.id == id }) else { return }
+        mealItems[index].rebaseNutritionForCurrentWeight()
+    }
+
     func removeMealItem(id: UUID) {
         guard mealItems.count > 1 else {
             errorMessage = NutritionError.invalidMealItem(
@@ -488,8 +538,11 @@ final class NutritionLogViewModel {
             let userId = try await latestUserId()
 
             let inputMethod = currentMethod?.asInputMethod ?? .manual
-            let loggedAt = draft?.loggedAt ?? now
-            let loggedDate = draft?.loggedDate ?? Self.localDateString(loggedAt)
+            // `loggedAt` is user-editable in the review screen.  Never fall
+            // back to the immutable capture draft here: that put backfilled
+            // meals into the wrong day and timezone.
+            let loggedAt = self.loggedAt
+            let loggedDate = Self.localDateString(loggedAt)
 
             var log = FoodLog(
                 userId: userId,
@@ -777,7 +830,7 @@ final class NutritionLogViewModel {
         from draft: NutritionLogDraft?,
         method: NutritionLogMethod?
     ) -> [NutritionEditableMealItem] {
-        guard method == .manual, let draft else { return [] }
+        guard let draft else { return [] }
 
         return draft.candidateItems.compactMap { item in
             guard item.isPersistable,

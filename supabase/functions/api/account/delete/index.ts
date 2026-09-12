@@ -14,6 +14,7 @@ import {
   deletionStateIsTerminal,
 } from "../../../_shared/account_deletion_state_machine.ts";
 import {
+  canonicalAuthUserId,
   cascadedFailureState,
   cleanupMedicalScanStorage,
   deleteAuthPrincipalWithRetry,
@@ -431,7 +432,7 @@ async function handleImmediateDeletion(
 
   const authDelete = await deleteAuthPrincipalWithRetry(
     service,
-    job.auth_user_id ?? user.auth_id,
+    canonicalAuthUserId(user),
   );
   if (!authDelete.ok) {
     return await handlePostDeleteFailure(

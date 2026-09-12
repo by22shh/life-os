@@ -1331,6 +1331,7 @@ struct NutritionVoiceInputView: View {
 
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension NutritionPhotoCaptureView {
     init(
@@ -2280,3 +2281,4 @@ extension NutritionVoiceInputView {
         return stopCalls
     }
 }
+#endif

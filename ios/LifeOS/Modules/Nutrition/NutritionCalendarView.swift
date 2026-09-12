@@ -95,7 +95,10 @@ struct NutritionCalendarView: View {
     }
 
     private func calendarGrid() -> some View {
-        let weekdays = calendar.shortWeekdaySymbols
+        let sundayBasedWeekdays = calendar.shortWeekdaySymbols
+        let firstWeekdayIndex = max(0, calendar.firstWeekday - 1)
+        let weekdays = Array(sundayBasedWeekdays.dropFirst(firstWeekdayIndex))
+            + Array(sundayBasedWeekdays.prefix(firstWeekdayIndex))
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: Spacing.xs) {
             ForEach(weekdays, id: \.self) { day in
                 weekdayHeader(day)
@@ -454,6 +457,7 @@ enum FoodPhotoAnalysisServiceError: Error {
     case transport(Error)
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension NutritionCalendarView {
     init(
@@ -529,3 +533,4 @@ extension SystemImagePicker {
         configuredPicker(delegate: delegate ?? makeCoordinator())
     }
 }
+#endif

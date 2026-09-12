@@ -334,6 +334,21 @@ async function handleCustomCreate(
     ? String(payload.id)
     : (isUUID(idempotencyKey) ? idempotencyKey : crypto.randomUUID());
 
+  const { data: existing, error: ownershipError } = await service
+    .from("user_foods")
+    .select("user_id")
+    .eq("id", rowId)
+    .maybeSingle<{ user_id: string }>();
+  if (ownershipError) {
+    return jsonWithRequest(request, {
+      error: "custom_food_create_failed",
+      detail: sanitizedInternalDetail(request, "index", ownershipError),
+    }, 500);
+  }
+  if (existing && existing.user_id !== userId) {
+    return jsonWithRequest(request, { error: "forbidden_id_ownership" }, 403);
+  }
+
   const { data: inserted, error } = await service
     .from("user_foods")
     .upsert({

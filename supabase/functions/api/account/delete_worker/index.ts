@@ -5,6 +5,7 @@ import {
   validateInternalServiceRoleRequest,
 } from "../../../_shared/supabase.ts";
 import {
+  canonicalAuthUserId,
   cleanupMedicalScanStorage,
   deleteAuthPrincipalWithRetry,
   deletePostgresData,
@@ -42,6 +43,8 @@ interface ScheduledDeletionContext {
   authUserId: string | null;
   user: UserRow | null;
 }
+
+const PROCESSING_LEASE_MS = 10 * 60 * 1000;
 
 Deno.serve(async (request) => {
   const preflight = handleCors(request);
@@ -118,25 +121,43 @@ async function fetchDueScheduledDeletionJobs(
     throw new Error(`scheduled_job_fetch_failed:${scheduledError.message}`);
   }
 
-  const remaining = Math.max(0, batchSize - (scheduledJobs?.length ?? 0));
-  if (remaining === 0) {
-    return scheduledJobs ?? [];
-  }
+  let jobs = scheduledJobs ?? [];
+  let remaining = Math.max(0, batchSize - jobs.length);
 
-  const { data: retryJobs, error: retryError } = await service
-    .from("account_deletion_jobs")
-    .select(DELETION_JOB_SELECT)
-    .eq("mode", "scheduled")
-    .eq("state", "retry_scheduled")
-    .lte("next_retry_at", nowIso)
-    .order("next_retry_at", { ascending: true })
-    .limit(remaining)
-    .returns<DeletionJobRow[]>();
+  const { data: retryJobs, error: retryError } = remaining > 0
+    ? await service
+      .from("account_deletion_jobs")
+      .select(DELETION_JOB_SELECT)
+      .eq("mode", "scheduled")
+      .eq("state", "retry_scheduled")
+      .lte("next_retry_at", nowIso)
+      .order("next_retry_at", { ascending: true })
+      .limit(remaining)
+      .returns<DeletionJobRow[]>()
+    : { data: [], error: null };
   if (retryError) {
     throw new Error(`scheduled_retry_job_fetch_failed:${retryError.message}`);
   }
 
-  return [...(scheduledJobs ?? []), ...(retryJobs ?? [])];
+  jobs = [...jobs, ...(retryJobs ?? [])];
+  remaining = Math.max(0, batchSize - jobs.length);
+  if (remaining === 0) return jobs;
+
+  const staleBefore = new Date(Date.now() - PROCESSING_LEASE_MS).toISOString();
+  const { data: staleJobs, error: staleError } = await service
+    .from("account_deletion_jobs")
+    .select(DELETION_JOB_SELECT)
+    .eq("mode", "scheduled")
+    .in("state", ["auth_deleting", "data_deleting", "vector_verifying"])
+    .lte("processing_started_at", staleBefore)
+    .order("processing_started_at", { ascending: true })
+    .limit(remaining)
+    .returns<DeletionJobRow[]>();
+  if (staleError) {
+    throw new Error(`scheduled_stale_job_fetch_failed:${staleError.message}`);
+  }
+
+  return [...jobs, ...(staleJobs ?? [])];
 }
 
 async function processDueScheduledDeletionJob(
@@ -172,6 +193,7 @@ async function processDueScheduledDeletionJob(
       next_retry_at: null,
       last_error: null,
       last_failure_type: null,
+      processing_started_at: new Date().toISOString(),
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -201,11 +223,31 @@ async function processDueScheduledDeletionJob(
     auth_id: context.authUserId,
   };
 
-  const storageDelete = await cleanupMedicalScanStorage(
-    service,
-    effectiveUser,
-    job,
-  );
+  let storageDelete: Awaited<ReturnType<typeof cleanupMedicalScanStorage>>;
+  try {
+    storageDelete = await cleanupMedicalScanStorage(
+      service,
+      effectiveUser,
+      job,
+    );
+  } catch (error) {
+    return await handleScheduledFailure(
+      service,
+      job,
+      reason,
+      {
+        failureType: "storage",
+        error: error instanceof Error
+          ? `scheduled_deletion_storage_failed:${error.message}`
+          : "scheduled_deletion_storage_failed",
+        storageDeleted: false,
+        postgresDeleted: false,
+        vectorsDeleted: false,
+        authDeleted: false,
+      },
+      context.user != null,
+    );
+  }
   job = storageDelete.job;
   if (!storageDelete.ok) {
     return await handleScheduledFailure(
@@ -327,6 +369,7 @@ async function processDueScheduledDeletionJob(
       next_retry_at: null,
       last_error: null,
       last_failure_type: null,
+      processing_started_at: null,
     });
   } catch (error) {
     const cascadedAway = await deletionJobCascadeDeletedAfterUserRemoval(
@@ -371,7 +414,10 @@ async function loadScheduledDeletionContext(
       auth_id: userRow.auth_id,
     }
     : null;
-  const authUserId = job.auth_user_id ?? userRow?.auth_id ?? null;
+  // The job payload is never an authority for auth deletion. Its value is
+  // normalized by the database trigger, but the worker still derives the
+  // principal directly from the currently loaded public user.
+  const authUserId = user ? canonicalAuthUserId(user) : null;
   const reason = job.reason ?? userRow?.deletion_reason ?? "user_requested";
 
   return {
@@ -407,6 +453,7 @@ async function handleScheduledFailure(
       next_retry_at: nextRetryAt,
       last_error: options.error,
       last_failure_type: options.failureType,
+      processing_started_at: null,
     });
 
     if (userExists) {
@@ -444,6 +491,7 @@ async function handleScheduledFailure(
     next_retry_at: null,
     last_error: options.error,
     last_failure_type: options.failureType,
+    processing_started_at: null,
   };
   if (!auditError) {
     failedPatch.audit_log_id = auditLogId;

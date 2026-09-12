@@ -562,7 +562,7 @@ private struct GuardianEmergencyOverrideSheet: View {
                 ProgressView(value: holdProgress, total: 1)
                     .tint(LifeOSColors.Recovery.caution)
 
-                Button(action: {}) {
+                Button(action: handleButtonActivation) {
                     Text(
                         isEnabled
                             ? String(localized: "settings_emergency_override_hold_button")
@@ -572,6 +572,7 @@ private struct GuardianEmergencyOverrideSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!isEnabled)
+                .accessibilityHint(String(localized: "settings_emergency_override_hold_instruction"))
                 .onLongPressGesture(
                     minimumDuration: Self.holdDuration,
                     maximumDistance: 36,
@@ -594,6 +595,21 @@ private struct GuardianEmergencyOverrideSheet: View {
                 }
             }
         }
+    }
+
+    private func handleButtonActivation() {
+        holdTask?.cancel()
+        holdProgress = 0
+        guard isEnabled, isAssistiveActivation else { return }
+        confirmOverride()
+    }
+
+    private var isAssistiveActivation: Bool {
+        #if canImport(UIKit)
+        UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning
+        #else
+        false
+        #endif
     }
 
     private func handlePressing(_ isPressing: Bool) {

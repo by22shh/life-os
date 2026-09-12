@@ -250,14 +250,16 @@ async function buildDailySnapshot(
       `Today's recovery score is ${roundedScore} in the ${zone} zone, so consistency should pay off better than adding extra strain.`;
     let recoveryPriority = 3;
     if (recoveryScore < 45) {
-      recoveryTitle = "Recovery is below your recent range";
-      recoveryBody = roundedDelta > 0
+      recoveryTitle = delta < 0
+        ? "Recovery is below your recent range"
+        : "Recovery needs a lighter day";
+      recoveryBody = delta < 0 && roundedDelta > 0
         ? `Today's recovery score is ${roundedScore} in the ${zone} zone, about ${roundedDelta} points below your recent pattern.`
         : `Today's recovery score is ${roundedScore} in the ${zone} zone, so it is a better day to protect bandwidth than chase intensity.`;
       recoveryPriority = recoveryScore < 25 ? 1 : 2;
     } else if (recoveryScore >= 75) {
       recoveryTitle = "Recovery is supporting a steady day";
-      recoveryBody = roundedDelta > 0
+      recoveryBody = delta > 0 && roundedDelta > 0
         ? `Today's recovery score is ${roundedScore}, about ${roundedDelta} points above your recent range, which supports normal training and workload.`
         : `Today's recovery score is ${roundedScore}, which supports a normal training and work rhythm today.`;
       recoveryPriority = 4;

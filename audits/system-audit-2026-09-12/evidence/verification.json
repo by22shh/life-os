@@ -1,0 +1,85 @@
+{
+  "audit_date": "2026-09-12",
+  "base_commit": "32b29af6f3bc4ac8739c62833e691d48a1d0fd85",
+  "scope": "Current working tree, including pre-existing changes. Production sources unchanged by audit.",
+  "xcode": "Xcode 26.6\nBuild version 17F113",
+  "xctest": {
+    "ios-unit": {
+      "result": "Passed",
+      "totalTestCount": 835,
+      "passedTests": 830,
+      "failedTests": 0,
+      "skippedTests": 5,
+      "xcresult_path": "/tmp/lifeos-audit-20260912/ios-unit.xcresult",
+      "summary_file": "ios-unit-summary.json"
+    },
+    "ios-ui": {
+      "result": "Failed",
+      "totalTestCount": 13,
+      "passedTests": 11,
+      "failedTests": 1,
+      "skippedTests": 1,
+      "xcresult_path": "/tmp/lifeos-audit-20260912/ios-ui.xcresult",
+      "summary_file": "ios-ui-summary.json"
+    },
+    "ios-startup-isolated": {
+      "result": "Failed",
+      "totalTestCount": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "skippedTests": 0,
+      "xcresult_path": "/tmp/lifeos-audit-20260912/ios-startup-isolated.xcresult",
+      "summary_file": "ios-startup-isolated-summary.json"
+    },
+    "ios-live-backend": {
+      "result": "Passed",
+      "totalTestCount": 1,
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0,
+      "xcresult_path": "/tmp/lifeos-audit-20260912/ios-live-backend.xcresult",
+      "summary_file": "ios-live-backend-summary.json"
+    },
+    "watch-tests": {
+      "result": "Passed",
+      "totalTestCount": 7,
+      "passedTests": 7,
+      "failedTests": 0,
+      "skippedTests": 0,
+      "xcresult_path": "/tmp/lifeos-audit-20260912/watch-tests.xcresult",
+      "summary_file": "watch-tests-summary.json"
+    }
+  },
+  "deno": {
+    "passed": 283,
+    "failed": 0,
+    "steps": 65
+  },
+  "database": {
+    "clean_migrations": 23,
+    "edge_route_checks": 66
+  },
+  "release_build": {
+    "result": "BUILD SUCCEEDED",
+    "configuration": "Release",
+    "destination": "generic/platform=iOS Simulator",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "code_signing": false,
+    "production_credentials_verified": false
+  },
+  "additional_defect_probes": {
+    "real_postgres_scripts": 3,
+    "characterization_handler_tests": 2,
+    "recommendation_invariants_failed": 4
+  },
+  "limits": [
+    "No physical iPhone/Watch tests",
+    "No verified hosted deployment, live AI, APNs, FamilyControls entitlement or signed release archive",
+    "No longitudinal user pilot",
+    "Manual Russian onboarding inspected through step 2; further CUA blocked by locked Mac"
+  ],
+  "log_privacy": "Local Supabase credentials and JWT values redacted from retained evidence logs."
+}

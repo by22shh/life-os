@@ -167,9 +167,8 @@ enum SleepScorer {
 
         if targetRange.contains(remPct) { return 100 }
 
-        let deviation = remPct < targetRange.lowerBound
-            ? targetRange.lowerBound - remPct
-            : remPct - targetRange.upperBound
+        let optimalCenter = (targetRange.lowerBound + targetRange.upperBound) / 2
+        let deviation = abs(remPct - optimalCenter)
 
         if deviation <= 5 { return max(0, 100 - (deviation * 3)) }
         return max(0, 85 - ((deviation - 5) * 4))
@@ -194,7 +193,7 @@ enum SleepScorer {
 
     // MARK: - Sleep Debt Penalty
 
-    /// Cumulative sleep debt over the last 7 days.
+    /// Cumulative sleep debt over the last 14 days (spec: calculateSleepDebt).
     /// Severity: NONE ≤5h → 0, MILD 5-10h → 3, MODERATE 10-20h → 8, SEVERE 20-35h → 15, CRITICAL >35h → 25
     private static func sleepDebtPenalty(recentLogs: [SleepLog], age: Int) -> Double {
         guard !recentLogs.isEmpty else { return 0 }
@@ -203,7 +202,7 @@ enum SleepScorer {
         let optimalHours = (optimal.lowerBound + optimal.upperBound) / 2.0
 
         var totalDebtHours: Double = 0
-        for log in recentLogs.prefix(7) {
+        for log in recentLogs.prefix(14) {
             if let totalMin = log.totalDurationMinutes {
                 let actual = Double(totalMin) / 60.0
                 let deficit = max(0, optimalHours - actual)

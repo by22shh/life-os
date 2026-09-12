@@ -7,13 +7,6 @@ import {
 } from "../../../_shared/supabase.ts";
 import { enforceRateLimit } from "../../../_shared/rate_limit.ts";
 import { handleCors } from "../../../_shared/cors.ts";
-import {
-  type DeletionJobRow,
-  isDeletionJobStateConflict,
-  updateDeletionJobState,
-} from "../../../_shared/account_deletion.ts";
-
-type CancellableDeletionState = "requested" | "scheduled" | "retry_scheduled";
 
 Deno.serve(async (request) => {
   const preflight = handleCors(request);
@@ -35,13 +28,11 @@ Deno.serve(async (request) => {
   const service = serviceRoleClient();
   const { data: userRow, error: userError } = await service
     .from("users")
-    .select("id,deletion_scheduled_at,deletion_in_progress")
+    .select("id")
     .eq("auth_id", authData.user.id)
     .maybeSingle<
       {
         id: string;
-        deletion_scheduled_at: string | null;
-        deletion_in_progress: boolean | null;
       }
     >();
 
@@ -59,73 +50,33 @@ Deno.serve(async (request) => {
   if (rateLimited) {
     return rateLimited;
   }
-  if (!userRow.deletion_scheduled_at) {
+  const { data: cancellation, error: cancelError } = await service.rpc(
+    "cancel_scheduled_account_deletion",
+    { p_user_id: userRow.id },
+  );
+  if (cancelError || typeof cancellation !== "string") {
+    return jsonWithRequest(request, {
+      error: "deletion_cancel_failed",
+      detail: sanitizedInternalDetail(
+        request,
+        "index",
+        cancelError ?? "invalid_response",
+      ),
+    }, 500);
+  }
+
+  if (cancellation === "not_scheduled") {
     return jsonWithRequest(request, { error: "deletion_not_scheduled" }, 409);
   }
-  if (userRow.deletion_in_progress) {
+  if (cancellation === "in_progress") {
     return jsonWithRequest(
       request,
       { error: "deletion_already_in_progress" },
       409,
     );
   }
-
-  const { error: cancelError } = await service
-    .from("users")
-    .update({
-      deletion_scheduled_at: null,
-      deletion_reason: null,
-      deletion_in_progress: false,
-    })
-    .eq("id", userRow.id);
-
-  if (cancelError) {
-    return jsonWithRequest(request, {
-      error: "deletion_cancel_failed",
-      detail: sanitizedInternalDetail(request, "index", cancelError),
-    }, 500);
-  }
-
-  const cancellableStates: CancellableDeletionState[] = [
-    "requested",
-    "scheduled",
-    "retry_scheduled",
-  ];
-  const { data: jobRows, error: jobLookupError } = await service
-    .from("account_deletion_jobs")
-    .select("id,state")
-    .eq("user_id", userRow.id)
-    .eq("mode", "scheduled")
-    .in("state", cancellableStates);
-
-  if (jobLookupError) {
-    return jsonWithRequest(request, {
-      error: "deletion_cancel_job_lookup_failed",
-      detail: sanitizedInternalDetail(request, "index", jobLookupError),
-    }, 500);
-  }
-
-  for (const job of jobRows ?? []) {
-    try {
-      await updateDeletionJobState(
-        service,
-        job as DeletionJobRow,
-        "cancelled",
-        {
-          next_retry_at: null,
-          last_error: null,
-          last_failure_type: null,
-        },
-      );
-    } catch (error) {
-      // A concurrent transition (for example the worker starting deletion)
-      // invalidates the cancel for this job; the state machine guard decides.
-      if (isDeletionJobStateConflict(error)) continue;
-      return jsonWithRequest(request, {
-        error: "deletion_cancel_job_update_failed",
-        detail: sanitizedInternalDetail(request, "index", error),
-      }, 500);
-    }
+  if (cancellation !== "cancelled") {
+    return jsonWithRequest(request, { error: "deletion_cancel_failed" }, 500);
   }
 
   return jsonWithRequest(request, {

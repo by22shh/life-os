@@ -1091,6 +1091,8 @@ struct WellnessCheckDayView: View {
                     Toggle(String(localized: "wellness_digestive_issues"), isOn: $viewModel.digestiveIssues)
                 }
 
+                pss4Section(viewModel)
+
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(String(localized: "notes"))
                         .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -1104,6 +1106,10 @@ struct WellnessCheckDayView: View {
                         .font(LifeOSTypography.headline)
                     ProgressView(value: viewModel.scoreProgress)
                         .tint(viewModel.scoreColor)
+                }
+
+                if viewModel.score < 40 {
+                    mentalHealthResourcesSection(viewModel)
                 }
 
                 Button(String(localized: "save")) {
@@ -1143,6 +1149,42 @@ struct WellnessCheckDayView: View {
         .background(LifeOSColors.Surface.card)
         .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
     }
+
+    private func pss4Section(_ viewModel: WellnessCheckDayViewModel) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(String(localized: "wellness_pss4_title"))
+                .font(LifeOSTypography.subheadline.weight(.semibold))
+            pss4Row(String(localized: "wellness_pss4_q1"), value: $viewModel.pss4Q1)
+            pss4Row(String(localized: "wellness_pss4_q2"), value: $viewModel.pss4Q2)
+            pss4Row(String(localized: "wellness_pss4_q3"), value: $viewModel.pss4Q3)
+            pss4Row(String(localized: "wellness_pss4_q4"), value: $viewModel.pss4Q4)
+            Text(String.localizedStringWithFormat(String(localized: "wellness_pss4_total"), viewModel.pss4Total))
+                .font(LifeOSTypography.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(Spacing.s)
+        .background(LifeOSColors.Surface.card)
+        .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
+    }
+
+    private func pss4Row(_ title: String, value: Binding<Int>) -> some View {
+        Stepper(title, value: value, in: 0...4)
+            .font(LifeOSTypography.caption)
+    }
+
+    private func mentalHealthResourcesSection(_ viewModel: WellnessCheckDayViewModel) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Label(String(localized: "wellness_resources_title"), systemImage: "heart.text.square.fill")
+                .font(LifeOSTypography.subheadline.weight(.semibold))
+            Text(String(localized: "wellness_resources_body"))
+                .font(LifeOSTypography.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(Spacing.s)
+        .background(LifeOSColors.Recovery.caution.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.smallCornerRadius))
+        .onAppear { viewModel.hasViewedMentalHealthResources = true }
+    }
 }
 
 @MainActor
@@ -1153,6 +1195,11 @@ private final class WellnessCheckDayViewModel {
     var muscleSoreness = 3
     var stressLevel = 3
     var mood = 3
+    var pss4Q1 = 0
+    var pss4Q2 = 0
+    var pss4Q3 = 0
+    var pss4Q4 = 0
+    var hasViewedMentalHealthResources = false
     var feelingIll = false
     var headache = false
     var digestiveIssues = false
@@ -1177,6 +1224,8 @@ private final class WellnessCheckDayViewModel {
         let penalty = (feelingIll ? 15.0 : 0.0) + (headache ? 5.0 : 0.0) + (digestiveIssues ? 5.0 : 0.0)
         return max(0, min(100, (base - penalty).rounded()))
     }
+
+    var pss4Total: Int { pss4Q1 + (4 - pss4Q2) + (4 - pss4Q3) + pss4Q4 }
 
     var scoreText: String {
         "\(Int(score))%"
@@ -1204,7 +1253,8 @@ private final class WellnessCheckDayViewModel {
                     sql: """
                         SELECT perceived_sleep_quality, energy_level, muscle_soreness,
                                stress_level, mood, feeling_ill, headache,
-                               digestive_issues, notes
+                               digestive_issues, notes, pss4_q1, pss4_q2, pss4_q3, pss4_q4,
+                               mental_health_resources_shown
                         FROM wellness_checks
                         WHERE (user_id = ? OR user_id = ? OR user_id = ?)
                           AND date = ?
@@ -1225,7 +1275,12 @@ private final class WellnessCheckDayViewModel {
                     feelingIll: (row["feeling_ill"] as Bool?) ?? false,
                     headache: (row["headache"] as Bool?) ?? false,
                     digestiveIssues: (row["digestive_issues"] as Bool?) ?? false,
-                    notes: (row["notes"] as String?) ?? ""
+                    notes: (row["notes"] as String?) ?? "",
+                    pss4Q1: (row["pss4_q1"] as Int?) ?? 0,
+                    pss4Q2: (row["pss4_q2"] as Int?) ?? 0,
+                    pss4Q3: (row["pss4_q3"] as Int?) ?? 0,
+                    pss4Q4: (row["pss4_q4"] as Int?) ?? 0,
+                    resourcesShown: (row["mental_health_resources_shown"] as Bool?) ?? false
                 )
             }
 
@@ -1239,6 +1294,11 @@ private final class WellnessCheckDayViewModel {
             headache = record.headache
             digestiveIssues = record.digestiveIssues
             notes = record.notes
+            pss4Q1 = record.pss4Q1
+            pss4Q2 = record.pss4Q2
+            pss4Q3 = record.pss4Q3
+            pss4Q4 = record.pss4Q4
+            hasViewedMentalHealthResources = record.resourcesShown
         } catch {
             statusMessage = error.localizedDescription
         }
@@ -1253,6 +1313,12 @@ private final class WellnessCheckDayViewModel {
         let muscleSoreness = muscleSoreness
         let stressLevel = stressLevel
         let mood = mood
+        let pss4Q1 = pss4Q1
+        let pss4Q2 = pss4Q2
+        let pss4Q3 = pss4Q3
+        let pss4Q4 = pss4Q4
+        let pss4Total = pss4Total
+        let resourcesShown = hasViewedMentalHealthResources && score < 40
         let feelingIll = feelingIll
         let headache = headache
         let digestiveIssues = digestiveIssues
@@ -1313,6 +1379,10 @@ private final class WellnessCheckDayViewModel {
                                 muscle_soreness = ?,
                                 stress_level = ?,
                                 mood = ?,
+                                pss4_q1 = ?,
+                                pss4_q2 = ?,
+                                pss4_q3 = ?,
+                                pss4_q4 = ?,
                                 feeling_ill = ?,
                                 headache = ?,
                                 digestive_issues = ?,
@@ -1335,12 +1405,16 @@ private final class WellnessCheckDayViewModel {
                             muscleSoreness,
                             stressLevel,
                             mood,
+                            pss4Q1,
+                            pss4Q2,
+                            pss4Q3,
+                            pss4Q4,
                             feelingIll,
                             headache,
                             digestiveIssues,
                             notes.isEmpty ? nil : notes,
                             score,
-                            score < 40,
+                            resourcesShown,
                             createdAt,
                             now,
                             primaryId,
@@ -1355,11 +1429,12 @@ private final class WellnessCheckDayViewModel {
                                 id, user_id, checked_at, date, perceived_sleep_quality,
                                 checked_timezone, checked_utc_offset_minutes,
                                 energy_level, muscle_soreness, stress_level, mood,
+                                pss4_q1, pss4_q2, pss4_q3, pss4_q4,
                                 feeling_ill, headache, digestive_issues, notes,
                                 wellness_score, mental_health_resources_shown,
                                 created_at, updated_at
                             )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         arguments: [
                             MixedUUIDStorage.encode(recordId),
@@ -1373,12 +1448,16 @@ private final class WellnessCheckDayViewModel {
                             muscleSoreness,
                             stressLevel,
                             mood,
+                            pss4Q1,
+                            pss4Q2,
+                            pss4Q3,
+                            pss4Q4,
                             feelingIll,
                             headache,
                             digestiveIssues,
                             notes.isEmpty ? nil : notes,
                             score,
-                            score < 40,
+                            resourcesShown,
                             now,
                             now
                         ]
@@ -1397,17 +1476,17 @@ private final class WellnessCheckDayViewModel {
                     muscleSoreness: muscleSoreness,
                     stressLevel: stressLevel,
                     mood: mood,
-                    pss4Q1: nil,
-                    pss4Q2: nil,
-                    pss4Q3: nil,
-                    pss4Q4: nil,
-                    pss4Total: nil,
+                    pss4Q1: pss4Q1,
+                    pss4Q2: pss4Q2,
+                    pss4Q3: pss4Q3,
+                    pss4Q4: pss4Q4,
+                    pss4Total: pss4Total,
                     feelingIll: feelingIll,
                     headache: headache,
                     digestiveIssues: digestiveIssues,
                     notes: notes.isEmpty ? nil : notes,
                     wellnessScore: score,
-                    mentalHealthResourcesShown: score < 40,
+                    mentalHealthResourcesShown: resourcesShown,
                     deletedAt: nil,
                     createdAt: createdAt,
                     updatedAt: now
@@ -1447,6 +1526,11 @@ private final class WellnessCheckDayViewModel {
         let headache: Bool
         let digestiveIssues: Bool
         let notes: String
+        let pss4Q1: Int
+        let pss4Q2: Int
+        let pss4Q3: Int
+        let pss4Q4: Int
+        let resourcesShown: Bool
     }
 
     enum WellnessError: LocalizedError {

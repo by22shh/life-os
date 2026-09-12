@@ -34,6 +34,7 @@ export interface DeletionJobRow {
   storage_object_paths: string[];
   storage_cleanup_completed: boolean;
   storage_cleanup_completed_at: string | null;
+  processing_started_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,7 +55,7 @@ interface MedicalScanStorageRow {
 export const AUTH_DELETE_RETRY_ATTEMPTS = 3;
 export const AUTH_DELETE_RETRY_BACKOFF_MS = 250;
 export const DELETION_JOB_SELECT =
-  "id,user_id,auth_user_id,idempotency_key,mode,state,reason,attempt_count,next_retry_at,last_error,last_failure_type,scheduled_for,audit_log_id,storage_object_paths,storage_cleanup_completed,storage_cleanup_completed_at,created_at,updated_at";
+  "id,user_id,auth_user_id,idempotency_key,mode,state,reason,attempt_count,next_retry_at,last_error,last_failure_type,scheduled_for,audit_log_id,storage_object_paths,storage_cleanup_completed,storage_cleanup_completed_at,processing_started_at,created_at,updated_at";
 export const MEDICAL_SCANS_BUCKET = "medical-scans";
 const STORAGE_DELETE_BATCH_SIZE = 1000;
 const STORAGE_URL_OBJECT_SEGMENTS = new Set([
@@ -293,14 +294,23 @@ export async function updateDeletionJobState(
 ): Promise<DeletionJobRow> {
   assertDeletionStateTransition(current.state, nextState);
 
-  const { data, error } = await service
+  let query = service
     .from("account_deletion_jobs")
     .update({
       state: nextState,
       ...patch,
     })
     .eq("id", current.id)
-    .eq("state", current.state)
+    .eq("state", current.state);
+
+  // A stale in-progress job can be reclaimed by transitioning it to the same
+  // state with a new lease. Match the old lease as well, otherwise two worker
+  // invocations could both successfully claim the same stale row.
+  if (current.processing_started_at) {
+    query = query.eq("processing_started_at", current.processing_started_at);
+  }
+
+  const { data, error } = await query
     .select(DELETION_JOB_SELECT)
     .maybeSingle<DeletionJobRow>();
 
@@ -394,6 +404,10 @@ export function retryAfterSeconds(nextRetryAt: string | null): number {
   const retryAtMs = Date.parse(nextRetryAt);
   if (!Number.isFinite(retryAtMs)) return 0;
   return Math.max(0, Math.ceil((retryAtMs - Date.now()) / 1000));
+}
+
+export function canonicalAuthUserId(user: UserRow): string {
+  return user.auth_id;
 }
 
 export function normalizeMedicalScanStoragePath(
@@ -574,6 +588,7 @@ function normalizeDeletionJobRow(row: DeletionJobRow): DeletionJobRow {
       : [],
     storage_cleanup_completed: row.storage_cleanup_completed === true,
     storage_cleanup_completed_at: row.storage_cleanup_completed_at ?? null,
+    processing_started_at: row.processing_started_at ?? null,
   };
 }
 

@@ -542,6 +542,69 @@ final class LabsViewCoverageTests: XCTestCase {
             )
         }
     }
+
+    func testLabsMarkerCatalogRejectsDateAndDemographicHeaderLines() {
+        let text = """
+        Дата анализа: 21/02/2024
+        Test date: 03/04/2024
+        Sample date: 2024-04-03
+        Age: 42 years
+        Weight: 75 kg
+        Возраст: 42 года
+        Вес: 75 кг
+        Рост: 180 см
+        """
+
+        XCTAssertTrue(LabsMarkerCatalog.extractMarkers(from: text).isEmpty)
+    }
+
+    func testLabsMarkerCatalogParsesDigitLeadingMarkersAndRangesWithUnits() throws {
+        let text = """
+        25-OH Vitamin D 21 ng/mL
+        25(OH)D 30 ng/mL
+        Glucose 5.6 mmol/L (4.0-6.0 mmol/L)
+        Глюкоза 5,7 ммоль/л (4,0–6,0 ммоль/л)
+        """
+
+        let markers = LabsMarkerCatalog.extractMarkers(from: text)
+
+        XCTAssertEqual(markers.count, 4)
+        XCTAssertEqual(markers.filter { $0.name == "Vitamin D" }.count, 2)
+        let glucose = try XCTUnwrap(markers.first(where: { $0.name == "Glucose" }))
+        XCTAssertEqual(glucose.referenceRange, "4.0-6.0 mmol/L")
+        XCTAssertEqual(LabsMarkerCatalog.normality(for: glucose), true)
+        let glucoseCyrillic = try XCTUnwrap(markers.last(where: { $0.name == "Glucose" }))
+        XCTAssertEqual(glucoseCyrillic.referenceRange, "4,0–6,0 ммоль/л")
+        XCTAssertEqual(LabsMarkerCatalog.normality(for: glucoseCyrillic), true)
+    }
+
+    func testLabsMarkerCatalogIgnoresReferenceRangesInAnotherUnit() {
+        let markerText = "Glucose 5.6 mmol/L (4.0-6.0 mg/dL)"
+
+        let marker = LabsMarkerCatalog.extractMarkers(from: markerText).first
+
+        XCTAssertEqual(marker?.referenceRange, "4.0-6.0 mg/dL")
+        XCTAssertNil(marker.map { LabsMarkerCatalog.bounds(for: $0).low } ?? nil)
+        XCTAssertNil(marker.flatMap { LabsMarkerCatalog.normality(for: $0) })
+    }
+
+    func testLabsDocumentDateAcceptsUsAndIsoFormatsWithoutSilentRollover() throws {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        func parsed(_ text: String) -> String? {
+            LabsMarkerCatalog.documentDate(from: text).map(formatter.string(from:))
+        }
+
+        XCTAssertEqual(parsed("Test date: 02/21/2024"), "2024-02-21")
+        XCTAssertEqual(parsed("Report date: 2024-02-21"), "2024-02-21")
+        XCTAssertEqual(parsed("Дата анализа: 21/02/2024"), "2024-02-21")
+        XCTAssertNil(LabsMarkerCatalog.documentDate(from: "Дата анализа: 31/02/2024"))
+        XCTAssertNil(LabsMarkerCatalog.documentDate(from: "Дата рождения: 21.02.1980"))
+    }
 }
 
 private func XCTAssertThrowsErrorAsync(

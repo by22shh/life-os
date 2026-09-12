@@ -4,6 +4,41 @@ import XCTest
 
 final class SupplementAndMenstrualModelsTests: XCTestCase {
 
+    @MainActor
+    func testSupplementSchedulesRespectFrequencyDateRangeAndWeekdays() {
+        XCTAssertTrue(
+            SupplementsDayViewTestHarness.scheduleIsDue(
+                frequency: "weekly",
+                daysOfWeek: [1],
+                startedAt: "2026-09-01",
+                on: "2026-09-07"
+            )
+        )
+        XCTAssertFalse(
+            SupplementsDayViewTestHarness.scheduleIsDue(
+                frequency: "weekly",
+                daysOfWeek: [1],
+                startedAt: "2026-09-01",
+                on: "2026-09-08"
+            )
+        )
+        XCTAssertFalse(
+            SupplementsDayViewTestHarness.scheduleIsDue(
+                frequency: "as_needed",
+                startedAt: "2026-09-01",
+                on: "2026-09-07"
+            )
+        )
+        XCTAssertFalse(
+            SupplementsDayViewTestHarness.scheduleIsDue(
+                frequency: "daily",
+                startedAt: "2026-09-01",
+                endedAt: "2026-09-05",
+                on: "2026-09-06"
+            )
+        )
+    }
+
     func testSupplementModelDefaults() {
         let catalog = SupplementCatalogEntry(name: "Magnesium", category: .mineral)
         XCTAssertEqual(catalog.name, "Magnesium")

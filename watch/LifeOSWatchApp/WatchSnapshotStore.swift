@@ -187,6 +187,13 @@ final class WatchSnapshotStore: NSObject, ObservableObject {
 
     private func routeLightweightAction(_ action: WatchAction, session: any WatchSessionRouting) {
         setActionFeedback(nil)
+        // A queued mutation without the profile identity can be delivered
+        // after an iPhone account switch. Do not enqueue an ambiguous action.
+        guard snapshot?.profileOwnerId?.isEmpty == false else {
+            setActionFeedback(.lightweightActionUnavailable)
+            refreshConnectivityState(for: session)
+            return
+        }
         let availability = Self.resolveQueuedActionAvailability(for: session)
         let actionSignature = Self.lightweightActionSignature(for: action)
 
@@ -245,16 +252,35 @@ final class WatchSnapshotStore: NSObject, ObservableObject {
     }
 
     private func messagePayload(for action: WatchAction, actionId: UUID? = nil) -> [String: Any] {
+        let occurredAt = Date()
+        var envelope: [String: Any] = [
+            "occurred_at": Self.watchActionTimestamp(from: occurredAt),
+            "occurred_timezone": TimeZone.autoupdatingCurrent.identifier,
+            "occurred_local_date": Self.localDayString(
+                for: occurredAt,
+                timeZone: TimeZone.autoupdatingCurrent
+            )
+        ]
+        if let ownerId = snapshot?.profileOwnerId, !ownerId.isEmpty {
+            envelope["profile_owner_id"] = ownerId
+        }
         switch action {
         case .supplementTaken(let name, let scheduledTime):
-            var message: [String: Any] = ["action": "supplement_taken"]
+            var message = envelope
+            message["action"] = "supplement_taken"
             if let actionId { message["action_id"] = actionId.uuidString.lowercased() }
             if let name { message["supplement_name"] = name }
             if let scheduledTime { message["scheduled_time"] = scheduledTime }
+            if let payload = snapshot?.nextBestAction?.payload,
+               payload.supplementName == name,
+               let supplementId = payload.supplementId {
+                message["supplement_id"] = supplementId
+            }
             return message
 
         case .insightAcknowledge(let insightId):
-            var message: [String: Any] = ["action": "insight_acknowledge"]
+            var message = envelope
+            message["action"] = "insight_acknowledge"
             if let actionId { message["action_id"] = actionId.uuidString.lowercased() }
             if let insightId { message["insight_id"] = insightId }
             return message
@@ -265,6 +291,21 @@ final class WatchSnapshotStore: NSObject, ObservableObject {
                 "deep_link": Self.resolvedDeepLink(from: deepLink)
             ]
         }
+    }
+
+    nonisolated private static func watchActionTimestamp(from date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
+
+    nonisolated private static func localDayString(for date: Date, timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 
     private func refreshConnectivityState(for session: any WatchSessionRouting) {

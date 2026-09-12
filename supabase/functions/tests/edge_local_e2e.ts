@@ -1,3 +1,4 @@
+import { assert } from "https://deno.land/std@0.224.0/assert/assert.ts";
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/assert_equals.ts";
 import { assertMatch } from "https://deno.land/std@0.224.0/assert/assert_match.ts";
 
@@ -1811,6 +1812,25 @@ await runFunctionScenario(
     trainingPlanId = String(objectValue(generated.body, "plan_id"));
     assertMatch(trainingPlanId, /^[0-9a-f-]{36}$/i);
 
+    const generatedSessionRows = await fetchRestRows(
+      env,
+      "training_plan_sessions",
+      { training_plan_id: `eq.${trainingPlanId}` },
+      "id,planned_duration_minutes,planned_exercises,status",
+    );
+    assert(generatedSessionRows.length > 0);
+    const generatedSession = generatedSessionRows[0];
+    const generatedExercises = objectValue(
+      generatedSession,
+      "planned_exercises",
+    ) as Record<string, JsonValue>;
+    const generatedExerciseList = objectValue(generatedExercises, "exercises");
+    assert(Array.isArray(generatedExerciseList));
+    assert(generatedExerciseList.length > 0);
+    const generatedDuration = Number(
+      objectValue(generatedSession, "planned_duration_minutes"),
+    );
+
     const active = await requestJson(
       LOCAL_FUNCTION_URL,
       "/active",
@@ -1868,6 +1888,29 @@ await runFunctionScenario(
       },
     );
     assertEquals(adjust.status, 200);
+    assert(Number(objectValue(adjust.body, "sessions_adjusted")) > 0);
+
+    const adjustedSessionRows = await fetchRestRows(
+      env,
+      "training_plan_sessions",
+      { id: `eq.${objectValue(generatedSession, "id")}` },
+      "planned_duration_minutes,planned_exercises,status",
+    );
+    assertEquals(adjustedSessionRows.length, 1);
+    const adjustedExercises = objectValue(
+      adjustedSessionRows[0],
+      "planned_exercises",
+    ) as Record<string, JsonValue>;
+    const adaptations = objectValue(adjustedExercises, "adaptations");
+    assert(Array.isArray(adaptations));
+    assertEquals(
+      objectValue(adaptations[0], "adjustment"),
+      "reduce_volume_30",
+    );
+    assert(
+      Number(objectValue(adjustedSessionRows[0], "planned_duration_minutes")) <
+        generatedDuration,
+    );
   },
 );
 

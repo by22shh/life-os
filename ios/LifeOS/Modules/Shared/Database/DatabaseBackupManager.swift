@@ -169,6 +169,13 @@ actor DatabaseBackupManager {
         defaultsProvider()?.removeObject(forKey: Self.lastBackupDayDefaultsKey)
     }
 
+    /// Releases the temporary erasure fence after the caller has completed the
+    /// database purge. Keeping this state forever made every subsequent fresh
+    /// profile in the same process permanently ineligible for backups.
+    func finishErasure() {
+        erasureInProgress = false
+    }
+
     // MARK: - Retention
 
     /// Keeps only the newest `keepingNewest` backups, deleting older ones.

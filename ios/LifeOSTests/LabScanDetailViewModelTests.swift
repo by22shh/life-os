@@ -1,9 +1,23 @@
 import XCTest
 import GRDB
+import CryptoKit
 @testable import LifeOS
 
 @MainActor
 final class LabScanDetailViewModelTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        // Health measurements are encrypted at rest. Keep these database tests
+        // independent of the simulator's Keychain availability.
+        let fixedKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedKey }
+    }
+
+    override func tearDown() {
+        FieldEncryption._testResetOverrides()
+        super.tearDown()
+    }
+
     func testLoadUsesLocalMeasurementsWhenPresent() async throws {
         let manager = try DatabaseManager.inMemory()
         let user = User(authId: UUID())
@@ -345,5 +359,143 @@ final class LabScanDetailViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.documentURL, signedURL)
         XCTAssertEqual(viewModel.documentName, "original.pdf")
+    }
+
+    func testCorrectAndDeleteMeasurementPersistLocallyAndQueueReplacementPayload() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        let scanId = UUID()
+        let measurementId = UUID()
+
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            var scan = MedicalScan(id: scanId, userId: user.id, scanType: .bloodTest)
+            scan.status = .completed
+            scan.storageMode = "cloud"
+            try scan.insert(db)
+
+            var measurement = HealthMeasurement(
+                id: measurementId,
+                userId: user.id,
+                biomarkerName: "Ferritin",
+                value: 20,
+                unit: "ng/mL"
+            )
+            measurement.medicalScanId = scanId
+            measurement.sourceScanId = scanId
+            try measurement.insert(db)
+        }
+
+        let viewModel = LabScanDetailViewModel(
+            scanId: scanId,
+            dbQueue: manager.dbQueue,
+            remoteLoader: { _ in nil },
+            shouldFetchRemote: false
+        )
+        await viewModel.load()
+        var corrected = try XCTUnwrap(viewModel.measurements.first)
+        corrected.value = 42
+        corrected.unit = "µg/L"
+        await viewModel.updateMeasurement(corrected)
+
+        try await manager.dbQueue.read { db in
+            let saved = try XCTUnwrap(HealthMeasurement.fetchOne(db, key: measurementId))
+            XCTAssertEqual(saved.value, 42, accuracy: 0.001)
+            XCTAssertEqual(saved.unit, "µg/L")
+            XCTAssertTrue(saved.userCorrected)
+            XCTAssertTrue(saved.manuallyVerified)
+        }
+
+        await viewModel.deleteMeasurement(id: measurementId)
+
+        try await manager.dbQueue.read { db in
+            XCTAssertNil(try HealthMeasurement.fetchOne(db, key: measurementId))
+            let payload = try XCTUnwrap(
+                Data.fetchOne(
+                    db,
+                    sql: "SELECT body_json FROM outbox_events WHERE path = ? ORDER BY created_at_local DESC LIMIT 1",
+                    arguments: ["api-labs"]
+                )
+            )
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+            let processedData = try XCTUnwrap(json["processed_data"] as? [String: Any])
+            XCTAssertEqual((processedData["markers"] as? [[String: Any]])?.count, 0)
+        }
+    }
+
+    func testRemoteMeasurementTombstoneDeletesLocalMarkerAndCancelsStaleOutbox() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        let scanId = UUID()
+        let measurementId = UUID()
+        let outboxId = UUID()
+        var configuredRemoteScan = MedicalScan(id: scanId, userId: user.id, scanType: .bloodTest)
+        configuredRemoteScan.status = .completed
+        configuredRemoteScan.storageMode = "cloud"
+        configuredRemoteScan.updatedAt = Date().addingTimeInterval(60)
+        let remoteScan = configuredRemoteScan
+
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            var localScan = remoteScan
+            localScan.updatedAt = Date().addingTimeInterval(-60)
+            try localScan.insert(db)
+
+            var measurement = HealthMeasurement(
+                id: measurementId,
+                userId: user.id,
+                biomarkerName: "CRP",
+                value: 4.2,
+                unit: "mg/L"
+            )
+            measurement.medicalScanId = scanId
+            measurement.sourceScanId = scanId
+            try measurement.insert(db)
+
+            var event = OutboxEvent(
+                id: outboxId,
+                httpMethod: .POST,
+                path: "api-labs",
+                bodyJson: Data("{\"measurement_id\":\"\(measurementId.uuidString)\"}".utf8)
+            )
+            event.status = .pending
+            try event.insert(db)
+        }
+
+        let staleRemoteMeasurement = HealthMeasurement(
+            id: measurementId,
+            userId: user.id,
+            biomarkerName: "CRP",
+            value: 4.2,
+            unit: "mg/L"
+        )
+        let remoteSnapshot = LabScanDetailSnapshot(
+            scan: remoteScan,
+            measurements: [staleRemoteMeasurement],
+            deletedMeasurementIDs: [measurementId]
+        )
+        let viewModel = LabScanDetailViewModel(
+            scanId: scanId,
+            dbQueue: manager.dbQueue,
+            remoteLoader: { _ in remoteSnapshot },
+            shouldFetchRemote: true
+        )
+        await viewModel.load()
+        await viewModel.refresh()
+
+        try await manager.dbQueue.read { db in
+            let remaining = try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM health_measurements WHERE id = ?",
+                arguments: [measurementId.uuidString]
+            ) ?? -1
+            XCTAssertEqual(remaining, 0)
+            let status = try String.fetchOne(
+                db,
+                sql: "SELECT status FROM outbox_events WHERE id = ?",
+                arguments: [outboxId.uuidString]
+            )
+            XCTAssertEqual(status, OutboxStatus.cancelled.rawValue)
+        }
     }
 }

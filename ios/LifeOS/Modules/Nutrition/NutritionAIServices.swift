@@ -1236,18 +1236,40 @@ enum MediaRecognitionService {
             warnings.append(String(localized: "nutrition_review_serving_sizes_warning"))
         }
 
+        // FoodLabelAnalysis is always persisted as nutrients per 100 g. OCR
+        // labels commonly give a serving size and then list the nutrients for
+        // that serving. Treat explicit per-100 text as authoritative; in its
+        // absence a captured serving is the only available basis, so convert
+        // and keep the existing review warning visible to the user.
+        let tableIsPer100G = Self.nutritionTableIsPer100G(normalizedText)
+        let servingScale: Double
+        if !tableIsPer100G, servingSizeG > 0, servingSizeG != 100 {
+            servingScale = 100 / servingSizeG
+            warnings.append(String(localized: "nutrition_review_serving_sizes_warning"))
+        } else {
+            servingScale = 1
+        }
+
         return (
             name: name,
             brand: nil,
             servingSizeG: servingSizeG,
-            caloriesPer100g: calories,
-            proteinPer100g: protein,
-            fatPer100g: fat,
-            carbsPer100g: carbs,
-            fiberPer100g: fiber,
+            caloriesPer100g: calories * servingScale,
+            proteinPer100g: protein * servingScale,
+            fatPer100g: fat * servingScale,
+            carbsPer100g: carbs * servingScale,
+            fiberPer100g: fiber * servingScale,
             confidence: normalizedText == nil ? 0.35 : 0.52,
             warnings: warnings
         )
+    }
+
+    private static func nutritionTableIsPer100G(_ text: String?) -> Bool {
+        guard let text = text?.lowercased() else { return false }
+        return text.range(
+            of: #"(?:per|на)\s*100\s*(?:g|г|ml|мл)|100\s*(?:g|г|ml|мл)\s*(?:serving|порц)"#,
+            options: .regularExpression
+        ) != nil
     }
 
     private static func extractFirstNumber(
@@ -1343,6 +1365,7 @@ enum MediaRecognitionService {
     }
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension MediaRecognitionService {
     static func _testPreparedImageDataURL(for image: UIImage) throws -> String {
@@ -1568,3 +1591,4 @@ extension MediaRecognitionService {
         testPhotoCloudAnalysisAvailableOverride.value = nil
     }
 }
+#endif

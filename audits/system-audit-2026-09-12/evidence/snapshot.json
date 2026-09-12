@@ -1,0 +1,61 @@
+{
+  "base_commit": "32b29af6f3bc4ac8739c62833e691d48a1d0fd85",
+  "date": "2026-09-12",
+  "working_tree": "includes pre-existing uncommitted changes",
+  "counts": {
+    "ios_swift": {
+      "files": 130,
+      "lines": 95667
+    },
+    "ios_unit_test_files": {
+      "files": 62,
+      "lines": 45264
+    },
+    "ios_ui_test_files": {
+      "files": 3,
+      "lines": 1185
+    },
+    "watch_swift": {
+      "files": 6,
+      "lines": 2357
+    },
+    "migrations": {
+      "files": 23,
+      "lines": 7250
+    },
+    "edge_test_files": {
+      "files": 39,
+      "lines": 23060
+    },
+    "edge_runtime_ts": {
+      "files": 131,
+      "lines": 57397
+    }
+  },
+  "baseline_git_status": [
+    " M .github/workflows/release-gate.yml",
+    " M ios/LifeOS/Modules/Labs/LabsView.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionAIServices.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionCalendarView.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionCaptureViews.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionMealTemplateViews.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionSearchView.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionService.swift",
+    " M ios/LifeOS/Modules/Nutrition/NutritionSpeechRecognizer.swift",
+    " M ios/LifeOS/Modules/Recovery/RecoveryEngine.swift",
+    " M ios/LifeOS/Modules/Recovery/SleepScorer.swift",
+    " M ios/LifeOS/Modules/Settings/SettingsDestinationViews.swift",
+    " M ios/LifeOS/Modules/Shared/HealthKit/HealthKitManager.swift",
+    " M ios/LifeOS/Modules/Shared/Privacy/LocalPrivacyOperations.swift",
+    " M ios/LifeOS/Modules/Shared/Privacy/PrivacyGateway.swift",
+    " M ios/LifeOS/Modules/Training/TrainingService.swift",
+    " M ios/LifeOS/Resources/Localizable.xcstrings",
+    " M ios/LifeOSTests/LabsViewCoverageTests.swift",
+    " M ios/LifeOSTests/LocalPrivacyOperationsTests.swift",
+    " M ios/LifeOSTests/NutritionServiceTests.swift",
+    " M ios/LifeOSTests/RecoveryEngineTests.swift",
+    " M supabase/functions/api/foods/index.ts",
+    " M supabase/functions/api/nutrition/batches/index.ts",
+    "?? supabase/migrations/20260911000003_batch_atomic_upsert.sql"
+  ]
+}

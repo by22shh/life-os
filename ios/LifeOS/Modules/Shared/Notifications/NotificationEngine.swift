@@ -750,6 +750,12 @@ actor NotificationScheduleCoordinator {
             guard let userId = try UserIdentityLookup.resolveUserId(authId: authId, db: db) else {
                 return nil
             }
+            let erasureInProgress = try Bool.fetchOne(
+                db,
+                sql: "SELECT deletion_in_progress FROM users WHERE id = ? OR id = ? LIMIT 1",
+                arguments: [userId, userId.uuidString]
+            ) ?? false
+            guard !erasureInProgress else { return nil }
 
             let settings = try NotificationSettings.fetchOne(
                 db,

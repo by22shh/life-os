@@ -40,7 +40,7 @@ const SOURCES = [
     type: "health_measurement",
     date: "measured_at",
     fields: "value,reference_range_low,reference_range_high",
-    soft: false,
+    soft: true,
   },
   {
     table: "body_composition",

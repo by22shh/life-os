@@ -7243,6 +7243,23 @@
         }
       }
     },
+    "labs_save_draft": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save draft"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить черновик"
+          }
+        }
+      }
+    },
     "labs_scan_button": {
       "extractionState": "manual",
       "localizations": {
@@ -13958,6 +13975,23 @@
         }
       }
     },
+    "onboarding_quick_win_skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip for now"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить пока"
+          }
+        }
+      }
+    },
     "onboarding_quick_win_demo_caption": {
       "extractionState": "manual",
       "localizations": {
@@ -15647,13 +15681,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d of %d data permissions granted"
+            "value": "%d of %d data types requested"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разрешено %d из %d типов данных"
+            "value": "Запрошено %d из %d типов данных"
           }
         }
       }
@@ -15732,13 +15766,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allowed"
+            "value": "Requested"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разрешено"
+            "value": "Запрошено"
           }
         }
       }
@@ -15868,13 +15902,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Health connected"
+            "value": "Apple Health access requested"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Health подключён"
+            "value": "Доступ к Apple Health запрошен"
           }
         }
       }
@@ -26842,6 +26876,62 @@
             "value": "Ваш профиль"
           }
         }
+      }
+    },
+    "wellness_pss4_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Perceived stress (PSS-4)" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Воспринимаемый стресс (PSS-4)" } }
+      }
+    },
+    "wellness_pss4_q1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to control important things" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Не удавалось контролировать важные вещи" } }
+      }
+    },
+    "wellness_pss4_q2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Confident handling personal problems" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Уверенность в решении личных проблем" } }
+      }
+    },
+    "wellness_pss4_q3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Felt things were going your way" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Ощущение, что дела идут как надо" } }
+      }
+    },
+    "wellness_pss4_q4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Difficulties were piling up" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Трудности накапливались" } }
+      }
+    },
+    "wellness_pss4_total": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "PSS-4 score: %d / 16" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Оценка PSS-4: %d из 16" } }
+      }
+    },
+    "wellness_resources_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Support matters" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Поддержка важна" } }
+      }
+    },
+    "wellness_resources_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Consider taking a pause and contacting someone you trust. If you feel unsafe or at risk, contact local emergency or crisis services now." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сделайте паузу и свяжитесь с человеком, которому доверяете. Если вы в опасности или рискуете причинить себе вред, обратитесь в местную экстренную или кризисную службу прямо сейчас." } }
       }
     },
     "youre_all_set": {

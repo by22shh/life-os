@@ -1,9 +1,17 @@
 import XCTest
 import GRDB
+import CryptoKit
 @testable import LifeOS
 
 @MainActor
 final class AuthManagerOnboardingFlowTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        AuthManager._testResetOverrides()
+        let fixedEncryptionKey = SymmetricKey(size: .bits256)
+        FieldEncryption._testSetDeviceKeyOverride { fixedEncryptionKey }
+    }
 
     func testSignOutPreservesLocalHistoryAndLocksVaultToOriginalIdentity() async throws {
         let manager = try DatabaseManager.inMemory()
@@ -29,12 +37,9 @@ final class AuthManagerOnboardingFlowTests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        AuthManager._testResetOverrides()
+        FieldEncryption._testResetOverrides()
         try await super.tearDown()
-        await MainActor.run {
-            AuthManager._testResetOverrides()
-            AuthManager.setActiveAuthIdForTests(nil)
-            AuthManager._testSetActiveHasCloudSession(false)
-        }
     }
 
     func testAnonymousIdentityRequiresOnboardingUntilLocalCompletion() async throws {

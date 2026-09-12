@@ -538,6 +538,7 @@ struct LabsScanCaptureView: View {
                     duplicateCount: duplicateScanIDs.count,
                     allowDuplicate: $allowDuplicate,
                     onKeepExisting: { showReview = false; dismiss() },
+                    onSaveDraft: { await handleReviewDraftSave() },
                     onSave: { await handleReviewSave() }
                 )
             }
@@ -607,6 +608,20 @@ struct LabsScanCaptureView: View {
     @MainActor
     private func handleReviewSave() async {
         guard !isSavingReview, reviewConfirmed else { return }
+
+        captureError = nil
+        isSavingReview = true
+        let didSave = await saveMarkers()
+        isSavingReview = false
+
+        guard didSave else { return }
+        showReview = false
+        dismiss()
+    }
+
+    @MainActor
+    private func handleReviewDraftSave() async {
+        guard !isSavingReview else { return }
 
         captureError = nil
         isSavingReview = true
@@ -1107,6 +1122,7 @@ struct LabsReviewView: View {
     var duplicateCount: Int = 0
     var allowDuplicate: Binding<Bool> = .constant(false)
     var onKeepExisting: () -> Void = {}
+    var onSaveDraft: @MainActor () async -> Void = {}
     let onSave: @MainActor () async -> Void
 
     var body: some View {
@@ -1271,6 +1287,17 @@ struct LabsReviewView: View {
                         (duplicateCount > 0 && !allowDuplicate.wrappedValue)
                     )
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    Button(String(localized: "labs_save_draft")) {
+                        Task { await onSaveDraft() }
+                    }
+                    .disabled(
+                        isSaving ||
+                        markers.isEmpty ||
+                        !markers.allSatisfy(LabsMarkerCatalog.isValidForSave) ||
+                        (duplicateCount > 0 && !allowDuplicate.wrappedValue)
+                    )
+                }
             }
         }
     }
@@ -1290,7 +1317,7 @@ enum LabsMarkerCatalog {
         "AST": ["ast", "аст", "аспартатаминотрансфераза"],
         "Ferritin": ["ferritin", "ферритин"],
         "TSH": ["tsh", "ттг", "тиреотропный гормон"],
-        "Vitamin D": ["vitamin d", "25-oh vitamin d", "витамин d", "25-он витамин d"],
+        "Vitamin D": ["vitamin d", "25-oh vitamin d", "25(oh)d", "25-oh-d", "25 он витамин d", "витамин d", "25-он витамин d"],
         "Vitamin B12": ["vitamin b12", "b12", "витамин b12", "витамин в12"],
         "HbA1c": ["hba1c", "hb a1c", "гликированный гемоглобин"],
         "CRP": ["crp", "c-reactive protein", "срб", "с-реактивный белок"]
@@ -1331,11 +1358,22 @@ enum LabsMarkerCatalog {
          bounds(for: marker).low != nil)
     }
 
+    /// Header/demographic labels that look like `Name: 42 unit` but are not
+    /// biomarkers. Dates are additionally rejected by shape.
+    private static let nonMarkerLabelPattern =
+        #"(?i)^(дата\b|date\b|test date|sample date|collection date|report date|возраст|age\b|вес\b|weight|рост|height|пол\b|sex\b|gender|пациент|patient|фио\b|имя\b|name\b|комментар\w*|comment\w*|примечан\w*|note\b|референс\w*|reference\w*|норма\b|итог\w*|result\b)"#
+
+    static func isNonMarkerLabel(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.range(of: #"^[\d\s./\-–—]+$"#, options: .regularExpression) != nil { return true }
+        return trimmed.range(of: nonMarkerLabelPattern, options: .regularExpression) != nil
+    }
+
     static func extractMarkers(from text: String) -> [ExtractedLabMarker] {
         // A comma inside a decimal is data, never a record separator.
         let lines = text.components(separatedBy: CharacterSet.newlines.union(CharacterSet(charactersIn: ";")))
         guard let regex = try? NSRegularExpression(
-            pattern: #"(?i)^([\p{L}][\p{L}\p{N} %()/+\-._]{0,80}?)[:\s]+([<>≤≥]?[+-]?\d+(?:[.,]\d+)?)\s*([\p{L}µμ%/^*×\p{N}⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(?:\s+\(?([+-]?\d+(?:[.,]\d+)?\s*[-–—]\s*[+-]?\d+(?:[.,]\d+)?)\)?)?$"#
+            pattern: #"(?i)^([\p{L}\p{N}][\p{L}\p{N} %()/+\-._]{0,80}?)[:\s]+([<>≤≥]?[+-]?\d+(?:[.,]\d+)?)\s*([\p{L}µμ%/^*×\p{N}⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(?:\s*(\([^()]*\)|[+-]?\d+(?:[.,]\d+)?\s*[-–—]\s*[+-]?\d+(?:[.,]\d+)?))?$"#
         ) else { return [] }
         var seen = Set<String>()
         return lines.compactMap { rawLine in
@@ -1347,10 +1385,16 @@ enum LabsMarkerCatalog {
                 return range.location == NSNotFound ? nil : ns.substring(with: range)
             }
             guard let name = field(1), let value = field(2) else { return nil }
+            let displayName = canonicalName(for: name)
+            guard !isNonMarkerLabel(name), !isNonMarkerLabel(displayName) else { return nil }
+            var reference = field(4)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let wrapped = reference, wrapped.hasPrefix("("), wrapped.hasSuffix(")") {
+                reference = String(wrapped.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             var marker = ExtractedLabMarker(
-                id: UUID(), name: canonicalName(for: name),
+                id: UUID(), name: displayName,
                 value: value.replacingOccurrences(of: ",", with: "."),
-                unit: normalizedUnit(field(3) ?? ""), referenceRange: field(4), isNormal: false
+                unit: normalizedUnit(field(3) ?? ""), referenceRange: reference, isNormal: false
             )
             marker.isNormal = normality(for: marker) == true
             let key = "\(markerIdentifier(for: marker.name))|\(marker.value)|\(marker.unit)"
@@ -1373,12 +1417,26 @@ enum LabsMarkerCatalog {
     }
 
     static func bounds(for marker: ExtractedLabMarker) -> (low: Double?, high: Double?) {
-        guard !marker.unit.isEmpty, let text = marker.referenceRange,
-              let regex = try? NSRegularExpression(pattern: #"^\s*([+-]?\d+(?:[.,]\d+)?)\s*[-–—]\s*([+-]?\d+(?:[.,]\d+)?)\s*$"#),
-              let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)),
-              let low = numericValue((text as NSString).substring(with: match.range(at: 1))),
-              let high = numericValue((text as NSString).substring(with: match.range(at: 2))), low <= high else {
+        guard !marker.unit.isEmpty, let raw = marker.referenceRange else { return (nil, nil) }
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("("), text.hasSuffix(")") {
+            text = String(text.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard let regex = try? NSRegularExpression(
+            pattern: #"([+-]?\d+(?:[.,]\d+)?)\s*[-–—]\s*([+-]?\d+(?:[.,]\d+)?)"#
+        ), let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)),
+           let low = numericValue((text as NSString).substring(with: match.range(at: 1))),
+           let high = numericValue((text as NSString).substring(with: match.range(at: 2))),
+           low <= high else {
             return (nil, nil)
+        }
+        // A reference range printed in a different unit must never judge the value.
+        let remainder = (text as NSString).replacingCharacters(in: match.range, with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let unitRegex = try? NSRegularExpression(pattern: #"[A-Za-zА-Яа-яµμ%][\p{L}\p{N}µμ%/^*×·\s]*"#),
+           let unitMatch = unitRegex.firstMatch(in: remainder, range: NSRange(location: 0, length: (remainder as NSString).length)) {
+            let referenceUnit = normalizedUnit((remainder as NSString).substring(with: unitMatch.range))
+            if referenceUnit != marker.unit { return (nil, nil) }
         }
         return (low, high)
     }
@@ -1395,13 +1453,27 @@ enum LabsMarkerCatalog {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)) else { return nil }
         let token = (text as NSString).substring(with: match.range(at: 1))
+        // Every format is round-trip validated; ambiguous dd/MM is preferred,
+        // and MM/dd is accepted only when dd/MM cannot represent the token.
+        let candidates: [String]
+        if token.contains("-") {
+            candidates = ["yyyy-MM-dd"]
+        } else if token.contains(".") {
+            candidates = ["dd.MM.yyyy", "MM.dd.yyyy"]
+        } else {
+            candidates = ["dd/MM/yyyy", "MM/dd/yyyy"]
+        }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.isLenient = false
-        formatter.dateFormat = token.contains("-") ? "yyyy-MM-dd" : (token.contains("/") ? "dd/MM/yyyy" : "dd.MM.yyyy")
-        guard let date = formatter.date(from: token), formatter.string(from: date) == token else { return nil }
-        return date
+        for format in candidates {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: token), formatter.string(from: date) == token {
+                return date
+            }
+        }
+        return nil
     }
 
     static func markerOverlap(incoming: Set<String>, existing: Set<String>) -> Double {

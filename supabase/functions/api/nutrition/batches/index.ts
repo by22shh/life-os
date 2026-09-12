@@ -300,64 +300,36 @@ async function handleCreate(
     ...batchWriteFields,
   };
 
+  const ingredients = draft.ingredients.map((ingredient, index) =>
+    makeIngredientInsert(batchId, ingredient, index)
+  );
+
+  const { error: upsertError } = await service.rpc(
+    "upsert_batch_recipe_atomic",
+    {
+      p_user_id: userId,
+      p_batch: batchInsert,
+      p_ingredients: ingredients,
+    },
+  );
+
+  if (upsertError) {
+    if (`${upsertError.message ?? ""}`.includes("forbidden_id_ownership")) {
+      return jsonWithRequest(request, { error: "forbidden_id_ownership" }, 403);
+    }
+    return jsonWithRequest(request, {
+      error: "batch_create_failed",
+      detail: sanitizedInternalDetail(request, "index", upsertError),
+    }, 500);
+  }
+
   if (existing) {
-    const { error: updateError } = await service
-      .from("batch_recipes")
-      .update(batchWriteFields)
-      .eq("id", batchId)
-      .eq("user_id", userId)
-      .is("deleted_at", null);
-
-    if (updateError) {
-      return jsonWithRequest(request, {
-        error: "batch_create_failed",
-        detail: sanitizedInternalDetail(request, "index", updateError),
-      }, 500);
-    }
-
-    const ingredientError = await replaceBatchIngredients(
-      service,
-      userId,
-      batchId,
-      draft.ingredients,
-    );
-    if (ingredientError) {
-      return jsonWithRequest(request, {
-        error: "batch_ingredients_create_failed",
-        detail: sanitizedInternalDetail(request, "index", ingredientError),
-      }, 500);
-    }
-
     return jsonWithRequest(
       request,
       { id: batchId, idempotent_replay: true },
       202,
       { "X-Idempotent-Replay": "true" },
     );
-  }
-
-  const { error: insertError } = await service
-    .from("batch_recipes")
-    .insert(batchInsert);
-
-  if (insertError) {
-    return jsonWithRequest(request, {
-      error: "batch_create_failed",
-      detail: sanitizedInternalDetail(request, "index", insertError),
-    }, 500);
-  }
-
-  const ingredientError = await replaceBatchIngredients(
-    service,
-    userId,
-    batchId,
-    draft.ingredients,
-  );
-  if (ingredientError) {
-    return jsonWithRequest(request, {
-      error: "batch_ingredients_create_failed",
-      detail: sanitizedInternalDetail(request, "index", ingredientError),
-    }, 500);
   }
 
   return jsonWithRequest(request, { id: batchId }, 201);
@@ -487,62 +459,44 @@ async function handlePatch(
     makeBatchDerivedFields(nextTotals),
   );
 
-  const previousSnapshot = makeBatchWriteFields({
-    name: existing.name,
-    description: existing.description,
-    imageUrl: existing.image_url,
-    cookedAt: existing.cooked_at,
-    totalWeightG: Number(existing.total_weight_g ?? 0),
-    totalPortions: existing.total_portions == null
-      ? null
-      : Number(existing.total_portions),
-    archived: existing.archived,
-    totals: {
-      calories: Number(existing.total_calories ?? 0),
-      protein_g: Number(existing.total_protein_g ?? 0),
-      fat_g: Number(existing.total_fat_g ?? 0),
-      carbs_g: Number(existing.total_carbs_g ?? 0),
-      fiber_g: existing.total_fiber_g == null
-        ? null
-        : Number(existing.total_fiber_g),
-    },
-  });
+  const desiredBatch = { ...existing, ...updates };
 
-  const { error: updateError } = await service
-    .from("batch_recipes")
-    .update(updates)
-    .eq("id", batchId)
-    .eq("user_id", userId)
-    .is("deleted_at", null);
+  const { error: updateError } = await service.rpc(
+    "upsert_batch_recipe_atomic",
+    {
+      p_user_id: userId,
+      p_batch: desiredBatch,
+      p_ingredients: parsedIngredients == null
+        ? null
+        : parsedIngredients.map((ingredient, index) =>
+          makeIngredientInsert(batchId, ingredient, index)
+        ),
+    },
+  );
 
   if (updateError) {
+    const message = `${updateError.message ?? ""}`;
+    if (message.includes("forbidden_id_ownership")) {
+      return jsonWithRequest(request, { error: "forbidden_id_ownership" }, 403);
+    }
+    if (message.includes("invalid_catalog_item_reference")) {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_catalog_item_reference" },
+        400,
+      );
+    }
+    if (message.includes("invalid_user_food_reference")) {
+      return jsonWithRequest(
+        request,
+        { error: "invalid_user_food_reference" },
+        400,
+      );
+    }
     return jsonWithRequest(request, {
       error: "batch_update_failed",
       detail: sanitizedInternalDetail(request, "index", updateError),
     }, 500);
-  }
-
-  if (parsedIngredients != null) {
-    const replaceError = await replaceBatchIngredients(
-      service,
-      userId,
-      batchId,
-      parsedIngredients,
-    );
-    if (replaceError) {
-      // Ingredients roll back atomically inside the RPC; only the parent row
-      // needs a best-effort restore of the previous values.
-      await service
-        .from("batch_recipes")
-        .update(previousSnapshot)
-        .eq("id", batchId)
-        .eq("user_id", userId)
-        .is("deleted_at", null);
-      return jsonWithRequest(request, {
-        error: "batch_ingredients_insert_failed",
-        detail: sanitizedInternalDetail(request, "index", replaceError),
-      }, 500);
-    }
   }
 
   return jsonWithRequest(request, { ok: true });

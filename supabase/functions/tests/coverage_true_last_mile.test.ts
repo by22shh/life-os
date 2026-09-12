@@ -398,6 +398,7 @@ Deno.test("true last mile account deletion storage cleanup persists verified man
     ],
     storage_cleanup_completed: false,
     storage_cleanup_completed_at: null,
+    processing_started_at: null,
     created_at: "2026-06-01T00:00:00.000Z",
     updated_at: "2026-06-01T00:00:00.000Z",
   };

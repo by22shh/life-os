@@ -392,6 +392,44 @@ final class HealthSyncManagerFlowIntegrationTests: XCTestCase {
         }
     }
 
+    func testEmptyHealthKitSnapshotDoesNotTombstoneExistingImportedWorkout() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let user = User(authId: UUID())
+        let date = dateFrom(day: "2026-03-08")
+        let imported: WorkoutSession = {
+            var session = WorkoutSession(
+                userId: user.id,
+                startedAt: date,
+                sessionDate: "2026-03-08",
+                source: .import
+            )
+            session.importProvider = .healthkit
+            session.importSourceId = "hk-existing"
+            return session
+        }()
+        try await manager.dbQueue.write { db in
+            try user.insert(db)
+            try imported.insert(db)
+        }
+        let sync = HealthSyncManager(
+            healthKitManager: HealthSyncDataProviderStub(config: .init(workouts: [])),
+            environmentService: EnvironmentServiceStub(result: .failure(HealthSyncTestError.environment)),
+            dbQueue: manager.dbQueue,
+            isHealthKitAvailable: { true },
+            syncEngineProvider: { nil },
+            timeZoneHistoryStore: TimeZoneHistoryStore(dbQueue: manager.dbQueue),
+            nowProvider: { date }
+        )
+
+        try await sync.syncImportedWorkouts(for: date, userId: user.id)
+
+        try await manager.dbQueue.read { db in
+            let persisted = try XCTUnwrap(WorkoutSession.fetchOne(db, key: imported.id))
+            XCTAssertNil(persisted.deletedAt)
+            XCTAssertEqual(try OutboxEvent.fetchCount(db), 0)
+        }
+    }
+
     func testSyncDailyStateInsertsThenUpdatesAndEnqueuesOutbox() async throws {
         let manager = try DatabaseManager.inMemory()
         let user = User(authId: UUID())

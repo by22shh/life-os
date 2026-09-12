@@ -1,5 +1,8 @@
 import Foundation
 import GRDB
+#if os(iOS)
+import UserNotifications
+#endif
 
 enum LocalUserDataReset {
     static func purgeUserScopedData(in db: Database) throws {
@@ -25,6 +28,8 @@ enum LocalUserDataReset {
         try deleteAllRowsIfTableExists("outbox_events", db: db)
         try deleteAllRowsIfTableExists("sync_row_state", db: db)
         try deleteAllRowsIfTableExists("sync_state", db: db)
+        // Device-scoped cache without user_id; payloads may embed user content.
+        try deleteAllRowsIfTableExists("ai_cache", db: db)
 
         // Custom catalog rows are owned through created_by/created_by_user_id
         // instead of user_id. Remove them while keeping shared rows.
@@ -54,6 +59,7 @@ enum LocalUserDataReset {
         id userId: UUID,
         authId: UUID,
         in db: Database,
+        deletionInProgress: Bool = false,
         now: Date = Date()
     ) throws {
         try db.execute(
@@ -79,7 +85,7 @@ enum LocalUserDataReset {
                 true,
                 false,
                 3,
-                false,
+                deletionInProgress,
                 now,
                 now,
             ]
@@ -171,17 +177,20 @@ struct LocalPrivacyErasureDependencies: Sendable {
     let removeNutritionPhotoDrafts: @Sendable () throws -> Void
     let deleteDeviceKey: @Sendable () throws -> Void
     let removeRawAssetsAndBackups: @Sendable () async throws -> Void
+    let cancelAllSystemNotifications: @Sendable () async -> Void
 
     init(
         removeLocalExports: @escaping @Sendable () throws -> Void,
         deleteDeviceKey: @escaping @Sendable () throws -> Void,
         removeNutritionPhotoDrafts: @escaping @Sendable () throws -> Void = {},
-        removeRawAssetsAndBackups: @escaping @Sendable () async throws -> Void = {}
+        removeRawAssetsAndBackups: @escaping @Sendable () async throws -> Void = {},
+        cancelAllSystemNotifications: @escaping @Sendable () async -> Void = {}
     ) {
         self.removeLocalExports = removeLocalExports
         self.removeNutritionPhotoDrafts = removeNutritionPhotoDrafts
         self.deleteDeviceKey = deleteDeviceKey
         self.removeRawAssetsAndBackups = removeRawAssetsAndBackups
+        self.cancelAllSystemNotifications = cancelAllSystemNotifications
     }
 
     static let live = LocalPrivacyErasureDependencies(
@@ -211,6 +220,15 @@ struct LocalPrivacyErasureDependencies: Sendable {
                     throw LocalPrivacyOperationError.exportCleanupVerificationFailed(directory)
                 }
             }
+        },
+        cancelAllSystemNotifications: {
+#if os(iOS)
+            await MainActor.run {
+                let center = UNUserNotificationCenter.current()
+                center.removeAllPendingNotificationRequests()
+                center.removeAllDeliveredNotifications()
+            }
+#endif
         }
     )
 }
@@ -484,15 +502,21 @@ enum LocalPrivacyErasureExecutor {
         dependencies: LocalPrivacyErasureDependencies = .live
     ) async throws -> ErasureStatusResponse {
         let completedAt = Date()
+        // Notification logs are part of the local store below. Cancel system
+        // deliveries before those identifiers disappear, otherwise a pending
+        // reminder can surface after the account has been erased.
+        await dependencies.cancelAllSystemNotifications()
         do {
             try await dependencies.removeRawAssetsAndBackups()
         } catch {
+            await DatabaseBackupManager.shared.finishErasure()
             try await recordFailure(for: user.userId, type: "local_raw_asset_backup_cleanup", error: error, dbQueue: dbQueue, createdAt: completedAt)
             throw error
         }
         do {
             try dependencies.removeLocalExports()
         } catch {
+            await DatabaseBackupManager.shared.finishErasure()
             try await recordFailure(
                 for: user.userId,
                 type: "local_export_cleanup",
@@ -506,6 +530,7 @@ enum LocalPrivacyErasureExecutor {
         do {
             try dependencies.removeNutritionPhotoDrafts()
         } catch {
+            await DatabaseBackupManager.shared.finishErasure()
             try await recordFailure(
                 for: user.userId,
                 type: "local_nutrition_photo_cleanup",
@@ -517,30 +542,37 @@ enum LocalPrivacyErasureExecutor {
         }
 
         let auditId = UUID()
-        try await dbQueue.write { db in
-            try LocalUserDataReset.purgeUserScopedData(in: db)
-            try LocalUserDataReset.insertFreshUser(
-                id: user.userId,
-                authId: user.authId,
-                in: db,
-                now: completedAt
-            )
-            let auditEntry = DeletionAuditLog(
-                id: auditId,
-                userIdDeleted: user.userId,
-                deletedAt: completedAt,
-                postgresDeleted: false,
-                vectorsDeleted: false,
-                storageDeleted: false,
-                complianceVerified: false,
-                notes: "local_only:\(reason)"
-            )
-            try auditEntry.insert(db)
+        do {
+            try await dbQueue.write { db in
+                try LocalUserDataReset.purgeUserScopedData(in: db)
+                try LocalUserDataReset.insertFreshUser(
+                    id: user.userId,
+                    authId: user.authId,
+                    in: db,
+                    deletionInProgress: true,
+                    now: completedAt
+                )
+                let auditEntry = DeletionAuditLog(
+                    id: auditId,
+                    userIdDeleted: user.userId,
+                    deletedAt: completedAt,
+                    postgresDeleted: false,
+                    vectorsDeleted: false,
+                    storageDeleted: false,
+                    complianceVerified: false,
+                    notes: "local_only:\(reason)"
+                )
+                try auditEntry.insert(db)
+            }
+        } catch {
+            await DatabaseBackupManager.shared.finishErasure()
+            throw error
         }
 
         do {
             try dependencies.deleteDeviceKey()
         } catch {
+            await DatabaseBackupManager.shared.finishErasure()
             try await dbQueue.write { db in
                 try db.execute(
                     sql: """
@@ -562,23 +594,35 @@ enum LocalPrivacyErasureExecutor {
         }
 
         // Erase freed SQLite pages and truncate WAL before certifying deletion.
-        try await dbQueue.writeWithoutTransaction { db in
-            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
-            try db.execute(sql: "VACUUM")
-            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+        do {
+            try await dbQueue.writeWithoutTransaction { db in
+                try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+                try db.execute(sql: "VACUUM")
+                try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+            }
+        } catch {
+            await DatabaseBackupManager.shared.finishErasure()
+            throw error
         }
 
-        try await dbQueue.write { db in
-            try db.execute(
-                sql: """
-                    UPDATE deletion_audit_log
-                    SET compliance_verified = 1,
-                        storage_deleted = 1
-                    WHERE id = ?
-                    """,
-                arguments: [auditId.uuidString]
-            )
+        do {
+            try await dbQueue.write { db in
+                try db.execute(
+                    sql: """
+                        UPDATE deletion_audit_log
+                        SET compliance_verified = 1,
+                            storage_deleted = 1
+                        WHERE id = ?
+                        """,
+                    arguments: [auditId.uuidString]
+                )
+            }
+        } catch {
+            await DatabaseBackupManager.shared.finishErasure()
+            throw error
         }
+
+        await DatabaseBackupManager.shared.finishErasure()
 
         return ErasureStatusResponse(
             scheduled: false,
@@ -725,11 +769,17 @@ enum LocalPrivacyArchiveImporter {
     static func importArchive(
         data: Data,
         user: LocalPrivacyUserContext,
-        dbQueue: DatabaseQueue
+        dbQueue: DatabaseQueue,
+        allowLocalProfileRestore: Bool = false
     ) async throws -> LocalPrivacyImportSummary {
         let snapshot = try decodeSnapshot(from: data)
         return try await dbQueue.write { db in
-            try importSnapshot(snapshot, user: user, db: db)
+            try importSnapshot(
+                snapshot,
+                user: user,
+                allowLocalProfileRestore: allowLocalProfileRestore,
+                db: db
+            )
         }
     }
 
@@ -748,18 +798,38 @@ enum LocalPrivacyArchiveImporter {
     private static func importSnapshot(
         _ snapshot: LocalPrivacyExportDocument,
         user: LocalPrivacyUserContext,
+        allowLocalProfileRestore: Bool,
         db: Database
     ) throws -> LocalPrivacyImportSummary {
+        let sourceUser = sourceUserContext(from: snapshot.metadata)
+        let ownerToMatch: LocalPrivacyUserContext
+        let ownershipRemap: OwnershipRemap?
+        if allowLocalProfileRestore,
+           snapshot.metadata.scope == "local_only",
+           let sourceUser,
+           sourceUser.userId != user.userId || sourceUser.authId != user.authId {
+            // A local-only archive may be restored after reinstall, where the
+            // freshly-created local profile has new identity UUIDs. Never use
+            // this path for a cloud-backed session.
+            ownerToMatch = sourceUser
+            ownershipRemap = OwnershipRemap(source: sourceUser, destination: user)
+        } else {
+            ownerToMatch = user
+            ownershipRemap = nil
+        }
+
         var remaining: [String: [[String: LocalPrivacyExportValue]]] = [:]
         for (table, rows) in snapshot.tables where !rows.isEmpty {
             guard !deviceScopedTables.contains(table) else { continue }
             guard try LocalUserDataReset.tableExists(table, db: db) else { continue }
             let columns = Set(try db.columns(in: table).map { $0.name.lowercased() })
             let ownedRows = rows.filter {
-                rowBelongsToUser($0, table: table, columns: columns, user: user)
+                rowBelongsToUser($0, table: table, columns: columns, user: ownerToMatch)
             }
             if !ownedRows.isEmpty {
-                remaining[table] = ownedRows
+                remaining[table] = try ownedRows.map {
+                    try normalizedRow($0, table: table, ownershipRemap: ownershipRemap)
+                }
             }
         }
 
@@ -846,6 +916,141 @@ enum LocalPrivacyArchiveImporter {
             return value
         case .data(let value):
             return Data(base64Encoded: value) ?? value
+        }
+    }
+
+    private struct OwnershipRemap {
+        let source: LocalPrivacyUserContext
+        let destination: LocalPrivacyUserContext
+    }
+
+    private static func sourceUserContext(
+        from metadata: LocalPrivacyExportMetadata
+    ) -> LocalPrivacyUserContext? {
+        guard let userId = UUID(uuidString: metadata.userId),
+              let authId = UUID(uuidString: metadata.authId) else {
+            return nil
+        }
+        return LocalPrivacyUserContext(userId: userId, authId: authId)
+    }
+
+    /// Export JSON deliberately uses lower-case UUIDs for portability, while
+    /// GRDB's local representation uses canonical upper-case strings. Canonical
+    /// normalization keeps one logical primary key from becoming two SQLite
+    /// TEXT rows during a repeated restore.
+    private static func normalizedRow(
+        _ row: [String: LocalPrivacyExportValue],
+        table: String,
+        ownershipRemap: OwnershipRemap?
+    ) throws -> [String: LocalPrivacyExportValue] {
+        var normalized: [String: LocalPrivacyExportValue] = [:]
+        for (rawKey, rawValue) in row {
+            let key = rawKey.lowercased()
+            var value = canonicalUUIDValue(rawValue, for: key)
+            if let ownershipRemap {
+                value = remappedOwnerValue(
+                    value,
+                    column: key,
+                    table: table,
+                    remap: ownershipRemap
+                )
+            }
+            normalized[key] = value
+        }
+        return try encryptSensitiveValues(in: normalized, table: table)
+    }
+
+    private static func canonicalUUIDValue(
+        _ value: LocalPrivacyExportValue,
+        for column: String
+    ) -> LocalPrivacyExportValue {
+        guard isUUIDColumn(column), case .string(let rawValue) = value,
+              let uuid = UUID(uuidString: rawValue) else {
+            return value
+        }
+        return .string(uuid.uuidString)
+    }
+
+    private static func isUUIDColumn(_ column: String) -> Bool {
+        column == "id" || column == "auth_id" ||
+            column == "created_by" || column == "created_by_user_id" ||
+            column.hasSuffix("_id")
+    }
+
+    private static func remappedOwnerValue(
+        _ value: LocalPrivacyExportValue,
+        column: String,
+        table: String,
+        remap: OwnershipRemap
+    ) -> LocalPrivacyExportValue {
+        guard case .string(let rawValue) = value,
+              let uuid = UUID(uuidString: rawValue) else {
+            return value
+        }
+
+        let replacement: UUID?
+        switch column {
+        case "user_id", "created_by", "created_by_user_id", "user_id_deleted":
+            replacement = uuid == remap.source.userId ? remap.destination.userId : nil
+        case "auth_id":
+            replacement = uuid == remap.source.authId ? remap.destination.authId : nil
+        case "id" where table == "users":
+            replacement = uuid == remap.source.userId ? remap.destination.userId : nil
+        default:
+            replacement = nil
+        }
+        return replacement.map { .string($0.uuidString) } ?? value
+    }
+
+    private static func encryptSensitiveValues(
+        in row: [String: LocalPrivacyExportValue],
+        table: String
+    ) throws -> [String: LocalPrivacyExportValue] {
+        var encrypted = row
+        for column in sensitiveColumns(for: table) {
+            guard let value = encrypted[column] else { continue }
+            encrypted[column] = try encryptedStorageValue(value, column: column)
+        }
+        return encrypted
+    }
+
+    private static func sensitiveColumns(for table: String) -> Set<String> {
+        switch table {
+        case "food_logs":
+            return ["location_lat", "location_lng"]
+        case "medical_scans":
+            return ["image_url", "original_image_url"]
+        case "health_measurements":
+            return ["value", "original_value"]
+        case "menstrual_logs":
+            return ["flow", "pain_level"]
+        default:
+            return []
+        }
+    }
+
+    private static func encryptedStorageValue(
+        _ value: LocalPrivacyExportValue,
+        column: String
+    ) throws -> LocalPrivacyExportValue {
+        switch value {
+        case .null:
+            return value
+        case .string(let string):
+            guard !FieldEncryption.isStorageEncrypted(string) else { return value }
+            return .string(try FieldEncryption.encryptForStorage(string) ?? string)
+        case .int(let integer):
+            return .string(
+                try FieldEncryption.encryptDoubleForStorage(Double(integer)) ?? String(integer)
+            )
+        case .double(let double):
+            return .string(
+                try FieldEncryption.encryptDoubleForStorage(double) ?? String(double)
+            )
+        case .data:
+            // These fields are textual/numeric by schema. Rejecting opaque
+            // values prevents raw sensitive bytes from bypassing encryption.
+            throw LocalPrivacyImportError.invalidArchive
         }
     }
 

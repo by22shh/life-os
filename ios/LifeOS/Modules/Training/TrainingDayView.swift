@@ -705,6 +705,19 @@ struct WorkoutLogView: View {
             }
             .pickerStyle(.segmented)
 
+            Stepper(
+                String.localizedStringWithFormat(
+                    String(localized: "training_session_length_stepper_format"),
+                    viewModel.editableDurationMinutes
+                ),
+                value: Binding(
+                    get: { viewModel.editableDurationMinutes },
+                    set: { viewModel.setDurationMinutes($0) }
+                ),
+                in: 0...720,
+                step: 5
+            )
+
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(String(localized: "notes"))
                     .font(LifeOSTypography.subheadline.weight(.semibold))
@@ -1415,6 +1428,15 @@ final class WorkoutLogViewModel {
             resolvedPerceivedExertionRpe ?? Int(rpe.rounded())
         )
     }
+    var editableDurationMinutes: Int { sessionDurationMinutes ?? 0 }
+
+    func setDurationMinutes(_ minutes: Int) {
+        let normalized = max(0, minutes)
+        sessionDurationMinutes = normalized > 0 ? normalized : nil
+        sessionEndedAt = sessionDurationMinutes.map {
+            sessionStartedAt.addingTimeInterval(TimeInterval($0 * 60))
+        }
+    }
     fileprivate var summaryMetrics: WorkoutSummaryMetrics {
         WorkoutSummaryMetrics(
             totalSets: exercises.reduce(0) { $0 + $1.sets.count },
@@ -2019,9 +2041,6 @@ final class WorkoutLogViewModel {
     }
 
     private var currentDurationMinutes: Int? {
-        if canEditExercises, !exercises.isEmpty {
-            return max(Int((Double(exercises.flatMap(\.sets).count) * 2.5).rounded()), 15)
-        }
         if let sessionDurationMinutes {
             return sessionDurationMinutes
         }

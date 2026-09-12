@@ -20,9 +20,12 @@ DECLARE
   session UUID := gen_random_uuid(); exercise UUID := gen_random_uuid();
   supplement UUID := gen_random_uuid(); menstrual UUID := gen_random_uuid();
   export_job UUID := gen_random_uuid(); v_failed BOOLEAN; v_saved BOOLEAN;
-  batch UUID := gen_random_uuid(); plan_b UUID := gen_random_uuid();
+  batch UUID := gen_random_uuid(); plan_b UUID := gen_random_uuid(); plan_a UUID := gen_random_uuid();
   workout_try UUID := gen_random_uuid(); scan_a UUID := gen_random_uuid();
   measurement_old UUID := gen_random_uuid(); measurement_new UUID := gen_random_uuid();
+  poisoned_plan_session UUID := gen_random_uuid();
+  executable_plan UUID := gen_random_uuid(); executable_session UUID := gen_random_uuid();
+  adaptation_result JSONB;
 BEGIN
   SELECT user_a, user_b INTO a,b FROM integrity_fixture;
   IF a IS NULL OR b IS NULL THEN RAISE EXCEPTION 'auth bootstrap failed'; END IF;
@@ -161,6 +164,46 @@ BEGIN
     RAISE EXCEPTION 'workout RPC accepted a foreign training plan or left a partial session';
   END IF;
 
+  INSERT INTO public.training_plans (id,user_id,name,goal,plan_json)
+    VALUES (plan_a,a,'owned plan','strength','{}'::JSONB);
+  v_failed := FALSE;
+  BEGIN
+    INSERT INTO public.training_plan_sessions
+      (id,training_plan_id,user_id,planned_date,session_type,status)
+    VALUES (poisoned_plan_session,plan_a,b,CURRENT_DATE,'strength','planned');
+  EXCEPTION WHEN foreign_key_violation THEN v_failed := TRUE;
+  END;
+  IF NOT v_failed OR EXISTS (SELECT 1 FROM public.training_plan_sessions WHERE id = poisoned_plan_session) THEN
+    RAISE EXCEPTION 'training plan session accepted a mismatched plan owner';
+  END IF;
+
+  INSERT INTO public.training_plans (id,user_id,name,goal,status,plan_json)
+    VALUES (executable_plan,a,'Executable plan','hypertrophy','active','{}'::JSONB);
+  INSERT INTO public.training_plan_sessions
+      (id,training_plan_id,user_id,planned_date,session_type,planned_duration_minutes,planned_exercises,status)
+    VALUES (
+      executable_session,executable_plan,a,CURRENT_DATE,'strength',60,
+      jsonb_build_object(
+        'duration_minutes',60,
+        'exercises',jsonb_build_array(jsonb_build_object('name','Squat pattern','sets',3,'target_rpe',8))
+      ),
+      'planned'
+    );
+  adaptation_result := public.apply_training_plan_adjustment(
+    a, executable_plan, 'recovery_low', 'reduce_volume_30', CURRENT_DATE
+  );
+  IF adaptation_result->>'plan_found' <> 'true'
+      OR (adaptation_result->>'sessions_adjusted')::INTEGER <> 1
+      OR (SELECT planned_exercises->'exercises'->0->>'sets'
+          FROM public.training_plan_sessions WHERE id = executable_session) <> '3'
+      OR (SELECT planned_exercises->'exercises'->0->>'load_multiplier'
+          FROM public.training_plan_sessions WHERE id = executable_session) <> '0.7'
+      OR (SELECT planned_duration_minutes FROM public.training_plan_sessions WHERE id = executable_session) <> 42
+      OR (SELECT planned_exercises->'adaptations'->0->>'adjustment'
+          FROM public.training_plan_sessions WHERE id = executable_session) <> 'reduce_volume_30' THEN
+    RAISE EXCEPTION 'training plan adaptation did not persist executable session changes';
+  END IF;
+
   INSERT INTO public.batch_recipes
       (id,user_id,name,total_weight_g,total_calories,total_protein_g,total_fat_g,total_carbs_g)
     VALUES (batch,a,'probe batch',100,100,10,5,10);
@@ -189,10 +232,10 @@ BEGIN
     jsonb_build_array(jsonb_build_object('id',measurement_new,'marker_id','ferritin','value',6,
       'unit','mmol/L','measured_at',CURRENT_DATE,'source_type','scan')),
     ARRAY[measurement_old]);
-  IF EXISTS (SELECT 1 FROM public.health_measurements WHERE id = measurement_old)
+  IF NOT EXISTS (SELECT 1 FROM public.health_measurements WHERE id = measurement_old AND deleted_at IS NOT NULL)
       OR NOT EXISTS (SELECT 1 FROM public.health_measurements
-                     WHERE id = measurement_new AND value = 6) THEN
-    RAISE EXCEPTION 'scan marker replacement was not atomic';
+                     WHERE id = measurement_new AND value = 6 AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'scan marker replacement did not atomically write its tombstone';
   END IF;
   v_failed := FALSE;
   BEGIN
@@ -227,6 +270,9 @@ SET LOCAL ROLE service_role;
 DO $$
 DECLARE a UUID; b UUID; operation UUID := gen_random_uuid();
   job UUID := gen_random_uuid(); audit UUID; rejected BOOLEAN := FALSE;
+  identity_job UUID := gen_random_uuid(); scheduled_job UUID := gen_random_uuid();
+  active_job UUID := gen_random_uuid(); catalog_food UUID := gen_random_uuid(); catalog_exercise UUID := gen_random_uuid();
+  cancellation_result TEXT;
 BEGIN
   SELECT user_a,user_b INTO a,b FROM integrity_fixture;
   UPDATE public.privacy_settings SET vector_opt_in = TRUE, ai_processing_consent = TRUE WHERE user_id = a;
@@ -242,6 +288,50 @@ BEGIN
   UPDATE public.privacy_settings SET vector_operation_id = NULL, vector_lease_expires_at = NULL, vector_opt_in = FALSE WHERE user_id = a;
   IF public.claim_vector_operation(a,gen_random_uuid(),TRUE) THEN RAISE EXCEPTION 'vector upload allowed after opt-out'; END IF;
 
+  -- The database overwrites a supplied foreign auth id with the public user's
+  -- canonical identity, so a queued deletion can never target another auth user.
+  INSERT INTO public.account_deletion_jobs(id,user_id,auth_user_id,idempotency_key,mode,state)
+    VALUES(identity_job,a,b,identity_job::TEXT,'immediate','requested');
+  IF (SELECT auth_user_id FROM public.account_deletion_jobs WHERE id = identity_job)
+      IS DISTINCT FROM (SELECT auth_id FROM public.users WHERE id = a) THEN
+    RAISE EXCEPTION 'deletion job accepted a forged auth identity';
+  END IF;
+
+  UPDATE public.users
+  SET deletion_scheduled_at = NOW() + INTERVAL '30 days',
+      deletion_reason = 'integrity cancellation probe',
+      deletion_in_progress = FALSE
+  WHERE id = a;
+  INSERT INTO public.account_deletion_jobs
+      (id,user_id,idempotency_key,mode,state,scheduled_for)
+    VALUES(scheduled_job,a,scheduled_job::TEXT,'scheduled','scheduled',NOW()+INTERVAL '30 days');
+  -- Evaluate the volatile cancellation RPC before observing rows. PostgreSQL
+  -- may otherwise evaluate scalar subqueries in an IF condition first.
+  cancellation_result := public.cancel_scheduled_account_deletion(a);
+  IF cancellation_result <> 'cancelled'
+      OR (SELECT state FROM public.account_deletion_jobs WHERE id = scheduled_job) <> 'cancelled'
+      OR (SELECT deletion_scheduled_at FROM public.users WHERE id = a) IS NOT NULL THEN
+    RAISE EXCEPTION 'atomic scheduled deletion cancellation failed';
+  END IF;
+
+  UPDATE public.users
+  SET deletion_scheduled_at = NOW() + INTERVAL '30 days', deletion_in_progress = TRUE
+  WHERE id = a;
+  INSERT INTO public.account_deletion_jobs
+      (id,user_id,idempotency_key,mode,state,scheduled_for,processing_started_at)
+    VALUES(active_job,a,active_job::TEXT,'scheduled','data_deleting',NOW()+INTERVAL '30 days',NOW());
+  cancellation_result := public.cancel_scheduled_account_deletion(a);
+  IF cancellation_result <> 'in_progress'
+      OR (SELECT state FROM public.account_deletion_jobs WHERE id = active_job) <> 'data_deleting'
+      OR (SELECT deletion_in_progress FROM public.users WHERE id = a) IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'cancellation raced with an active deletion worker';
+  END IF;
+  -- Keep the authenticated-role guard assertion below meaningful: the guard
+  -- only rejects an actual state change, not an idempotent write of TRUE.
+  UPDATE public.users
+  SET deletion_scheduled_at = NULL, deletion_reason = NULL, deletion_in_progress = FALSE
+  WHERE id = a;
+
   INSERT INTO public.account_deletion_jobs(id,user_id,idempotency_key,mode,state)
     VALUES(job,b,job::TEXT,'immediate','requested') RETURNING audit_log_id INTO audit;
   IF audit IS NULL THEN RAISE EXCEPTION 'receipt audit binding missing'; END IF;
@@ -251,7 +341,17 @@ BEGIN
   IF (SELECT state FROM public.account_deletion_receipts WHERE token_hash=repeat('c',64)) <> 'data_deleting' THEN
     RAISE EXCEPTION 'receipt did not track pending state';
   END IF;
+
+  INSERT INTO public.food_catalog_items
+      (id,provider,barcode,created_by_user_id,name,calories_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g)
+    VALUES (catalog_food,'lifeos_label_ocr','delete-catalog-food',b,'deletion-owned food',100,10,5,20);
+  INSERT INTO public.exercise_catalog (id,name,category,is_custom,created_by)
+    VALUES (catalog_exercise,'deletion-owned exercise','strength',TRUE,b);
   PERFORM public.delete_user_account(b);
+  IF (SELECT created_by_user_id FROM public.food_catalog_items WHERE id = catalog_food) IS NOT NULL
+      OR (SELECT created_by FROM public.exercise_catalog WHERE id = catalog_exercise) IS NOT NULL THEN
+    RAISE EXCEPTION 'account deletion was blocked by catalog owner immutability';
+  END IF;
   INSERT INTO public.deletion_audit_log(id,user_id_deleted,deleted_at,vectors_deleted,postgres_deleted,storage_deleted,compliance_verified)
     VALUES(audit,b,NOW(),TRUE,TRUE,TRUE,TRUE);
   IF (SELECT state FROM public.account_deletion_receipts WHERE token_hash=repeat('c',64)) <> 'completed' THEN
@@ -265,6 +365,9 @@ DO $$
 DECLARE rejected BOOLEAN := FALSE;
 BEGIN
   IF has_table_privilege('authenticated','public.account_deletion_receipts','SELECT')
+    OR has_table_privilege('authenticated','public.account_deletion_jobs','INSERT')
+    OR has_table_privilege('authenticated','public.account_deletion_jobs','UPDATE')
+    OR has_table_privilege('authenticated','public.account_deletion_jobs','DELETE')
     OR has_table_privilege('authenticated','public.vector_memory','INSERT')
     OR has_table_privilege('authenticated','public.vector_memory','UPDATE')
     OR has_table_privilege('authenticated','public.deletion_failures','SELECT')

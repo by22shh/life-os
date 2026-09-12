@@ -310,6 +310,35 @@ jobs:
             -destination "platform=iOS Simulator,name=${SIM_NAME}" \
             -derivedDataPath "$DERIVED_DATA_DIR"
 
+  ios-release-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Build iOS app in Release configuration
+        shell: bash
+        run: |
+          xcodebuild build \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -project ios/LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -configuration Release \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/lifeos-release-build"
+
   ios-release-config-guard:
     runs-on: macos-15
     timeout-minutes: 20
@@ -567,6 +596,7 @@ jobs:
       - ios-accessibility-audit
       - ios-performance-hard-gates
       - ios-analyze
+      - ios-release-build
       - ios-release-config-guard
       - watchos-build
       - watchos-tests
@@ -599,6 +629,10 @@ jobs:
           fi
           if [[ "${{ needs.ios-analyze.result }}" != "success" ]]; then
             echo "ios-analyze failed"
+            exit 1
+          fi
+          if [[ "${{ needs.ios-release-build.result }}" != "success" ]]; then
+            echo "ios-release-build failed"
             exit 1
           fi
           if [[ "${{ needs.ios-release-config-guard.result }}" != "success" ]]; then

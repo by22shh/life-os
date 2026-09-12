@@ -88,7 +88,13 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === "PATCH" && isUUID(route) && subRoute === "adjust") {
-    return await handleAdjustPlan(request, service, userId, route);
+    return await handleAdjustPlan(
+      request,
+      service,
+      userId,
+      route,
+      safeTimeZone(timezone),
+    );
   }
 
   return jsonWithRequest(request, { error: "invalid_path" }, 404);
@@ -133,6 +139,7 @@ async function handleGenerate(
       : `${capitalize(goal)} Plan`;
 
   const planJson = {
+    schema_version: 2,
     generated_at: new Date().toISOString(),
     request: payload,
     session_duration_minutes: sessionDuration,
@@ -154,10 +161,13 @@ async function handleGenerate(
         planned_date: date,
         session_type: sessionTypes[index % sessionTypes.length],
         planned_duration_minutes: sessionDuration,
-        planned_exercises: {
-          title: `${capitalize(goal)} Session ${index + 1}`,
+        planned_exercises: buildExecutableSession({
+          goal,
+          sessionType: sessionTypes[index % sessionTypes.length],
+          durationMinutes: sessionDuration,
+          ordinal: index + 1,
           week: week + 1,
-        },
+        }),
         status: "planned",
       });
     }
@@ -349,7 +359,7 @@ async function handleSessions(
   const { data: sessions, error: sessionsError } = await service
     .from("training_plan_sessions")
     .select(
-      "id,training_plan_id,planned_date,session_type,status,planned_exercises",
+      "id,training_plan_id,planned_date,session_type,status,planned_duration_minutes,planned_exercises",
     )
     .eq("training_plan_id", activePlan.id)
     .gte("planned_date", range.from)
@@ -362,6 +372,7 @@ async function handleSessions(
         planned_date: string;
         session_type: string;
         status: string;
+        planned_duration_minutes: number | null;
         planned_exercises: unknown;
       }>
     >();
@@ -382,8 +393,10 @@ async function handleSessions(
       planned_date: row.planned_date,
       session_type: row.session_type,
       status: row.status,
+      planned_duration_minutes: row.planned_duration_minutes,
       title: extractTitle(row.planned_exercises) ??
         `${capitalize(row.session_type)} Session`,
+      exercises: extractExercises(row.planned_exercises),
     })),
   });
 }
@@ -459,6 +472,7 @@ async function handleAdjustPlan(
   >,
   userId: string,
   planId: string,
+  timezone: string,
 ): Promise<Response> {
   let payload: Record<string, unknown>;
   try {
@@ -481,48 +495,35 @@ async function handleAdjustPlan(
     return jsonWithRequest(request, { error: "invalid_adjustment" }, 400);
   }
 
-  const { data: existingPlan, error: existingPlanError } = await service
-    .from("training_plans")
-    .select("adaptive_rules")
-    .eq("id", planId)
-    .eq("user_id", userId)
-    .maybeSingle<{ adaptive_rules: Record<string, unknown> | null }>();
+  const effectiveFrom = localDateToday(timezone);
+  const { data: adaptation, error: adaptationError } = await service.rpc(
+    "apply_training_plan_adjustment",
+    {
+      p_user_id: userId,
+      p_plan_id: planId,
+      p_reason: reason,
+      p_adjustment: adjustment,
+      p_effective_from: effectiveFrom,
+    },
+  );
 
-  if (existingPlanError) {
-    return jsonWithRequest(request, {
-      error: "training_plan_fetch_failed",
-      detail: sanitizedInternalDetail(request, "index", existingPlanError),
-    }, 500);
-  }
-  if (!existingPlan) {
-    return jsonWithRequest(request, { error: "plan_not_found" }, 404);
-  }
-
-  const adaptiveRules = {
-    ...(existingPlan.adaptive_rules ?? {}),
-    [reason]: adjustment,
-  };
-
-  const { error: updateError } = await service
-    .from("training_plans")
-    .update({
-      adaptive_rules: adaptiveRules,
-      last_adjusted_at: new Date().toISOString(),
-    })
-    .eq("id", planId)
-    .eq("user_id", userId);
-
-  if (updateError) {
+  if (adaptationError) {
     return jsonWithRequest(request, {
       error: "training_plan_adjust_failed",
-      detail: sanitizedInternalDetail(request, "index", updateError),
+      detail: sanitizedInternalDetail(request, "index", adaptationError),
     }, 500);
+  }
+
+  if (!isRecord(adaptation) || adaptation.plan_found !== true) {
+    return jsonWithRequest(request, { error: "plan_not_found" }, 404);
   }
 
   return jsonWithRequest(request, {
     plan_id: planId,
     adjusted: true,
-    effective_from: localDateToday("UTC"),
+    effective_from: effectiveFrom,
+    sessions_adjusted: normalizeNonNegativeInt(adaptation.sessions_adjusted),
+    skipped_sessions: normalizeNonNegativeInt(adaptation.skipped_sessions),
   });
 }
 
@@ -595,6 +596,117 @@ function extractTitle(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function extractExercises(value: unknown): Array<Record<string, unknown>> {
+  if (!isRecord(value) || !Array.isArray(value.exercises)) return [];
+  return value.exercises.filter(isRecord);
+}
+
+function buildExecutableSession(input: {
+  goal: string;
+  sessionType: string;
+  durationMinutes: number;
+  ordinal: number;
+  week: number;
+}): Record<string, unknown> {
+  const exercises = exercisesFor(input.goal, input.sessionType);
+  return {
+    schema_version: 1,
+    title: `${capitalize(input.goal)} ${
+      capitalize(input.sessionType)
+    } Session ${input.ordinal}`,
+    goal: input.goal,
+    session_type: input.sessionType,
+    week: input.week,
+    duration_minutes: input.durationMinutes,
+    warmup_minutes: Math.min(
+      12,
+      Math.max(5, Math.round(input.durationMinutes * 0.15)),
+    ),
+    exercises,
+    cooldown_minutes: input.sessionType === "recovery" ? 0 : 5,
+    adaptations: [],
+  };
+}
+
+function exercisesFor(
+  goal: string,
+  sessionType: string,
+): Array<Record<string, unknown>> {
+  if (sessionType === "cardio") {
+    return [{
+      exercise_key: goal === "endurance"
+        ? "aerobic_intervals"
+        : "zone_2_cardio",
+      name: goal === "endurance" ? "Aerobic intervals" : "Zone 2 cardio",
+      sets: 1,
+      reps: goal === "endurance" ? "6 x 3 min" : "30 min steady",
+      rest_seconds: goal === "endurance" ? 90 : 0,
+      target_rpe: goal === "endurance" ? 7 : 5,
+      load_multiplier: 1,
+    }];
+  }
+  if (sessionType === "mobility" || sessionType === "recovery") {
+    return [
+      {
+        exercise_key: "hip_mobility_flow",
+        name: "Hip mobility flow",
+        sets: 2,
+        reps: "8 each side",
+        rest_seconds: 30,
+        target_rpe: 3,
+        load_multiplier: 1,
+      },
+      {
+        exercise_key: "thoracic_rotation",
+        name: "Thoracic rotation",
+        sets: 2,
+        reps: "8 each side",
+        rest_seconds: 30,
+        target_rpe: 3,
+        load_multiplier: 1,
+      },
+    ];
+  }
+
+  const repetitionRange = goal === "strength" ? "4-6" : "8-12";
+  const rpe = goal === "strength" ? 8 : 7;
+  return [
+    {
+      exercise_key: "squat_pattern",
+      name: "Squat pattern",
+      sets: 3,
+      reps: repetitionRange,
+      rest_seconds: 120,
+      target_rpe: rpe,
+      load_multiplier: 1,
+    },
+    {
+      exercise_key: "horizontal_press",
+      name: "Horizontal press",
+      sets: 3,
+      reps: repetitionRange,
+      rest_seconds: 90,
+      target_rpe: rpe,
+      load_multiplier: 1,
+    },
+    {
+      exercise_key: "horizontal_row",
+      name: "Horizontal row",
+      sets: 3,
+      reps: repetitionRange,
+      rest_seconds: 90,
+      target_rpe: rpe,
+      load_multiplier: 1,
+    },
+  ];
+}
+
+function normalizeNonNegativeInt(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : 0;
+}
+
 function normalizeOptionalString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -609,4 +721,8 @@ function capitalize(value: string): string {
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     .test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

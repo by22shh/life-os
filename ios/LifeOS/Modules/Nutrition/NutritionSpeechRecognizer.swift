@@ -604,6 +604,7 @@ final class NutritionSpeechRecognizer: NSObject, ObservableObject {
     }
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension NutritionSpeechRecognizer {
     static func _testResetOverrides() {
@@ -1254,3 +1255,4 @@ extension NutritionSpeechRecognizer {
         return _testState()
     }
 }
+#endif

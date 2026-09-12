@@ -175,6 +175,7 @@ struct OnboardingFeature {
         case completeQuickWin
         case quickWinCompletionSucceeded(QuickWinResult?)
         case quickWinCompletionFailed(String)
+        case skipQuickWin
         case advanceFromQuickWin
         case profileAdvanceFinished(StepTransitionResult)
         case dateOfBirthChanged(Date)
@@ -342,6 +343,13 @@ struct OnboardingFeature {
                 state.isCompletingQuickWin = false
                 state.errorMessage = message
                 return .none
+
+            case .skipQuickWin:
+                state.errorMessage = nil
+                return Self.runMilestoneTransition(
+                    milestone: .quickWinComplete,
+                    nextStep: .healthKitPermission
+                )
 
             case .advanceFromQuickWin:
                 guard state.quickWinCompleted else { return .none }

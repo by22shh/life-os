@@ -268,10 +268,16 @@ actor PrivacyGateway {
             throw LocalPrivacyImportError.invalidArchive
         }
 
+        // Rebinding a local-only archive to a fresh device profile is safe
+        // only while no cloud account is active. A cloud session must never
+        // absorb another local profile merely because its archive says
+        // `local_only`.
+        let allowLocalProfileRestore = !(await hasActiveCloudSession())
         return try await LocalPrivacyArchiveImporter.importArchive(
             data: data,
             user: user,
-            dbQueue: dbQueue
+            dbQueue: dbQueue,
+            allowLocalProfileRestore: allowLocalProfileRestore
         )
     }
 
@@ -285,6 +291,8 @@ actor PrivacyGateway {
                 user: user,
                 dbQueue: dbQueue
             )
+            await AppContainer.shared?.widgetSnapshotCoordinator.clearSnapshot()
+            await MainActor.run { WatchSyncManager.shared.clearSnapshot() }
             return
         }
 
@@ -357,6 +365,8 @@ actor PrivacyGateway {
             let localStatus = try await LocalPrivacyErasureExecutor.latestStatus(userId: user.userId, dbQueue: dbQueue)
             if localStatus?.deletionState != "completed" {
                 _ = try await LocalPrivacyErasureExecutor.execute(reason: "cloud_account_deleted", user: user, dbQueue: dbQueue)
+                await AppContainer.shared?.widgetSnapshotCoordinator.clearSnapshot()
+                await MainActor.run { WatchSyncManager.shared.clearSnapshot() }
             }
         }
         return response

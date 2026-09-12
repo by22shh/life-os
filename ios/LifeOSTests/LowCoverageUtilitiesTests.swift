@@ -1746,6 +1746,11 @@ final class AuthManagerCoverageExpansionTests: XCTestCase {
         )
     }
 
+    override func setUp() {
+        super.setUp()
+        AuthManager._testResetOverrides()
+    }
+
     override func tearDown() {
         AuthManager._testResetOverrides()
         AuthManager.setActiveAuthIdForTests(nil)
@@ -1769,7 +1774,9 @@ final class AuthManagerCoverageExpansionTests: XCTestCase {
         let auth = AuthManager(client: SupabaseConfig.client, db: manager)
         let now = Date(timeIntervalSince1970: 1_700_100_000)
         let anonAuthId = UUID()
-        let otpAuthId = UUID()
+        // An anonymous account upgraded with OTP keeps its local-vault owner.
+        // A different returned auth ID must be rejected by production code.
+        let otpAuthId = anonAuthId
 
         AuthManager._testSetDefaultAnonymousSignInOverride {
             self.makeSession(authId: anonAuthId, isAnonymous: true, now: now)
@@ -1868,8 +1875,10 @@ final class AuthManagerCoverageExpansionTests: XCTestCase {
         let auth = AuthManager(client: SupabaseConfig.client, db: manager)
         let now = Date(timeIntervalSince1970: 1_700_200_000)
         let anonAuthId = UUID()
-        let fullAuthId = UUID()
-        let otpAuthId = UUID()
+        // This test transitions one account through anonymous, OTP, and Apple
+        // branches. It must not simulate an unsafe profile switch in one vault.
+        let fullAuthId = anonAuthId
+        let otpAuthId = anonAuthId
 
         AuthManager._testResetOverrides()
         AuthManager._testSetRunningTestsOverride(false)
@@ -1991,7 +2000,9 @@ final class AuthManagerCoverageExpansionTests: XCTestCase {
         let auth = AuthManager(client: SupabaseConfig.client, db: manager)
         let now = Date(timeIntervalSince1970: 1_700_250_000)
         let anonAuthId = UUID()
-        let appleAuthId = UUID()
+        // Apple linking upgrades the same local profile; a separate identity
+        // belongs to the cross-account rejection coverage.
+        let appleAuthId = anonAuthId
 
         let previousAuthState = getenv("LIFEOS_UI_TEST_AUTH_STATE").map { String(cString: $0) }
         let previousBootstrap = getenv("LIFEOS_UI_TEST_BOOTSTRAP").map { String(cString: $0) }
@@ -8608,6 +8619,12 @@ final class RemainingCoverageBoostTests: XCTestCase {
         formatter.timeZone = utc
         formatter.dateFormat = "yyyy-MM-dd"
         let today = formatter.string(from: now)
+        let watchMutationEnvelope: [String: Any] = [
+            "profile_owner_id": authId.uuidString,
+            "occurred_at": ISO8601DateFormatter.supabaseString(from: now),
+            "occurred_timezone": "UTC",
+            "occurred_local_date": today
+        ]
 
         AppContainer.shared = AppContainer(syncEngine: syncEngine)
         WatchSyncManager._testSetPushLatestSnapshotOverride { _ in }
@@ -8675,6 +8692,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
 
         let snapshot = WatchSnapshot(
             date: today,
+            profileOwnerId: authId.uuidString,
             lastUpdatedAt: now,
             recoveryScore: 71,
             recoveryZone: "ready",
@@ -8706,7 +8724,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
                 "action": "supplement_taken",
                 "supplement_name": "Magnesium",
                 "scheduled_time": "\(scheduledTime):59"
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
         let supplementActionApplied = try await waitUntilTrue(timeout: 3.0) {
             try await dbManager.dbQueue.read { db in
@@ -8744,6 +8762,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
         manager.push(
             snapshot: WatchSnapshot(
                 date: today,
+                profileOwnerId: authId.uuidString,
                 lastUpdatedAt: now,
                 recoveryScore: 71,
                 recoveryZone: "ready",
@@ -8771,7 +8790,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
             didReceiveMessage: [
                 "action": "insight_acknowledge",
                 "insight_id": insightId.uuidString
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
         manager.session(WCSession.default, didReceiveMessage: ["action": "unknown_action"])
 
@@ -8831,6 +8850,12 @@ final class RemainingCoverageBoostTests: XCTestCase {
         formatter.timeZone = utc
         formatter.dateFormat = "yyyy-MM-dd"
         let today = formatter.string(from: now)
+        let watchMutationEnvelope: [String: Any] = [
+            "profile_owner_id": authId.uuidString,
+            "occurred_at": ISO8601DateFormatter.supabaseString(from: now),
+            "occurred_timezone": "UTC",
+            "occurred_local_date": today
+        ]
 
         AppContainer.shared = AppContainer(syncEngine: syncEngine)
         WatchSyncManager._testSetPushLatestSnapshotOverride { _ in }
@@ -8897,6 +8922,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
         manager.push(
             snapshot: WatchSnapshot(
                 date: today,
+                profileOwnerId: authId.uuidString,
                 lastUpdatedAt: now,
                 recoveryScore: 74,
                 recoveryZone: "ready",
@@ -8928,7 +8954,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
                 "action_id": supplementActionId.uuidString.lowercased(),
                 "supplement_name": "Magnesium",
                 "scheduled_time": scheduledTime
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
 
         let queuedSupplementApplied = try await waitUntilTrue(timeout: 3.0) {
@@ -8976,7 +9002,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
                 "action_id": supplementActionId.uuidString.lowercased(),
                 "supplement_name": "Magnesium",
                 "scheduled_time": scheduledTime
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
 
         let supplementStillDeduped = try await waitUntilTrue(timeout: 3.0) {
@@ -9008,6 +9034,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
         manager.push(
             snapshot: WatchSnapshot(
                 date: today,
+                profileOwnerId: authId.uuidString,
                 lastUpdatedAt: now,
                 recoveryScore: 74,
                 recoveryZone: "ready",
@@ -9038,7 +9065,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
                 "action": "insight_acknowledge",
                 "action_id": insightActionId.uuidString.lowercased(),
                 "insight_id": insightId.uuidString
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
 
         let insightApplied = try await waitUntilTrue(timeout: 3.0) {
@@ -9069,7 +9096,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
                 "action": "insight_acknowledge",
                 "action_id": insightActionId.uuidString.lowercased(),
                 "insight_id": insightId.uuidString
-            ]
+            ].merging(watchMutationEnvelope) { _, incoming in incoming }
         )
 
         let insightStillDeduped = try await waitUntilTrue(timeout: 3.0) {
@@ -9097,6 +9124,8 @@ final class RemainingCoverageBoostTests: XCTestCase {
 
     @MainActor
     func testAuthManagerDebugHelpersAndStateMachinePaths() async throws {
+        AuthManager._testResetOverrides()
+        defer { AuthManager._testResetOverrides() }
         let manager = try DatabaseManager.inMemory()
         let auth = AuthManager(client: SupabaseConfig.client, db: manager)
 
@@ -9258,6 +9287,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
 
     @MainActor
     func testAuthManagerCoverageBootstrapAndPublicActionSmoke() async {
+        AuthManager._testResetOverrides()
         let manager: DatabaseManager
         do {
             manager = try DatabaseManager.inMemory()
@@ -9270,8 +9300,7 @@ final class RemainingCoverageBoostTests: XCTestCase {
         AuthManager._testSetRunningTestsOverride(true)
         AuthManager._testSetDefaultDeleteAccountOverride { _ in }
         defer {
-            AuthManager._testSetRunningTestsOverride(nil)
-            AuthManager.setActiveAuthIdForTests(nil)
+            AuthManager._testResetOverrides()
         }
 
         await auth.bootstrap()

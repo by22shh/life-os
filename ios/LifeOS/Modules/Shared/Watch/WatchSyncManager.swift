@@ -9,6 +9,7 @@ struct WatchSnapshot: Codable, Sendable {
         struct Payload: Codable, Sendable {
             var deepLink: String?
             var supplementName: String?
+            var supplementId: String? = nil
             var scheduledTime: String?
             var insightId: String?
             var date: String?
@@ -16,6 +17,7 @@ struct WatchSnapshot: Codable, Sendable {
             enum CodingKeys: String, CodingKey {
                 case deepLink = "deep_link"
                 case supplementName = "supplement_name"
+                case supplementId = "supplement_id"
                 case scheduledTime = "scheduled_time"
                 case insightId = "insight_id"
                 case date
@@ -39,6 +41,9 @@ struct WatchSnapshot: Codable, Sendable {
     }
 
     var date: String?
+    /// Auth identity that owns the snapshot. The Watch must echo this with a
+    /// mutation so a queued action can never be applied after profile switch.
+    var profileOwnerId: String? = nil
     var lastUpdatedAt: Date
     var recoveryScore: Double?
     var recoveryZone: String?
@@ -52,6 +57,7 @@ struct WatchSnapshot: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case date
+        case profileOwnerId = "profile_owner_id"
         case lastUpdatedAt = "last_updated_at"
         case recoveryScore = "recovery_score"
         case recoveryZone = "recovery_zone"
@@ -70,6 +76,7 @@ private struct WatchSnapshotResponse: Codable {
         struct Payload: Codable {
             var deepLink: String?
             var supplementName: String?
+            var supplementId: String? = nil
             var scheduledTime: String?
             var insightId: String?
             var date: String?
@@ -77,6 +84,7 @@ private struct WatchSnapshotResponse: Codable {
             enum CodingKeys: String, CodingKey {
                 case deepLink = "deep_link"
                 case supplementName = "supplement_name"
+                case supplementId = "supplement_id"
                 case scheduledTime = "scheduled_time"
                 case insightId = "insight_id"
                 case date
@@ -129,6 +137,12 @@ private enum WatchActionMutationError: Error {
     case invalidPayload
 }
 
+private struct WatchActionOccurrence: Sendable {
+    let date: Date
+    let timeZone: TimeZone
+    let localDay: String
+}
+
 private struct LocalWatchSnapshotBuild: Sendable {
     let snapshot: WatchSnapshot
     let resolvedDate: String
@@ -160,6 +174,7 @@ private struct LocalWatchSupplementScheduleEntry: Sendable {
 }
 
 private struct LocalWatchSupplementScheduleItem: Sendable {
+    let id: UUID
     let name: String
     let taken: Bool
 }
@@ -279,7 +294,10 @@ final class WatchSyncManager: NSObject {
                 body: body
             )
 
-            let snapshot = Self.snapshot(from: response)
+            let snapshot = Self.snapshot(
+                from: response,
+                profileOwnerId: AuthManager.activeAuthId?.uuidString
+            )
 
             push(snapshot: snapshot)
             return true
@@ -506,6 +524,7 @@ final class WatchSyncManager: NSObject {
             return LocalWatchSnapshotBuild(
                 snapshot: WatchSnapshot(
                     date: physiologicalState?.date ?? resolvedDate,
+                    profileOwnerId: user.authId.uuidString,
                     lastUpdatedAt: now,
                     recoveryScore: physiologicalState?.recoveryScore,
                     recoveryZone: physiologicalState?.recoveryZone.rawValue,
@@ -647,6 +666,7 @@ final class WatchSyncManager: NSObject {
                         usedLogIds.insert(matchingLog.id)
                     }
                     return LocalWatchSupplementScheduleItem(
+                        id: entry.id,
                         name: entry.name,
                         taken: matchingLog != nil
                     )
@@ -702,6 +722,7 @@ final class WatchSyncManager: NSObject {
                 payload: .init(
                     deepLink: nil,
                     supplementName: dueSupplement.name,
+                    supplementId: dueSupplement.id.uuidString,
                     scheduledTime: dueSupplement.time,
                     insightId: nil,
                     date: nil
@@ -729,6 +750,7 @@ final class WatchSyncManager: NSObject {
                 payload: .init(
                     deepLink: nil,
                     supplementName: nil,
+                    supplementId: nil,
                     scheduledTime: nil,
                     insightId: unreadInsightId.uuidString,
                     date: nil
@@ -743,7 +765,7 @@ final class WatchSyncManager: NSObject {
         for schedule: [LocalWatchSupplementScheduleEntry],
         now: Date,
         timeZone: TimeZone
-    ) -> (name: String, time: String)? {
+    ) -> (id: UUID, name: String, time: String)? {
         let nowMinutes = minutesOfDay(for: now, timeZone: timeZone)
 
         for slot in schedule {
@@ -752,7 +774,7 @@ final class WatchSyncManager: NSObject {
             guard delta >= 0, delta <= 120 else { continue }
 
             if let dueSupplement = slot.supplements.first(where: { !$0.taken }) {
-                return (dueSupplement.name, slot.time)
+                return (dueSupplement.id, dueSupplement.name, slot.time)
             }
         }
 
@@ -809,6 +831,7 @@ final class WatchSyncManager: NSObject {
             payload: .init(
                 deepLink: deepLink,
                 supplementName: nil,
+                supplementId: nil,
                 scheduledTime: nil,
                 insightId: nil,
                 date: nil
@@ -891,10 +914,17 @@ final class WatchSyncManager: NSObject {
 
     nonisolated private static func resolveLocalSupplement(
         named name: String,
+        id: UUID?,
         scheduledTime: String?,
         on date: String,
         supplements: [LocalWatchSupplementRow]
     ) -> LocalWatchSupplementRow? {
+        if let id,
+           let exactMatch = supplements.first(where: {
+               $0.id == id && isSupplementScheduled(on: date, supplement: $0)
+           }) {
+            return exactMatch
+        }
         let normalizedName = normalizeName(name)
         if let scheduledTime {
             if let exactMatch = supplements.first(where: {
@@ -1017,9 +1047,13 @@ final class WatchSyncManager: NSObject {
         }
     }
 
-    private static func snapshot(from response: WatchSnapshotResponse) -> WatchSnapshot {
+    private static func snapshot(
+        from response: WatchSnapshotResponse,
+        profileOwnerId: String? = nil
+    ) -> WatchSnapshot {
         WatchSnapshot(
             date: response.date,
+            profileOwnerId: profileOwnerId,
             lastUpdatedAt: response.lastUpdatedAt,
             recoveryScore: response.recoveryScore,
             recoveryZone: response.recoveryZone,
@@ -1032,6 +1066,7 @@ final class WatchSyncManager: NSObject {
                         .init(
                             deepLink: payload.deepLink,
                             supplementName: payload.supplementName,
+                            supplementId: payload.supplementId,
                             scheduledTime: payload.scheduledTime,
                             insightId: payload.insightId,
                             date: payload.date
@@ -1067,18 +1102,28 @@ extension WatchSyncManager: WCSessionDelegate {
         let action = message["action"] as? String
         let actionId = message["action_id"] as? String
         let supplementName = message["supplement_name"] as? String ?? ""
+        let supplementId = message["supplement_id"] as? String
         let supplementScheduledTime = message["scheduled_time"] as? String ?? ""
         let insightId = message["insight_id"] as? String ?? ""
         let deepLink = message["deep_link"] as? String
+        let profileOwnerId = message["profile_owner_id"] as? String
+        let occurredAt = message["occurred_at"] as? String
+        let occurredTimeZone = message["occurred_timezone"] as? String
+        let occurredLocalDate = message["occurred_local_date"] as? String
 
         Task { @MainActor in
             await handleIncomingWatchAction(
                 action: action,
                 actionId: actionId,
                 supplementName: supplementName,
+                supplementId: supplementId,
                 supplementScheduledTime: supplementScheduledTime,
                 insightId: insightId,
-                deepLink: deepLink
+                deepLink: deepLink,
+                profileOwnerId: profileOwnerId,
+                occurredAt: occurredAt,
+                occurredTimeZone: occurredTimeZone,
+                occurredLocalDate: occurredLocalDate
             )
         }
     }
@@ -1087,18 +1132,28 @@ extension WatchSyncManager: WCSessionDelegate {
         let action = userInfo["action"] as? String
         let actionId = userInfo["action_id"] as? String
         let supplementName = userInfo["supplement_name"] as? String ?? ""
+        let supplementId = userInfo["supplement_id"] as? String
         let supplementScheduledTime = userInfo["scheduled_time"] as? String ?? ""
         let insightId = userInfo["insight_id"] as? String ?? ""
         let deepLink = userInfo["deep_link"] as? String
+        let profileOwnerId = userInfo["profile_owner_id"] as? String
+        let occurredAt = userInfo["occurred_at"] as? String
+        let occurredTimeZone = userInfo["occurred_timezone"] as? String
+        let occurredLocalDate = userInfo["occurred_local_date"] as? String
 
         Task { @MainActor in
             await handleIncomingWatchAction(
                 action: action,
                 actionId: actionId,
                 supplementName: supplementName,
+                supplementId: supplementId,
                 supplementScheduledTime: supplementScheduledTime,
                 insightId: insightId,
-                deepLink: deepLink
+                deepLink: deepLink,
+                profileOwnerId: profileOwnerId,
+                occurredAt: occurredAt,
+                occurredTimeZone: occurredTimeZone,
+                occurredLocalDate: occurredLocalDate
             )
         }
     }
@@ -1108,22 +1163,45 @@ extension WatchSyncManager: WCSessionDelegate {
         action: String?,
         actionId: String?,
         supplementName: String,
+        supplementId: String?,
         supplementScheduledTime: String,
         insightId: String,
-        deepLink: String?
+        deepLink: String?,
+        profileOwnerId: String?,
+        occurredAt: String?,
+        occurredTimeZone: String?,
+        occurredLocalDate: String?
     ) async {
         guard let action else { return }
 
         switch action {
         case "supplement_taken":
+            guard let occurrence = Self.validatedWatchOccurrence(
+                profileOwnerId: profileOwnerId,
+                occurredAt: occurredAt,
+                timeZoneId: occurredTimeZone,
+                localDay: occurredLocalDate
+            ) else { return }
             await handleSupplementTaken(
                 name: supplementName,
+                supplementId: supplementId,
                 scheduledTime: supplementScheduledTime,
-                actionId: actionId
+                actionId: actionId,
+                occurrence: occurrence
             )
 
         case "insight_acknowledge":
-            await handleInsightAcknowledge(insightId: insightId, actionId: actionId)
+            guard let occurrence = Self.validatedWatchOccurrence(
+                profileOwnerId: profileOwnerId,
+                occurredAt: occurredAt,
+                timeZoneId: occurredTimeZone,
+                localDay: occurredLocalDate
+            ) else { return }
+            await handleInsightAcknowledge(
+                insightId: insightId,
+                actionId: actionId,
+                occurrence: occurrence
+            )
 
         case "open_on_iphone":
             handleOpenOnIPhone(deepLink: Self.resolvedWatchDeepLink(from: deepLink))
@@ -1148,13 +1226,19 @@ extension WatchSyncManager: WCSessionDelegate {
 
     /// Mark a supplement as taken via outbox (watch → server).
     @MainActor
-    private func handleSupplementTaken(name: String, scheduledTime: String, actionId: String?) async {
+    private func handleSupplementTaken(
+        name: String,
+        supplementId: String?,
+        scheduledTime: String,
+        actionId: String?,
+        occurrence: WatchActionOccurrence
+    ) async {
         guard let syncEngine = AppContainer.shared?.syncEngine else { return }
         let supplementName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !supplementName.isEmpty else { return }
         let normalizedScheduledTime = Self.normalizedWallClockTime(from: scheduledTime)
         let resolvedActionId = Self.normalizedWatchActionId(from: actionId)
-        let now = Date()
+        let now = occurrence.date
         let authId = AuthManager.activeAuthId?.uuidString
 
         do {
@@ -1177,11 +1261,12 @@ extension WatchSyncManager: WCSessionDelegate {
                         throw WatchActionMutationError.missingUser
                     }
 
-                    let timeZone = Self.safeTimeZone(user.timezone)
-                    let takenDate = Self.localDayString(for: now, timeZone: timeZone)
+                    let timeZone = occurrence.timeZone
+                    let takenDate = occurrence.localDay
                     let supplements = try Self.loadLocalSupplementRows(db: db, userId: user.id)
                     let matchedSupplement = Self.resolveLocalSupplement(
                         named: supplementName,
+                        id: supplementId.flatMap(UUID.init(uuidString:)),
                         scheduledTime: normalizedScheduledTime,
                         on: takenDate,
                         supplements: supplements
@@ -1228,7 +1313,7 @@ extension WatchSyncManager: WCSessionDelegate {
                     return (value: takenDate, event: event)
                 }
             }
-            let finalResolvedDate = resolvedDate ?? Self.localDayString(for: now, timeZone: .current)
+            let finalResolvedDate = resolvedDate ?? occurrence.localDay
 
             _ = await pushLatestSnapshotFromLocalStore(date: finalResolvedDate, syncEngine: syncEngine, now: now)
             push(
@@ -1251,17 +1336,21 @@ extension WatchSyncManager: WCSessionDelegate {
 
     /// Acknowledge an insight via outbox (watch → server).
     @MainActor
-    private func handleInsightAcknowledge(insightId: String, actionId: String?) async {
+    private func handleInsightAcknowledge(
+        insightId: String,
+        actionId: String?,
+        occurrence: WatchActionOccurrence
+    ) async {
         guard let syncEngine = AppContainer.shared?.syncEngine else { return }
         let normalizedInsightId = insightId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let insightUUID = UUID(uuidString: normalizedInsightId) else { return }
         let resolvedActionId = Self.normalizedWatchActionId(from: actionId)
-        let now = Date()
+        let now = occurrence.date
         let authId = AuthManager.activeAuthId?.uuidString
         let preferredSnapshotDate = lastSnapshot?.date
 
         do {
-            var resolvedDate = preferredSnapshotDate ?? lastSnapshot?.date ?? Self.localDayString(for: now, timeZone: .current)
+            var resolvedDate = occurrence.localDay
             if let resolvedActionId {
                 let isDuplicateAction = try await syncEngine.readLocal { db in
                     try Self.watchActionEventExists(id: resolvedActionId, db: db)
@@ -1371,6 +1460,36 @@ extension WatchSyncManager: WCSessionDelegate {
             return nil
         }
         return UUID(uuidString: trimmed)
+    }
+
+    /// A watch action must be tied to the active account and carry the time at
+    /// which the person tapped it. The Watch can queue user-info deliveries,
+    /// so accepting an unscoped message here would apply it to a later login.
+    private static func validatedWatchOccurrence(
+        profileOwnerId: String?,
+        occurredAt: String?,
+        timeZoneId: String?,
+        localDay: String?
+    ) -> WatchActionOccurrence? {
+        guard let profileOwnerId,
+              let ownerId = UUID(uuidString: profileOwnerId),
+              ownerId == AuthManager.activeAuthId,
+              let occurredAt,
+              let date = ISO8601DateFormatter.supabaseDate(from: occurredAt),
+              let timeZoneId,
+              let timeZone = TimeZone(identifier: timeZoneId),
+              let localDay else {
+            return nil
+        }
+
+        // Do not allow a clock-skewed or forged future tap to create records
+        // in a day the user has not reached yet. Older queued actions remain
+        // valid and are idempotent through their action id.
+        guard date <= Date().addingTimeInterval(5 * 60),
+              localDay == Self.localDayString(for: date, timeZone: timeZone) else {
+            return nil
+        }
+        return WatchActionOccurrence(date: date, timeZone: timeZone, localDay: localDay)
     }
 
     nonisolated private static func watchActionEventExists(id: UUID, db: Database) throws -> Bool {

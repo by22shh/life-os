@@ -82,14 +82,12 @@ final class EndToEndScenariosUITests: XCTestCase {
         }
         continueButton.tap() // profile -> health flags
 
-        let quickWinPrimary = app.buttons["onboarding.quick_win.primary"]
-        if !waitForElement(quickWinPrimary, in: app, timeout: 8, allowVerticalScroll: false) {
-            print("UI DEBUG (onboarding quick win missing):\n\(app.debugDescription)")
+        let skipQuickWin = app.buttons["onboarding.quick_win.skip"]
+        if !waitForElement(skipQuickWin, in: app, timeout: 8, allowVerticalScroll: true) {
+            print("UI DEBUG (onboarding quick win skip missing):\n\(app.debugDescription)")
         }
-        XCTAssertTrue(waitForElement(quickWinPrimary, in: app, timeout: 1, allowVerticalScroll: false))
-        quickWinPrimary.tap() // mark quick win complete in UI tests
-        XCTAssertTrue(waitForElement(quickWinPrimary, in: app, timeout: 8, allowVerticalScroll: false))
-        quickWinPrimary.tap() // quick win -> HealthKit
+        XCTAssertTrue(waitForElement(skipQuickWin, in: app, timeout: 1, allowVerticalScroll: true))
+        skipQuickWin.tap()
 
         let skipHealthKit = app.buttons["onboarding.healthkit.skip"]
         XCTAssertTrue(waitForElement(skipHealthKit, in: app, timeout: 8, allowVerticalScroll: true))

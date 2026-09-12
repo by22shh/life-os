@@ -85,6 +85,27 @@ private final class RequestCapture: @unchecked Sendable {
 
 final class NutritionServiceTests: XCTestCase {
 
+    func testEditableMealItemRescalesAllNutrientsWithPortion() {
+        var item = NutritionEditableMealItem(
+            name: "Yogurt",
+            weightG: 100,
+            calories: 120,
+            proteinG: 10,
+            fatG: 4,
+            carbsG: 12,
+            fiberG: 2
+        )
+
+        item.weightG = 150
+        item.rescaleNutritionForCurrentWeight()
+
+        XCTAssertEqual(item.calories, 180, accuracy: 0.001)
+        XCTAssertEqual(item.proteinG, 15, accuracy: 0.001)
+        XCTAssertEqual(item.fatG, 6, accuracy: 0.001)
+        XCTAssertEqual(item.carbsG, 18, accuracy: 0.001)
+        XCTAssertEqual(item.fiberG, 3, accuracy: 0.001)
+    }
+
     private static func insertUser(_ db: Database, userId: UUID, authId: UUID = UUID()) throws {
         var user = User(id: userId, authId: authId, timezone: "UTC", units: .metric)
         user.weightKg = 72
@@ -2049,6 +2070,76 @@ final class NutritionServiceTests: XCTestCase {
         let retained = try XCTUnwrap(reloaded)
         XCTAssertEqual(retained.log.calories, 999)
 
+    }
+
+    func testLoadMealDetailKeepsLocalEditWhenOutboxPermanentlyFailed() async throws {
+        let manager = try DatabaseManager.inMemory()
+        let authId = UUID()
+        let userId = UUID()
+        let mealId = UUID()
+
+        try await manager.dbQueue.write { db in
+            try Self.insertUser(db, userId: userId, authId: authId)
+            _ = try Self.insertMeal(db, logId: mealId, userId: userId, calories: 410, protein: 24, fat: 14, carbs: 44)
+            _ = try Self.insertMealItem(db, logId: mealId, userId: userId)
+            try db.execute(
+                sql: "UPDATE food_logs SET calories = ? WHERE id = ? OR id = ?",
+                arguments: [777, mealId, mealId.uuidString]
+            )
+            var event = OutboxEvent(
+                httpMethod: .PATCH,
+                path: "api-edit/\(mealId.uuidString)",
+                bodyJson: Data("{}".utf8)
+            )
+            event.status = .failedPermanent
+            try event.insert(db)
+        }
+
+        var remoteDetail = NutritionMealRemoteDetailResponse(
+            id: mealId,
+            loggedAt: Date(timeIntervalSince1970: 1_773_420_000),
+            loggedDate: "2026-03-14",
+            mealType: .dinner,
+            context: .restaurant,
+            inputMethod: .manual,
+            macros: .init(calories: 900, proteinG: 40, fatG: 30, carbsG: 70, fiberG: 5),
+            aiConfidence: nil,
+            userCorrected: false,
+            userNotes: "Remote snapshot",
+            items: []
+        )
+        remoteDetail.updatedAt = Date().addingTimeInterval(600)
+        let service = NutritionService(
+            dbQueue: manager.dbQueue,
+            detailAPIClient: NutritionMealDetailClientMock(response: remoteDetail)
+        )
+
+        await MainActor.run {
+            AuthManager.setActiveAuthIdForTests(authId)
+            AuthManager._testSetActiveHasCloudSession(true)
+        }
+        defer {
+            Task { @MainActor in
+                AuthManager.setActiveAuthIdForTests(nil)
+                AuthManager._testSetActiveHasCloudSession(false)
+            }
+        }
+
+        let detail = try await service.loadMealDetail(id: mealId, preferRemote: true)
+        let retained = try XCTUnwrap(detail)
+        XCTAssertEqual(retained.log.calories, 777)
+        XCTAssertEqual(retained.items.count, 1)
+
+        try await manager.dbQueue.read { db in
+            let cachedLog = try XCTUnwrap(
+                FoodLog.fetchOne(
+                    db,
+                    sql: "SELECT * FROM food_logs WHERE id = ? OR id = ? LIMIT 1",
+                    arguments: [mealId, mealId.uuidString]
+                )
+            )
+            XCTAssertEqual(cachedLog.calories, 777)
+        }
     }
 
     func testLoadMealTemplateDetailReturnsLocalTemplateItems() async throws {

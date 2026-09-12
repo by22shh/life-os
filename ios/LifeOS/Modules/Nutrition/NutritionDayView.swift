@@ -1591,10 +1591,13 @@ struct NutritionLogView: View {
         at index: Int,
         viewModel: NutritionLogViewModel
     ) -> some View {
-        mealItemEditor(
+        let itemID = viewModel.mealItems[index].id
+        return mealItemEditor(
             item: $viewModel.mealItems[index],
             canRemove: viewModel.canRemoveItems,
-            onRemove: removeMealItemAction(at: index, viewModel: viewModel)
+            onRemove: removeMealItemAction(at: index, viewModel: viewModel),
+            onWeightChanged: { viewModel.rescaleMealItem(id: itemID) },
+            onNutrientsChanged: { viewModel.rebaseMealItemNutrition(id: itemID) }
         )
     }
 
@@ -1615,7 +1618,9 @@ struct NutritionLogView: View {
     private func mealItemEditor(
         item: Binding<NutritionEditableMealItem>,
         canRemove: Bool,
-        onRemove: @escaping () -> Void
+        onRemove: @escaping () -> Void,
+        onWeightChanged: @escaping () -> Void,
+        onNutrientsChanged: @escaping () -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .top) {
@@ -1635,14 +1640,22 @@ struct NutritionLogView: View {
 
             HStack(spacing: Spacing.s) {
                 numericField(String(localized: "nutrition_unit_grams"), value: item.weightG)
-                if !NutritionSafetyPolicy.hidesCalories { numericField(String(localized: "nutrition_unit_kcal"), value: item.calories) }
+                    .onChange(of: item.wrappedValue.weightG) { _, _ in onWeightChanged() }
+                if !NutritionSafetyPolicy.hidesCalories {
+                    numericField(String(localized: "nutrition_unit_kcal"), value: item.calories)
+                        .onChange(of: item.wrappedValue.calories) { _, _ in onNutrientsChanged() }
+                }
             }
 
             HStack(spacing: Spacing.s) {
                 numericField(String(localized: "nutrition_macro_label_protein"), value: item.proteinG)
+                    .onChange(of: item.wrappedValue.proteinG) { _, _ in onNutrientsChanged() }
                 numericField(String(localized: "nutrition_macro_label_fat"), value: item.fatG)
+                    .onChange(of: item.wrappedValue.fatG) { _, _ in onNutrientsChanged() }
                 numericField(String(localized: "nutrition_macro_label_carbs"), value: item.carbsG)
+                    .onChange(of: item.wrappedValue.carbsG) { _, _ in onNutrientsChanged() }
                 numericField(String(localized: "nutrition_macro_label_fiber"), value: item.fiberG)
+                    .onChange(of: item.wrappedValue.fiberG) { _, _ in onNutrientsChanged() }
             }
         }
         .padding(Spacing.s)
@@ -2564,7 +2577,9 @@ extension NutritionLogView {
             rootView: mealItemEditor(
                 item: item,
                 canRemove: canRemove,
-                onRemove: {}
+                onRemove: {},
+                onWeightChanged: {},
+                onNutrientsChanged: {}
             )
         )
         _ = host.view

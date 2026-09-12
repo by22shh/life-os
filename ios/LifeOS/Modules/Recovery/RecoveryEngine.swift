@@ -109,7 +109,7 @@ enum RecoveryEngine {
         }
         let storedSleep = try SleepRecordSelection.daily(userId: userId, day: date, db: db)
         let sleepLog = storedSleep?.overridesImportedSleep == true ? storedSleep : (importedSleep?.scoringLog ?? storedSleep)
-        let recentSleepLogs = try SleepRecordSelection.recent(userId: userId, before: date, limit: 7, db: db)
+        let recentSleepLogs = try SleepRecordSelection.recent(userId: userId, before: date, limit: 14, db: db)
         if let sleepScore = SleepScorer.compositeScore(
             sleepLog: sleepLog,
             physiologicalState: state,

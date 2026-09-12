@@ -1505,6 +1505,7 @@ private enum NutritionSearchScoreSource {
     case custom
 }
 
+#if DEBUG
 // MARK: - Test support extensions (co-located with their types)
 extension NutritionSearchView {
     init(
@@ -1699,3 +1700,4 @@ extension NutritionCatalogService {
         )
     }
 }
+#endif

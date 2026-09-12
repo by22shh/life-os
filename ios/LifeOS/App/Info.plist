@@ -43,7 +43,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Life OS uses the camera to capture meals, scan barcodes, and import lab documents.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Life OS uses your location while the app is open to support context-aware activity insights.</string>
+	<string>Life OS uses your location while the app is open to support context-aware activity insights. / Life OS использует геопозицию, пока приложение открыто, для контекстных рекомендаций по активности.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Life OS uses the microphone to transcribe meal notes and voice-based nutrition logs.</string>
 	<key>NSFaceIDUsageDescription</key>

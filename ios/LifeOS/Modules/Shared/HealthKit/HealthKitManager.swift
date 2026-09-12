@@ -1201,6 +1201,7 @@ actor HealthKitManager {
         let totalAsleepMinutes = deepMinutes + remMinutes + coreMinutes
         let totalDurationHours = totalAsleepMinutes / 60
         let efficiency = totalInBed > 0 ? (totalAsleepMinutes / totalInBed * 100) : nil
+        let awakenings = samples.filter { $0.value == HKCategoryValueSleepAnalysis.awake.rawValue }.count
 
         return SleepData(
             totalHours: totalDurationHours,
@@ -1215,7 +1216,8 @@ actor HealthKitManager {
                 [HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
                  HKCategoryValueSleepAnalysis.asleepREM.rawValue,
                  HKCategoryValueSleepAnalysis.asleepCore.rawValue].contains($0.value)
-            }
+            },
+            awakenings: awakenings
         )
     }
 
@@ -1938,6 +1940,7 @@ struct SleepData: Sendable {
     var bedTime: Date?
     var wakeTime: Date?
     var hasStages: Bool = true
+    var awakenings: Int? = nil
 
     /// Shared sleep algorithm; absent stages and efficiency are reweighted.
     var qualityScore: Double {
@@ -1951,6 +1954,7 @@ struct SleepData: Sendable {
         log.remSleepMinutes = hasStages ? remMinutes : nil
         log.lightSleepMinutes = hasStages ? lightMinutes : nil
         log.awakeMinutes = hasStages ? awakeMinutes : nil
+        log.numberOfAwakenings = hasStages ? awakenings : nil
         log.sleepEfficiency = efficiency
         log.bedTime = bedTime
         log.wakeTime = wakeTime

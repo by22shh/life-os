@@ -241,17 +241,17 @@ final class RecoveryEngineTests: XCTestCase {
             accuracy: 0.001
         )
 
-        remState.remSleepPercent = 16 // 2 below lower bound
+        remState.remSleepPercent = 16 // 5 below the band centre (21)
         XCTAssertEqual(
             try score(nil, remState),
-            94,
+            85,
             accuracy: 0.01
         )
 
-        remState.remSleepPercent = 31 // 7 above upper bound
+        remState.remSleepPercent = 31 // 10 above the band centre (21)
         XCTAssertEqual(
             try score(nil, remState),
-            77,
+            65,
             accuracy: 0.01
         )
 

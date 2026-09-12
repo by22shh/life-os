@@ -1,0 +1,22 @@
+{
+  "removed_audit_simulators": [
+    "LifeOS Audit 2026-09-12",
+    "LifeOS Audit Cloud 2026-09-12",
+    "LifeOS Audit Watch 2026-09-12"
+  ],
+  "removed_raw_logs": [
+    "backend-e2e-raw.log",
+    "supabase-probes-start.log",
+    "ios-live-backend-raw.log",
+    "backend-load-raw.log"
+  ],
+  "local_supabase_stopped": true,
+  "other_running_containers_preserved": [
+    "gcs_postgres",
+    "ctl",
+    "net",
+    "redis",
+    "dbs"
+  ],
+  "original_tracked_diff_unchanged": true
+}

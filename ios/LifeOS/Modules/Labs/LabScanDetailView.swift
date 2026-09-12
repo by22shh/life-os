@@ -9,6 +9,8 @@ private let labsCleanupLogger = Logger(subsystem: "LifeOS", category: "LabsClean
 struct LabScanDetailView: View {
     let scanId: UUID
     @State private var viewModel: LabScanDetailViewModel
+    @State private var editingMeasurement: HealthMeasurement?
+    @State private var measurementPendingDeletion: HealthMeasurement?
 
     init(scanId: UUID) {
         self.scanId = scanId
@@ -84,6 +86,26 @@ struct LabScanDetailView: View {
         }
         .refreshable {
             await viewModel.refresh()
+        }
+        .sheet(item: $editingMeasurement) { measurement in
+            LabMeasurementEditor(measurement: measurement) { updated in
+                Task { await viewModel.updateMeasurement(updated) }
+            }
+        }
+        .confirmationDialog(
+            String(localized: "delete"),
+            isPresented: Binding(
+                get: { measurementPendingDeletion != nil },
+                set: { if !$0 { measurementPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let measurement = measurementPendingDeletion {
+                Button(String(localized: "delete"), role: .destructive) {
+                    Task { await viewModel.deleteMeasurement(id: measurement.id) }
+                    measurementPendingDeletion = nil
+                }
+            }
         }
     }
 
@@ -228,6 +250,24 @@ struct LabScanDetailView: View {
                                 Text(marker.valueText)
                                     .font(LifeOSTypography.body.weight(.semibold))
                                     .multilineTextAlignment(.trailing)
+
+                                if let measurement = viewModel.measurement(id: marker.id) {
+                                    Button {
+                                        editingMeasurement = measurement
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel(String(localized: "edit"))
+
+                                    Button(role: .destructive) {
+                                        measurementPendingDeletion = measurement
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel(String(localized: "delete"))
+                                }
                             }
 
                             HStack(spacing: Spacing.xs) {
@@ -408,6 +448,7 @@ final class LabScanDetailViewModel {
 
     private(set) var scan: MedicalScan?
     private(set) var markerSummaries: [LabScanMarkerSummary] = []
+    private(set) var measurements: [HealthMeasurement] = []
     private(set) var resolvedRemoteDocumentURL: URL?
     private(set) var isLoading = false
     private(set) var isSaving = false
@@ -436,6 +477,11 @@ final class LabScanDetailViewModel {
 
     var markerCount: Int {
         markerSummaries.count
+    }
+
+    func measurement(id: String) -> HealthMeasurement? {
+        guard let measurementID = UUID(uuidString: id) else { return nil }
+        return measurements.first { $0.id == measurementID }
     }
 
     var canRefreshRemotely: Bool {
@@ -625,6 +671,102 @@ final class LabScanDetailViewModel {
         isSaving = false
     }
 
+    func updateMeasurement(_ proposed: HealthMeasurement) async {
+        guard !isSaving, var scan, proposed.value.isFinite else { return }
+        let name = proposed.biomarkerName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let unit = proposed.unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !unit.isEmpty else {
+            actionError = String(localized: "labs_review_instructions")
+            return
+        }
+
+        isSaving = true
+        actionError = nil
+        statusMessage = nil
+        let previousSnapshot = LabScanDetailSnapshot(scan: scan, measurements: measurements)
+        let now = Date()
+        scan.updatedAt = now
+        scan.userReviewed = true
+        scan.userReviewedAt = now
+        scan.manuallyVerified = true
+
+        do {
+            let savedMeasurement = try await dbQueue.write { db in
+                guard var existing = try HealthMeasurement.fetchOne(
+                    db,
+                    sql: """
+                        SELECT * FROM health_measurements
+                        WHERE (id = ? OR id = ?)
+                          AND (medical_scan_id = ? OR source_scan_id = ?)
+                        """,
+                    arguments: [proposed.id.uuidString, proposed.id.uuidString, scanId.uuidString, scanId.uuidString]
+                ) else {
+                    throw LabScanDetailEditorError.measurementNotFound
+                }
+                existing.biomarkerName = name
+                existing.value = proposed.value
+                existing.unit = unit
+                existing.referenceRangeLow = proposed.referenceRangeLow
+                existing.referenceRangeHigh = proposed.referenceRangeHigh
+                existing.notes = proposed.notes
+                existing.userCorrected = true
+                existing.manuallyVerified = true
+                existing.updatedAt = now
+                try existing.save(db)
+                return existing
+            }
+            let nextMeasurements = measurements.map { $0.id == savedMeasurement.id ? savedMeasurement : $0 }
+            scan.processedData = try LabScanSyncPayloadBuilder.processedData(from: nextMeasurements)
+            try await persistScan(scan)
+            applySnapshot(LabScanDetailSnapshot(scan: scan, measurements: nextMeasurements))
+            statusMessage = String(localized: "labs_detail_changes_saved")
+        } catch {
+            applySnapshot(previousSnapshot)
+            actionError = error.localizedDescription
+        }
+
+        isSaving = false
+    }
+
+    func deleteMeasurement(id: UUID) async {
+        guard !isSaving, var scan else { return }
+        isSaving = true
+        actionError = nil
+        statusMessage = nil
+        let previousSnapshot = LabScanDetailSnapshot(scan: scan, measurements: measurements)
+        let now = Date()
+        scan.updatedAt = now
+        scan.userReviewed = true
+        scan.userReviewedAt = now
+        scan.manuallyVerified = true
+
+        do {
+            try await dbQueue.write { db in
+                try db.execute(
+                    sql: """
+                        DELETE FROM health_measurements
+                        WHERE (id = ? OR id = ?)
+                          AND (medical_scan_id = ? OR source_scan_id = ?)
+                        """,
+                    arguments: [id.uuidString, id.uuidString, scanId.uuidString, scanId.uuidString]
+                )
+                guard db.changesCount > 0 else {
+                    throw LabScanDetailEditorError.measurementNotFound
+                }
+            }
+            let nextMeasurements = measurements.filter { $0.id != id }
+            scan.processedData = try LabScanSyncPayloadBuilder.processedData(from: nextMeasurements)
+            try await persistScan(scan)
+            applySnapshot(LabScanDetailSnapshot(scan: scan, measurements: nextMeasurements))
+            statusMessage = String(localized: "labs_detail_changes_saved")
+        } catch {
+            applySnapshot(previousSnapshot)
+            actionError = error.localizedDescription
+        }
+
+        isSaving = false
+    }
+
     nonisolated static func humanizedIdentifier(_ rawValue: String) -> String {
         LabsLocalizedText.identifier(rawValue)
     }
@@ -658,9 +800,9 @@ final class LabScanDetailViewModel {
             }
 
             if shouldFetchRemote, let remoteSnapshot = try await remoteLoader(scanId) {
-                try await persistRemoteSnapshot(remoteSnapshot)
-                applySnapshot(remoteSnapshot)
-                await resolveDocumentURLIfNeeded(for: remoteSnapshot.scan)
+                let effectiveSnapshot = try await persistRemoteSnapshot(remoteSnapshot)
+                applySnapshot(effectiveSnapshot)
+                await resolveDocumentURLIfNeeded(for: effectiveSnapshot.scan)
                 return
             }
 
@@ -718,18 +860,117 @@ final class LabScanDetailViewModel {
 
     private func applySnapshot(_ snapshot: LabScanDetailSnapshot) {
         scan = snapshot.scan
+        measurements = snapshot.measurements
         markerSummaries = Self.buildMarkerSummaries(scan: snapshot.scan, measurements: snapshot.measurements)
         loadError = nil
     }
 
-    private func persistRemoteSnapshot(_ snapshot: LabScanDetailSnapshot) async throws {
+    private func persistRemoteSnapshot(_ snapshot: LabScanDetailSnapshot) async throws -> LabScanDetailSnapshot {
         try await dbQueue.write { db in
-            let scan = snapshot.scan
-            try scan.save(db)
+            let tombstonedMeasurementIDs = Set(snapshot.deletedMeasurementIDs)
+            // A watermark page can contain a stale data row alongside its later
+            // tombstone. The tombstone must win in that page as well as against
+            // records that were already stored locally.
+            let activeRemoteMeasurements = snapshot.measurements.filter {
+                !tombstonedMeasurementIDs.contains($0.id)
+            }
+            let localScan = try MedicalScan.fetchOne(
+                db,
+                sql: "SELECT * FROM medical_scans WHERE id = ? OR id = ?",
+                arguments: [scanId, scanId.uuidString]
+            )
+            if !snapshot.deletedMeasurementIDs.isEmpty {
+                for measurementID in snapshot.deletedMeasurementIDs {
+                    try db.execute(
+                        sql: """
+                            DELETE FROM health_measurements
+                            WHERE (id = ? OR id = ?)
+                              AND (medical_scan_id = ? OR source_scan_id = ?)
+                            """,
+                        arguments: [measurementID.uuidString, measurementID.uuidString, scanId.uuidString, scanId.uuidString]
+                    )
+                    // A stale queued replacement payload could recreate this
+                    // marker after the server tombstone has won. Cancel only
+                    // writes that carry this ID; unrelated scan edits remain.
+                    try db.execute(
+                        sql: """
+                            UPDATE outbox_events
+                            SET status = ?, updated_at_local = ?, user_visible_blocker = 0
+                            WHERE status IN (?, ?, ?)
+                              AND (id = ? OR id = ? OR lower(CAST(body_json AS TEXT)) LIKE ?)
+                            """,
+                        arguments: [
+                            OutboxStatus.cancelled.rawValue,
+                            Date(),
+                            OutboxStatus.pending.rawValue,
+                            OutboxStatus.failedRetryable.rawValue,
+                            OutboxStatus.inFlight.rawValue,
+                            measurementID,
+                            measurementID.uuidString,
+                            "%\(measurementID.uuidString.lowercased())%"
+                        ]
+                    )
+                }
+            }
+            let pending = try OutboxEvent.fetchAll(
+                db,
+                sql: "SELECT * FROM outbox_events WHERE status IN (?, ?, ?, ?)",
+                arguments: [
+                    OutboxStatus.pending.rawValue,
+                    OutboxStatus.inFlight.rawValue,
+                    OutboxStatus.failedRetryable.rawValue,
+                    OutboxStatus.failedPermanent.rawValue
+                ]
+            )
+            let hasPendingLocalMutation = pending.contains { event in
+                event.id == scanId ||
+                event.path.lowercased().contains(scanId.uuidString.lowercased()) ||
+                String(data: event.bodyJson, encoding: .utf8)?.lowercased().contains(scanId.uuidString.lowercased()) == true
+            }
+            if let localScan,
+               hasPendingLocalMutation || localScan.updatedAt > snapshot.scan.updatedAt {
+                let measurements = try HealthMeasurement.fetchAll(
+                    db,
+                    sql: "SELECT * FROM health_measurements WHERE medical_scan_id = ? OR source_scan_id = ?",
+                    arguments: [scanId.uuidString, scanId.uuidString]
+                )
+                return LabScanDetailSnapshot(scan: localScan, measurements: measurements)
+            }
 
-            for measurement in snapshot.measurements {
+            var mergedScan = snapshot.scan
+            // Original files are device-local when cloud original storage is
+            // disabled.  A metadata-only remote response must never orphan it.
+            if let localScan {
+                if Self.directDocumentURL(for: mergedScan) == nil {
+                    if Self.directDocumentURL(for: localScan) != nil {
+                        mergedScan.imageUrl = localScan.imageUrl
+                        mergedScan.originalImageUrl = localScan.originalImageUrl
+                    }
+                }
+                mergedScan.pinnedByUser = mergedScan.pinnedByUser || localScan.pinnedByUser
+                mergedScan.userReviewed = mergedScan.userReviewed || localScan.userReviewed
+                mergedScan.manuallyVerified = mergedScan.manuallyVerified || localScan.manuallyVerified
+                mergedScan.userReviewedAt = max(mergedScan.userReviewedAt ?? .distantPast, localScan.userReviewedAt ?? .distantPast)
+            }
+            try mergedScan.save(db)
+
+            for measurement in activeRemoteMeasurements {
+                if let local = try HealthMeasurement.fetchOne(
+                    db,
+                    sql: "SELECT * FROM health_measurements WHERE id = ? OR id = ?",
+                    arguments: [measurement.id, measurement.id.uuidString]
+                ),
+                   local.userCorrected || local.manuallyVerified || local.updatedAt > measurement.updatedAt {
+                    continue
+                }
                 try measurement.save(db)
             }
+            let measurements = try HealthMeasurement.fetchAll(
+                db,
+                sql: "SELECT * FROM health_measurements WHERE medical_scan_id = ? OR source_scan_id = ?",
+                arguments: [scanId.uuidString, scanId.uuidString]
+            )
+            return LabScanDetailSnapshot(scan: mergedScan, measurements: measurements)
         }
     }
 
@@ -809,8 +1050,22 @@ final class LabScanDetailViewModel {
             from: "health_measurements",
             exactMatch: ["source_scan_id": scanId.uuidString]
         )
+        async let remoteStates: [LabMeasurementRemoteState] = apiClient.fetch(
+            from: "health_measurements",
+            exactMatch: ["source_scan_id": scanId.uuidString]
+        )
+        let deletedMeasurementIDs = Set(
+            (try await remoteStates)
+                .filter { $0.deletedAt != nil }
+                .map(\.id)
+        )
         let measurements = deduplicatedMeasurements(try await sourceMeasurements)
-        return LabScanDetailSnapshot(scan: scan, measurements: measurements)
+            .filter { !deletedMeasurementIDs.contains($0.id) }
+        return LabScanDetailSnapshot(
+            scan: scan,
+            measurements: measurements,
+            deletedMeasurementIDs: Array(deletedMeasurementIDs)
+        )
     }
 
     private static func defaultDocumentURLResolver(scan: MedicalScan) async throws -> URL? {
@@ -1026,7 +1281,7 @@ final class LabScanDetailViewModel {
         DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
     }
 
-    private static func directDocumentURL(for scan: MedicalScan) -> URL? {
+    nonisolated private static func directDocumentURL(for scan: MedicalScan) -> URL? {
         for rawValue in [scan.originalImageUrl, scan.imageUrl] {
             guard let directURL = LabScanCloudStorage.directURL(from: rawValue) else { continue }
             return directURL
@@ -1034,7 +1289,7 @@ final class LabScanDetailViewModel {
         return nil
     }
 
-    private static func documentStoragePath(for scan: MedicalScan) -> String? {
+    nonisolated private static func documentStoragePath(for scan: MedicalScan) -> String? {
         LabScanCloudStorage.storagePath(from: scan.originalImageUrl)
             ?? LabScanCloudStorage.storagePath(from: scan.imageUrl)
     }
@@ -1058,6 +1313,23 @@ final class LabScanDetailViewModel {
 struct LabScanDetailSnapshot: Equatable, Sendable {
     let scan: MedicalScan
     let measurements: [HealthMeasurement]
+    let deletedMeasurementIDs: [UUID]
+
+    init(
+        scan: MedicalScan,
+        measurements: [HealthMeasurement],
+        deletedMeasurementIDs: [UUID] = []
+    ) {
+        self.scan = scan
+        self.measurements = measurements
+        self.deletedMeasurementIDs = deletedMeasurementIDs
+    }
+}
+
+private struct LabMeasurementRemoteState: Decodable, Sendable {
+    let id: UUID
+    let sourceScanId: UUID?
+    let deletedAt: Date?
 }
 
 struct LabScanMarkerSummary: Identifiable {
@@ -1069,6 +1341,89 @@ struct LabScanMarkerSummary: Identifiable {
     let referenceRangeText: String?
     let measuredAtText: String?
     let notes: String?
+}
+
+private enum LabScanDetailEditorError: LocalizedError {
+    case measurementNotFound
+
+    var errorDescription: String? {
+        String(localized: "labs_detail_not_found")
+    }
+}
+
+private struct LabMeasurementEditor: View {
+    @Environment(\.dismiss) private var dismiss
+    let measurement: HealthMeasurement
+    let onSave: @MainActor (HealthMeasurement) async -> Void
+    @State private var name: String
+    @State private var valueText: String
+    @State private var unit: String
+    @State private var referenceLowText: String
+    @State private var referenceHighText: String
+    @State private var notes: String
+
+    init(
+        measurement: HealthMeasurement,
+        onSave: @escaping @MainActor (HealthMeasurement) async -> Void
+    ) {
+        self.measurement = measurement
+        self.onSave = onSave
+        _name = State(initialValue: measurement.biomarkerName)
+        _valueText = State(initialValue: String(measurement.value))
+        _unit = State(initialValue: measurement.unit)
+        _referenceLowText = State(initialValue: measurement.referenceRangeLow.map { String($0) } ?? "")
+        _referenceHighText = State(initialValue: measurement.referenceRangeHigh.map { String($0) } ?? "")
+        _notes = State(initialValue: measurement.notes ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField(String(localized: "labs_marker_name"), text: $name)
+                    TextField(String(localized: "labs_value"), text: $valueText)
+                        .keyboardType(.decimalPad)
+                    TextField(String(localized: "labs_unit"), text: $unit)
+                }
+                Section(String(localized: "labs_reference_range")) {
+                    TextField(String(localized: "labs_range_placeholder"), text: $referenceLowText)
+                        .keyboardType(.decimalPad)
+                    TextField(String(localized: "labs_range_placeholder"), text: $referenceHighText)
+                        .keyboardType(.decimalPad)
+                }
+                Section {
+                    TextField(String(localized: "notes"), text: $notes, axis: .vertical)
+                }
+            }
+            .navigationTitle(String(localized: "edit"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "cancel"), action: dismiss.callAsFunction)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "save")) {
+                        guard let value = Self.number(valueText) else { return }
+                        var updated = measurement
+                        updated.biomarkerName = name
+                        updated.value = value
+                        updated.unit = unit
+                        updated.referenceRangeLow = Self.number(referenceLowText)
+                        updated.referenceRangeHigh = Self.number(referenceHighText)
+                        updated.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                        Task {
+                            await onSave(updated)
+                            dismiss()
+                        }
+                    }
+                    .disabled(Self.number(valueText) == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private static func number(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+    }
 }
 
 struct CapturedLabAsset: Equatable, Sendable {
